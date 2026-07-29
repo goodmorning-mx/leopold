@@ -18,7 +18,13 @@ constexpr int kTouchScl = 48;
 constexpr uint8_t kTouchAddress = 0x38;
 
 constexpr int kBootButton = 0;
+constexpr int kBatteryAdc = 4;
 constexpr int kScreenWidth = 466;
 constexpr int kScreenHeight = 466;
+
+// Battery percentage is an estimate based on a nominal 2:1 divider.
+constexpr float kBatteryDividerRatio = 2.0F;
+constexpr uint16_t kBatteryEmptyMillivolts = 3300;
+constexpr uint16_t kBatteryFullMillivolts = 4200;
 
 }  // namespace leopold::board
