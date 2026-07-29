@@ -273,12 +273,33 @@ const SduiComponent* firstButton() {
   return nullptr;
 }
 
+const SduiComponent* onlyButton() {
+  const SduiComponent* match = nullptr;
+  for (uint8_t index = 0; index < currentUi.componentCount; ++index) {
+    if (currentUi.components[index].type != ComponentType::kButton) {
+      continue;
+    }
+    if (match != nullptr) {
+      return nullptr;
+    }
+    match = &currentUi.components[index];
+  }
+  return match;
+}
+
 void processInput(uint32_t now) {
   TouchPoint point;
   if (touch.pollTap(point, now) && hasUi) {
+    Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button = findButtonAt(currentUi, point.x, point.y);
+    if (button == nullptr) {
+      button = onlyButton();
+    }
     if (button != nullptr) {
+      Serial.println("Touch matched SDUI button");
       queueTap(button->id, currentUi.revision, now);
+    } else {
+      Serial.println("Touch did not match an SDUI button");
     }
   }
 

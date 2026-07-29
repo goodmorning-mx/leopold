@@ -17,6 +17,7 @@ class TouchInput {
  private:
   bool read(TouchPoint& point);
 
+  uint8_t address_ = 0;
   bool wasDown_ = false;
   uint32_t lastTapAt_ = 0;
 };
