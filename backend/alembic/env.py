@@ -4,13 +4,14 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.config import get_settings
+from app.models import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def get_database_url() -> str:

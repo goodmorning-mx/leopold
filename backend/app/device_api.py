@@ -1,0 +1,264 @@
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timezone
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.config import Settings, get_settings
+from app.database import get_db
+from app.models import Device, DeviceEvent, DeviceStatus, DeviceUIDocument
+from app.schemas import (
+    ConnectRequest,
+    ConnectResponse,
+    DeviceEventRequest,
+    HeartbeatRequest,
+    HeartbeatResponse,
+    ProvisionDeviceRequest,
+    ProvisionDeviceResponse,
+    UIDocument,
+)
+
+router = APIRouter(prefix="/v1")
+Db = Annotated[Session, Depends(get_db)]
+Config = Annotated[Settings, Depends(get_settings)]
+_DUMMY_HASH = hashlib.sha256(b"invalid-device-secret").hexdigest()
+
+
+def secret_hash(secret: str) -> str:
+    return hashlib.sha256(secret.encode("utf-8")).hexdigest()
+
+
+def active_ui(db: Session, device: Device) -> DeviceUIDocument:
+    document = db.scalar(
+        select(DeviceUIDocument).where(
+            DeviceUIDocument.device_id == device.id,
+            DeviceUIDocument.is_active.is_(True),
+        )
+    )
+    if document is None:
+        raise HTTPException(status_code=503, detail="Device UI is unavailable")
+    return document
+
+
+def initial_document(revision: int, poll_seconds: int) -> dict:
+    return UIDocument(
+        schema_version=1,
+        revision=revision,
+        poll_after_ms=poll_seconds * 1000,
+        screen={
+            "id": "home",
+            "background": "#000000",
+            "components": [
+                {
+                    "type": "text",
+                    "id": "greeting",
+                    "text": "Buenos días",
+                    "x": 233,
+                    "y": 105,
+                    "align": "center",
+                    "size": 3,
+                    "color": "#FFFFFF",
+                },
+                {
+                    "type": "indicator",
+                    "id": "cloud",
+                    "label": "GoodMorning Cloud",
+                    "state": "connected",
+                    "x": 233,
+                    "y": 230,
+                },
+                {
+                    "type": "button",
+                    "id": "continue",
+                    "label": "Continuar",
+                    "x": 133,
+                    "y": 315,
+                    "width": 200,
+                    "height": 58,
+                },
+            ],
+        },
+    ).model_dump(mode="json")
+
+
+def authenticate_device(
+    db: Db,
+    device_id: Annotated[str | None, Header(alias="X-Leopold-Device-ID")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Device:
+    supplied_secret = ""
+    if authorization and authorization.startswith("Bearer "):
+        supplied_secret = authorization[7:]
+    device = db.scalar(select(Device).where(Device.device_id == (device_id or "")))
+    expected = device.secret_hash if device is not None else _DUMMY_HASH
+    authenticated = bool(supplied_secret) and hmac.compare_digest(
+        secret_hash(supplied_secret), expected
+    )
+    if not authenticated or device is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid device credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if device.status == DeviceStatus.disabled:
+        raise HTTPException(status_code=403, detail="Device is disabled")
+    return device
+
+
+AuthenticatedDevice = Annotated[Device, Depends(authenticate_device)]
+
+
+@router.post(
+    "/admin/devices",
+    response_model=ProvisionDeviceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def provision_device(
+    payload: ProvisionDeviceRequest,
+    db: Db,
+    settings: Config,
+    authorization: Annotated[str | None, Header()] = None,
+) -> ProvisionDeviceResponse:
+    configured_token = settings.admin_provisioning_token
+    if not configured_token:
+        raise HTTPException(status_code=503, detail="Provisioning is disabled")
+    supplied_token = (
+        authorization[7:]
+        if authorization and authorization.startswith("Bearer ")
+        else ""
+    )
+    if not supplied_token or not hmac.compare_digest(supplied_token, configured_token):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid provisioning credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    for _ in range(5):
+        device_secret = secrets.token_urlsafe(32)
+        device = Device(
+            device_id=f"LPD-{secrets.token_hex(3).upper()}",
+            label=payload.label,
+            secret_hash=secret_hash(device_secret),
+            status=DeviceStatus.provisioned,
+            capabilities={},
+        )
+        device.ui_documents.append(
+            DeviceUIDocument(
+                revision=1,
+                document=initial_document(1, settings.ui_poll_interval_seconds),
+                is_active=True,
+            )
+        )
+        db.add(device)
+        try:
+            db.commit()
+            return ProvisionDeviceResponse(
+                device_id=device.device_id, device_secret=device_secret
+            )
+        except IntegrityError:
+            db.rollback()
+    raise HTTPException(status_code=503, detail="Could not allocate a device ID")
+
+
+def mark_seen(device: Device, request: Request) -> None:
+    device.last_seen_at = datetime.now(timezone.utc)
+    device.last_ip = request.client.host if request.client else None
+    device.status = DeviceStatus.online
+
+
+@router.post("/device/connect", response_model=ConnectResponse)
+def connect_device(
+    payload: ConnectRequest,
+    request: Request,
+    db: Db,
+    settings: Config,
+    device: AuthenticatedDevice,
+) -> ConnectResponse:
+    device.firmware_version = payload.firmware_version
+    device.capabilities = payload.capabilities
+    mark_seen(device, request)
+    revision = active_ui(db, device).revision
+    db.commit()
+    return ConnectResponse(
+        device_id=device.device_id,
+        server_time=datetime.now(timezone.utc),
+        heartbeat_interval_seconds=settings.heartbeat_interval_seconds,
+        ui_poll_interval_seconds=settings.ui_poll_interval_seconds,
+        ui_revision=revision,
+    )
+
+
+@router.get("/device/ui", response_model=UIDocument)
+def get_device_ui(
+    db: Db,
+    device: AuthenticatedDevice,
+    if_none_match: Annotated[str | None, Header(alias="If-None-Match")] = None,
+) -> Response:
+    stored = active_ui(db, device)
+    etag = f'"{stored.revision}"'
+    if if_none_match and any(
+        tag.strip() in {etag, f"W/{etag}"} for tag in if_none_match.split(",")
+    ):
+        return Response(status_code=304, headers={"ETag": etag})
+    document = UIDocument.model_validate(stored.document)
+    return Response(
+        content=document.model_dump_json(),
+        media_type="application/json",
+        headers={"ETag": etag, "Cache-Control": "private, no-cache"},
+    )
+
+
+@router.post("/device/events", status_code=status.HTTP_202_ACCEPTED)
+def record_event(
+    payload: DeviceEventRequest,
+    db: Db,
+    device: AuthenticatedDevice,
+) -> dict[str, bool]:
+    existing = db.scalar(
+        select(DeviceEvent.id).where(
+            DeviceEvent.device_id == device.id,
+            DeviceEvent.event_id == payload.event_id,
+        )
+    )
+    if existing is None:
+        db.add(
+            DeviceEvent(
+                device_id=device.id,
+                event_id=payload.event_id,
+                revision=payload.revision,
+                type=payload.type,
+                component_id=payload.component_id,
+                payload=payload.payload,
+                occurred_at=payload.occurred_at,
+            )
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+    return {"accepted": True}
+
+
+@router.post("/device/heartbeat", response_model=HeartbeatResponse)
+def heartbeat(
+    payload: HeartbeatRequest,
+    request: Request,
+    db: Db,
+    device: AuthenticatedDevice,
+) -> HeartbeatResponse:
+    device.firmware_version = payload.firmware_version
+    device.wifi_rssi = payload.wifi_rssi
+    device.battery_percent = payload.battery_percent
+    device.uptime_seconds = payload.uptime_seconds
+    mark_seen(device, request)
+    revision = active_ui(db, device).revision
+    db.commit()
+    return HeartbeatResponse(
+        ok=True, server_time=datetime.now(timezone.utc), ui_revision=revision
+    )
