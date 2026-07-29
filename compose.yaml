@@ -26,6 +26,10 @@ services:
       APP_ENV: ${APP_ENV:-local}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://goodmorning:goodmorning_local_password@postgres:5432/goodmorning_mvp}
+      LEOPOLD_ADMIN_PROVISIONING_TOKEN: ${LEOPOLD_ADMIN_PROVISIONING_TOKEN:-}
+      LEOPOLD_DEVICE_OFFLINE_AFTER_SECONDS: ${LEOPOLD_DEVICE_OFFLINE_AFTER_SECONDS:-90}
+      LEOPOLD_UI_POLL_INTERVAL_SECONDS: ${LEOPOLD_UI_POLL_INTERVAL_SECONDS:-5}
+      LEOPOLD_HEARTBEAT_INTERVAL_SECONDS: ${LEOPOLD_HEARTBEAT_INTERVAL_SECONDS:-30}
     # Local development port mapping only; public Coolify URLs must not include ports.
     ports:
       - "8000:8000"
