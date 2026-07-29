@@ -67,6 +67,17 @@ class UIDocument(BaseModel):
     screen: Screen
 
 
+class UIPublishDocument(BaseModel):
+    """SDUI document accepted from admins; the server owns its revision."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: Literal[1]
+    revision: None = None
+    poll_after_ms: int = Field(ge=1000, le=300000)
+    screen: Screen
+
+
 class ProvisionDeviceRequest(BaseModel):
     label: str | None = Field(default=None, min_length=1, max_length=120)
 

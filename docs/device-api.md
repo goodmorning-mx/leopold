@@ -141,6 +141,45 @@ curl -i "$LEOPOLD_API_URL/v1/device/ui" \
 
 Si sigue activa la revisión 1, devuelve `304 Not Modified` sin documento.
 
+## Publicar una nueva pantalla remotamente
+
+El endpoint administrativo `PUT /v1/admin/devices/{device_id}/ui` acepta el
+objeto `screen` directamente, o un documento SDUI v1 con `schema_version`,
+`poll_after_ms` y `screen`, pero sin `revision`. El servidor bloquea la revisión
+activa, desactiva la anterior y asigna la siguiente revisión en una sola
+transacción. La respuesta contiene el documento completo y su nuevo `ETag`.
+
+Ejemplo para reemplazar remotamente la pantalla de Leopold usando solo
+`screen`:
+
+```bash
+curl --fail-with-body \
+  -X PUT "$LEOPOLD_API_URL/v1/admin/devices/$LEOPOLD_DEVICE_ID/ui" \
+  -H "Authorization: Bearer $LEOPOLD_ADMIN_PROVISIONING_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "id":"remote-home",
+    "background":"#001122",
+    "components":[
+      {
+        "type":"text",
+        "id":"remote-message",
+        "text":"Pantalla actualizada",
+        "x":233,
+        "y":120,
+        "align":"center",
+        "size":3,
+        "color":"#FFFFFF"
+      }
+    ]
+  }'
+```
+
+Si la revisión activa era `1`, la respuesta tiene `revision: 2` y
+`ETag: "2"`. El endpoint devuelve `401` para un token ausente o incorrecto,
+`404` si no existe `device_id`, `409` si otra publicación mantiene bloqueada o
+entra en conflicto con la revisión activa y `422` para un documento inválido.
+
 ## Eventos
 
 ```bash

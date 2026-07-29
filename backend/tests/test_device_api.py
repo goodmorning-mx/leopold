@@ -1,5 +1,7 @@
 import hashlib
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +12,7 @@ from sqlalchemy.pool import StaticPool
 from app.config import Settings, get_settings
 from app.database import get_db
 from app.main import app
-from app.models import Base, Device, DeviceEvent, DeviceStatus
+from app.models import Base, Device, DeviceEvent, DeviceStatus, DeviceUIDocument
 
 ADMIN_TOKEN = "local-test-admin-token"
 
@@ -62,6 +64,25 @@ def device_headers(credentials: dict, secret: str | None = None) -> dict[str, st
     return {
         "X-Leopold-Device-ID": credentials["device_id"],
         "Authorization": f"Bearer {secret or credentials['device_secret']}",
+    }
+
+
+def replacement_screen(screen_id: str = "remote-home") -> dict:
+    return {
+        "id": screen_id,
+        "background": "#001122",
+        "components": [
+            {
+                "type": "text",
+                "id": "remote-message",
+                "text": "Pantalla actualizada",
+                "x": 233,
+                "y": 120,
+                "align": "center",
+                "size": 3,
+                "color": "#FFFFFF",
+            }
+        ],
     }
 
 
@@ -197,6 +218,150 @@ def test_ui_is_valid_and_supports_etag(client) -> None:
     assert unchanged.status_code == 304
     assert unchanged.content == b""
     assert unchanged.headers["etag"] == '"1"'
+
+
+def test_admin_publishes_revision_two_and_device_receives_it(
+    client, session_factory
+) -> None:
+    credentials = provision(client)
+    response = client.put(
+        f"/v1/admin/devices/{credentials['device_id']}/ui",
+        headers={"Authorization": f"Bearer {ADMIN_TOKEN}"},
+        json=replacement_screen(),
+    )
+    assert response.status_code == 200
+    assert response.headers["etag"] == '"2"'
+    assert response.json()["revision"] == 2
+    assert response.json()["screen"]["id"] == "remote-home"
+
+    with session_factory() as db:
+        device = db.scalar(
+            select(Device).where(Device.device_id == credentials["device_id"])
+        )
+        revisions = db.scalars(
+            select(DeviceUIDocument)
+            .where(DeviceUIDocument.device_id == device.id)
+            .order_by(DeviceUIDocument.revision)
+        ).all()
+        assert [(item.revision, item.is_active) for item in revisions] == [
+            (1, False),
+            (2, True),
+        ]
+        assert sum(item.is_active for item in revisions) == 1
+
+    current = client.get("/v1/device/ui", headers=device_headers(credentials))
+    assert current.status_code == 200
+    assert current.json()["revision"] == 2
+    assert current.headers["etag"] == '"2"'
+    stale_etag = client.get(
+        "/v1/device/ui",
+        headers={**device_headers(credentials), "If-None-Match": '"1"'},
+    )
+    assert stale_etag.status_code == 200
+    assert stale_etag.json()["revision"] == 2
+
+
+def test_publish_ui_accepts_document_without_revision(client) -> None:
+    credentials = provision(client)
+    response = client.put(
+        f"/v1/admin/devices/{credentials['device_id']}/ui",
+        headers={"Authorization": f"Bearer {ADMIN_TOKEN}"},
+        json={
+            "schema_version": 1,
+            "poll_after_ms": 7000,
+            "screen": replacement_screen("full-document"),
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["revision"] == 2
+    assert response.json()["poll_after_ms"] == 7000
+
+
+def test_publish_ui_rejects_bad_token_unknown_device_and_invalid_document(
+    client,
+) -> None:
+    credentials = provision(client)
+    path = f"/v1/admin/devices/{credentials['device_id']}/ui"
+    assert (
+        client.put(
+            path,
+            headers={"Authorization": "Bearer incorrect"},
+            json=replacement_screen(),
+        ).status_code
+        == 401
+    )
+    assert (
+        client.put(
+            "/v1/admin/devices/LPD-FFFFFF/ui",
+            headers={"Authorization": f"Bearer {ADMIN_TOKEN}"},
+            json=replacement_screen(),
+        ).status_code
+        == 404
+    )
+    invalid = replacement_screen()
+    invalid["background"] = "black"
+    assert (
+        client.put(
+            path,
+            headers={"Authorization": f"Bearer {ADMIN_TOKEN}"},
+            json=invalid,
+        ).status_code
+        == 422
+    )
+
+
+def test_concurrent_ui_updates_leave_exactly_one_active_revision(
+    tmp_path,
+) -> None:
+    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'concurrency.db'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def override_db():
+        with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        DATABASE_URL="sqlite+pysqlite:///:memory:",
+        LEOPOLD_ADMIN_PROVISIONING_TOKEN=ADMIN_TOKEN,
+    )
+    try:
+        with TestClient(app) as concurrent_client:
+            credentials = provision(concurrent_client)
+            path = f"/v1/admin/devices/{credentials['device_id']}/ui"
+            start = Barrier(2)
+
+            def update(screen_id: str) -> int:
+                start.wait()
+                return concurrent_client.put(
+                    path,
+                    headers={"Authorization": f"Bearer {ADMIN_TOKEN}"},
+                    json=replacement_screen(screen_id),
+                ).status_code
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                statuses = list(executor.map(update, ["concurrent-a", "concurrent-b"]))
+
+        assert all(code in {200, 409} for code in statuses)
+        assert 200 in statuses
+        with factory() as db:
+            device = db.scalar(
+                select(Device).where(Device.device_id == credentials["device_id"])
+            )
+            active_count = db.scalar(
+                select(func.count())
+                .select_from(DeviceUIDocument)
+                .where(
+                    DeviceUIDocument.device_id == device.id,
+                    DeviceUIDocument.is_active.is_(True),
+                )
+            )
+            assert active_count == 1
+    finally:
+        app.dependency_overrides.clear()
+        Base.metadata.drop_all(engine)
+        engine.dispose()
 
 
 def test_event_is_idempotent_and_payload_is_bounded(client, session_factory) -> None:

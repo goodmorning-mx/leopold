@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
@@ -20,7 +20,9 @@ from app.schemas import (
     HeartbeatResponse,
     ProvisionDeviceRequest,
     ProvisionDeviceResponse,
+    Screen,
     UIDocument,
+    UIPublishDocument,
 )
 
 router = APIRouter(prefix="/v1")
@@ -31,6 +33,23 @@ _DUMMY_HASH = hashlib.sha256(b"invalid-device-secret").hexdigest()
 
 def secret_hash(secret: str) -> str:
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()
+
+
+def require_admin_token(settings: Settings, authorization: str | None) -> None:
+    configured_token = settings.admin_provisioning_token
+    if not configured_token:
+        raise HTTPException(status_code=503, detail="Provisioning is disabled")
+    supplied_token = (
+        authorization[7:]
+        if authorization and authorization.startswith("Bearer ")
+        else ""
+    )
+    if not supplied_token or not hmac.compare_digest(supplied_token, configured_token):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid provisioning credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 def active_ui(db: Session, device: Device) -> DeviceUIDocument:
@@ -124,20 +143,7 @@ def provision_device(
     settings: Config,
     authorization: Annotated[str | None, Header()] = None,
 ) -> ProvisionDeviceResponse:
-    configured_token = settings.admin_provisioning_token
-    if not configured_token:
-        raise HTTPException(status_code=503, detail="Provisioning is disabled")
-    supplied_token = (
-        authorization[7:]
-        if authorization and authorization.startswith("Bearer ")
-        else ""
-    )
-    if not supplied_token or not hmac.compare_digest(supplied_token, configured_token):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid provisioning credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    require_admin_token(settings, authorization)
 
     for _ in range(5):
         device_secret = secrets.token_urlsafe(32)
@@ -164,6 +170,75 @@ def provision_device(
         except IntegrityError:
             db.rollback()
     raise HTTPException(status_code=503, detail="Could not allocate a device ID")
+
+
+@router.put("/admin/devices/{device_id}/ui", response_model=UIDocument)
+def publish_device_ui(
+    device_id: str,
+    payload: UIPublishDocument | Screen,
+    db: Db,
+    settings: Config,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Response:
+    """Atomically replace the active SDUI document with its next revision."""
+
+    require_admin_token(settings, authorization)
+    try:
+        device = db.scalar(
+            select(Device)
+            .where(Device.device_id == device_id)
+            .with_for_update(nowait=True)
+        )
+        if device is None:
+            raise HTTPException(status_code=404, detail="Device not found")
+
+        previous = db.scalar(
+            select(DeviceUIDocument)
+            .where(
+                DeviceUIDocument.device_id == device.id,
+                DeviceUIDocument.is_active.is_(True),
+            )
+            .with_for_update(nowait=True)
+        )
+        if previous is None:
+            raise HTTPException(status_code=409, detail="Active UI revision conflict")
+
+        revision = previous.revision + 1
+        poll_after_ms = (
+            payload.poll_after_ms
+            if isinstance(payload, UIPublishDocument)
+            else settings.ui_poll_interval_seconds * 1000
+        )
+        document = UIDocument(
+            schema_version=1,
+            revision=revision,
+            poll_after_ms=poll_after_ms,
+            screen=payload.screen
+            if isinstance(payload, UIPublishDocument)
+            else payload,
+        )
+
+        previous.is_active = False
+        db.flush()
+        db.add(
+            DeviceUIDocument(
+                device_id=device.id,
+                revision=revision,
+                document=document.model_dump(mode="json"),
+                is_active=True,
+            )
+        )
+        db.commit()
+    except (IntegrityError, OperationalError):
+        db.rollback()
+        raise HTTPException(status_code=409, detail="UI revision conflict") from None
+
+    etag = f'"{revision}"'
+    return Response(
+        content=document.model_dump_json(),
+        media_type="application/json",
+        headers={"ETag": etag, "Cache-Control": "private, no-cache"},
+    )
 
 
 def mark_seen(device: Device, request: Request) -> None:
