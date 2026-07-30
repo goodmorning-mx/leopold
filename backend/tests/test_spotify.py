@@ -23,12 +23,13 @@ def test_spotify_documents_follow_sdui_contract() -> None:
             "progress_ms": 61000,
             "duration_ms": 180000,
             "is_playing": True,
+            "owner_name": "Abel",
         },
     )
     assert playing["screen"]["id"] == "spotify-player"
     UIDocument.model_validate(playing)
     assert len(playing["screen"]["components"]) == 10
-    assert playing["screen"]["components"][0]["type"] == "icon"
+    assert playing["screen"]["components"][0]["text"] == "HOLA, ABEL"
     assert next(
         item
         for item in playing["screen"]["components"]

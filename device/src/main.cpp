@@ -6,6 +6,7 @@
 
 #include "app_state.h"
 #include "board_config.h"
+#include "bluetooth_manager.h"
 #include "cloud_client.h"
 #include "config_guard.h"
 #include "display_manager.h"
@@ -36,6 +37,7 @@ struct PendingEvent {
 
 DisplayManager screen;
 WifiPortal wifi;
+BluetoothManager bluetooth;
 CloudClient cloud;
 TouchInput touch;
 Telemetry telemetry;
@@ -466,6 +468,7 @@ void processEvents(uint32_t now) {
 
 void processNetwork(uint32_t now) {
   wifi.loop(now);
+  bluetooth.loop();
   if (wifi.portalActive()) {
     if (appState != AppState::kWifiPortal) {
       appState = AppState::kWifiPortal;
@@ -535,6 +538,7 @@ void refreshIndicators(uint32_t now) {
   screen.drawIndicators(
       wifi.connected(),
       cloudConnected,
+      bluetooth.enabled(),
       telemetry.batteryPercent(),
       timeText);
   lastIndicatorAt = now;
@@ -571,6 +575,7 @@ void setup() {
     return;
   }
   wifi.begin(LEOPOLD_DEVICE_ID);
+  bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
   configTzTime(
       "CST6",
       "pool.ntp.org",
