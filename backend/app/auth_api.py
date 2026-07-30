@@ -244,6 +244,7 @@ def my_devices(db: Db, user: AuthenticatedUser) -> list[ClaimedDeviceResponse]:
     ).all()
     return [
         ClaimedDeviceResponse(
+            device_id=device.device_id,
             label=device.label,
             status=device.status.value,
             firmware_version=device.firmware_version,
@@ -251,3 +252,26 @@ def my_devices(db: Db, user: AuthenticatedUser) -> list[ClaimedDeviceResponse]:
         )
         for device in devices
     ]
+
+
+@router.delete("/me/devices/{device_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_my_device(
+    device_id: str,
+    db: Db,
+    user: AuthenticatedUser,
+) -> Response:
+    device = db.scalar(
+        select(Device)
+        .where(Device.device_id == device_id, Device.owner_id == user.id)
+        .with_for_update()
+    )
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    now = datetime.now(timezone.utc)
+    db.query(DeviceClaimToken).filter(
+        DeviceClaimToken.device_id == device.id,
+        DeviceClaimToken.used_at.is_(None),
+    ).update({DeviceClaimToken.used_at: now})
+    device.owner_id = None
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
