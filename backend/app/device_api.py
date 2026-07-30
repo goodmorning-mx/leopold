@@ -43,19 +43,37 @@ def secret_hash(secret: str) -> str:
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()
 
 
-def onboarding_url(db: Session, device: Device, settings: Settings) -> str | None:
+def onboarding_url(
+    db: Session,
+    device: Device,
+    settings: Settings,
+    requested_token: str | None = None,
+) -> str | None:
     if device.owner_id is not None:
         return None
     now = datetime.now(timezone.utc)
+    raw_token = requested_token or secrets.token_urlsafe(24)
+    token_digest = secret_hash(raw_token)
+    existing = db.scalar(
+        select(DeviceClaimToken).where(
+            DeviceClaimToken.token_hash == token_digest
+        )
+    )
+    if existing is not None:
+        if existing.device_id != device.id or existing.used_at is not None:
+            raise HTTPException(status_code=409, detail="Setup session conflict")
+        existing.expires_at = now + timedelta(minutes=CLAIM_MINUTES)
+        web_base = settings.allowed_origins[0].rstrip("/")
+        return f"{web_base}/setup/{raw_token}"
+
     db.query(DeviceClaimToken).filter(
         DeviceClaimToken.device_id == device.id,
         DeviceClaimToken.used_at.is_(None),
     ).update({DeviceClaimToken.used_at: now})
-    raw_token = secrets.token_urlsafe(24)
     db.add(
         DeviceClaimToken(
             device_id=device.id,
-            token_hash=secret_hash(raw_token),
+            token_hash=token_digest,
             expires_at=now + timedelta(minutes=CLAIM_MINUTES),
         )
     )
@@ -287,7 +305,7 @@ def connect_device(
     device.capabilities = payload.capabilities
     mark_seen(device, request)
     revision = active_ui(db, device).revision
-    setup_url = onboarding_url(db, device, settings)
+    setup_url = onboarding_url(db, device, settings, payload.setup_token)
     claimed = device.owner_id is not None
     db.commit()
     return ConnectResponse(

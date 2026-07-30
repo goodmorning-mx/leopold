@@ -56,11 +56,26 @@ def device_headers(credentials: dict) -> dict[str, str]:
 
 def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     credentials = provision(client)
+    setup_token = "0123456789abcdef0123456789abcdef"
+
+    pending = client.get(f"/v1/onboarding/{setup_token}")
+    assert pending.status_code == 200
+    assert pending.json()["pending"] is True
+    continuation = client.get(
+        f"/v1/onboarding/{setup_token}/continue",
+        follow_redirects=False,
+    )
+    assert continuation.status_code == 307
+    assert continuation.headers["location"] == (
+        f"http://localhost:5173/setup/{setup_token}"
+    )
+
     connected = client.post(
         "/v1/device/connect",
         headers=device_headers(credentials),
         json={
             "firmware_version": "0.3.0",
+            "setup_token": setup_token,
             "capabilities": {"display": "466x466", "touch": True},
         },
     )
@@ -68,13 +83,16 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     payload = connected.json()
     assert payload["claimed"] is False
     assert payload["owner_display_name"] is None
-    assert payload["onboarding_url"].startswith("http://localhost:5173/setup/")
+    assert payload["onboarding_url"] == (
+        f"http://localhost:5173/setup/{setup_token}"
+    )
     token = payload["onboarding_url"].rsplit("/", 1)[1]
 
     status = client.get(f"/v1/onboarding/{token}")
     assert status.status_code == 200
     assert status.json()["valid"] is True
     assert status.json()["claimed"] is False
+    assert status.json()["pending"] is False
 
     registered = client.post(
         "/v1/auth/register",

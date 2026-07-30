@@ -1,6 +1,9 @@
 #include "wifi_portal.h"
 
 #include <WiFi.h>
+#include <esp_system.h>
+
+#include "config_guard.h"
 
 namespace leopold {
 namespace {
@@ -18,12 +21,36 @@ void WifiPortal::begin(const char* deviceId) {
       sizeof(accessPointName_),
       "Leopold-%s",
       suffix);
+  for (uint8_t index = 0; index < 16; ++index) {
+    snprintf(
+        setupToken_ + index * 2,
+        sizeof(setupToken_) - index * 2,
+        "%02x",
+        static_cast<unsigned int>(esp_random() & 0xFF));
+  }
+  const String continueUrl =
+      String(LEOPOLD_API_BASE_URL) + "/v1/onboarding/" + setupToken_ +
+      "/continue";
+  snprintf(
+      customHead_,
+      sizeof(customHead_),
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+      "<style>.lp{padding:24px;text-align:center}.lp b{font-size:24px}"
+      ".lp p{line-height:1.5}</style><script>"
+      "if(location.pathname=='/wifisave'){addEventListener('DOMContentLoaded',"
+      "()=>{document.body.innerHTML=\"<div class='lp'><b>Conectando "
+      "Leopold...</b><p>No cierres esta pagina. Continuaremos "
+      "automaticamente.</p></div>\";const u='%s';const go=()=>fetch(u,"
+      "{mode:'no-cors',cache:'no-store'}).then(()=>location.replace(u))"
+      ".catch(()=>setTimeout(go,1200));setTimeout(go,2500)})}</script>",
+      continueUrl.c_str());
 
   manager_.setConfigPortalBlocking(false);
   manager_.setDebugOutput(false);
   manager_.setConnectTimeout(10);
   manager_.setShowPassword(false);
   manager_.setTitle("Leopold Wi-Fi");
+  manager_.setCustomHeadElement(customHead_);
   manager_.setDarkMode(true);
   std::vector<const char*> menu = {"wifi", "info", "exit"};
   manager_.setMenu(menu);
@@ -77,6 +104,10 @@ bool WifiPortal::portalActive() const {
 
 const char* WifiPortal::accessPointName() const {
   return accessPointName_;
+}
+
+const char* WifiPortal::setupToken() const {
+  return setupToken_;
 }
 
 void WifiPortal::startPortal(uint32_t now) {

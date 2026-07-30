@@ -89,6 +89,12 @@ class ProvisionDeviceResponse(BaseModel):
 
 class ConnectRequest(BaseModel):
     firmware_version: str = Field(min_length=1, max_length=32)
+    setup_token: str | None = Field(
+        default=None,
+        min_length=32,
+        max_length=64,
+        pattern=r"^[A-Fa-f0-9]+$",
+    )
     capabilities: dict[str, bool | str | int] = Field(
         default_factory=dict, max_length=16
     )
@@ -136,6 +142,7 @@ class UserResponse(BaseModel):
 class ClaimStatusResponse(BaseModel):
     valid: bool
     claimed: bool
+    pending: bool = False
     expires_at: datetime | None = None
 
 

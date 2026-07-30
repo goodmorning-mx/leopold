@@ -56,15 +56,17 @@ bool CloudClient::begin() {
              0) == pdPASS;
 }
 
-bool CloudClient::requestConnect() {
+bool CloudClient::requestConnect(const char* setupToken) {
   Request request;
   request.operation = CloudOperation::kConnect;
   snprintf(
       request.payload,
       sizeof(request.payload),
-      "{\"firmware_version\":\"%s\",\"capabilities\":{\"display\":"
+      "{\"firmware_version\":\"%s\",\"setup_token\":\"%s\","
+      "\"capabilities\":{\"display\":"
       "\"466x466\",\"touch\":true,\"audio\":false,\"battery\":true}}",
-      config::kFirmwareVersion);
+      config::kFirmwareVersion,
+      setupToken);
   return enqueue(request);
 }
 
