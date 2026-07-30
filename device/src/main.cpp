@@ -23,6 +23,7 @@ constexpr uint32_t kIndicatorRefreshMs = 1000;
 constexpr uint32_t kDefaultHeartbeatMs = 30000;
 constexpr uint32_t kDefaultUiPollMs = 5000;
 constexpr uint32_t kOnboardingPollMs = 5000;
+constexpr uint32_t kWelcomeScreenMs = 2600;
 constexpr uint8_t kEventQueueSize = 4;
 constexpr uint8_t kEventMaxAttempts = 3;
 
@@ -57,6 +58,9 @@ bool bootLongPressHandled = false;
 bool wifiWasConnected = false;
 bool fatalError = false;
 bool onboardingPending = false;
+bool welcomeActive = false;
+bool welcomeShownThisBoot = false;
+uint8_t welcomeStep = 0;
 uint8_t activeEventIndex = 0;
 uint8_t cloudFailures = 0;
 uint32_t bootPressedAt = 0;
@@ -68,6 +72,38 @@ uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
 uint32_t lastIndicatorAt = 0;
 uint32_t eventSequence = 0;
 char onboardingUrl[256] = {};
+char ownerDisplayName[81] = {};
+
+void startWelcome(const char* ownerName, uint32_t now) {
+  if (welcomeShownThisBoot || ownerName == nullptr || ownerName[0] == '\0') {
+    return;
+  }
+  strlcpy(ownerDisplayName, ownerName, sizeof(ownerDisplayName));
+  welcomeShownThisBoot = true;
+  welcomeActive = true;
+  welcomeStep = 0;
+  screen.showWelcome(ownerDisplayName, welcomeStep);
+  nextUiPollAt = now + kWelcomeScreenMs * 3;
+  Serial.printf("Starting welcome for %s\n", ownerDisplayName);
+}
+
+void processWelcome(uint32_t now) {
+  if (!welcomeActive) {
+    return;
+  }
+  const uint32_t startedAt = nextUiPollAt - kWelcomeScreenMs * 3;
+  const uint8_t desiredStep =
+      min<uint8_t>((now - startedAt) / kWelcomeScreenMs, 2);
+  if (desiredStep != welcomeStep) {
+    welcomeStep = desiredStep;
+    screen.showWelcome(ownerDisplayName, welcomeStep);
+  }
+  if (now >= nextUiPollAt) {
+    welcomeActive = false;
+    nextUiPollAt = now;
+    Serial.println("Welcome complete");
+  }
+}
 
 void setState(
     AppState state,
@@ -121,6 +157,10 @@ bool parseConnectResponse(const CloudResponse& response) {
   heartbeatIntervalMs = heartbeatSeconds * 1000UL;
   currentUi.pollAfterMs = pollSeconds * 1000UL;
   onboardingPending = !(document["claimed"] | false);
+  const char* ownerName = document["owner_display_name"] | "";
+  if (!onboardingPending && ownerName[0] != '\0') {
+    strlcpy(ownerDisplayName, ownerName, sizeof(ownerDisplayName));
+  }
   const char* setupUrl = document["onboarding_url"] | "";
   if (onboardingPending && setupUrl[0] != '\0') {
     strlcpy(onboardingUrl, setupUrl, sizeof(onboardingUrl));
@@ -188,7 +228,10 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
           nextOnboardingPollAt = now + kOnboardingPollMs;
           Serial.println("Waiting for device claim");
         } else {
-          nextUiPollAt = now;
+          startWelcome(ownerDisplayName, now);
+          if (!welcomeActive) {
+            nextUiPollAt = now;
+          }
         }
       } else {
         scheduleCloudRetry(now);
@@ -203,11 +246,11 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
             (document["claimed"] | false)) {
           onboardingPending = false;
           onboardingUrl[0] = '\0';
-          nextUiPollAt = now;
-          screen.showState(
-              AppState::kOnline,
-              "CONFIGURACION LISTA",
-              "CARGANDO EXPERIENCIA");
+          const char* ownerName = document["owner_display_name"] | "";
+          startWelcome(ownerName, now);
+          if (!welcomeActive) {
+            nextUiPollAt = now;
+          }
           Serial.println("Device claimed successfully");
         } else {
           nextOnboardingPollAt = now + kOnboardingPollMs;
@@ -443,7 +486,7 @@ void processNetwork(uint32_t now) {
       nextOnboardingPollAt = now + 1000;
     }
   }
-  if (cloudConnected && !onboardingPending &&
+  if (cloudConnected && !onboardingPending && !welcomeActive &&
       !uiPending && now >= nextUiPollAt) {
     uiPending = cloud.requestUi(uiEtag);
   }
@@ -518,6 +561,7 @@ void loop() {
     return;
   }
   processNetwork(now);
+  processWelcome(now);
 
   leopold::CloudResponse response;
   while (cloud.poll(response)) {
@@ -525,10 +569,13 @@ void loop() {
   }
 
   processEvents(now);
-  if (!hasUi && (appState == leopold::AppState::kOffline ||
+  if (!welcomeActive && !hasUi &&
+      (appState == leopold::AppState::kOffline ||
                  appState == leopold::AppState::kOnline)) {
     screen.showLocalFace(now);
   }
-  refreshIndicators(now);
+  if (!welcomeActive) {
+    refreshIndicators(now);
+  }
   delay(5);
 }

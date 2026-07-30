@@ -108,11 +108,13 @@ class ConnectResponse(BaseModel):
     ui_poll_interval_seconds: int
     ui_revision: int
     claimed: bool
+    owner_display_name: str | None = None
     onboarding_url: str | None = None
 
 
 class OnboardingStatusResponse(BaseModel):
     claimed: bool
+    owner_display_name: str | None = None
 
 
 class RegisterRequest(BaseModel):

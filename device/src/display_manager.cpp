@@ -174,6 +174,31 @@ void DisplayManager::showQr(
   }
 }
 
+void DisplayManager::showWelcome(const char* ownerName, uint8_t step) {
+  display->fillScreen(kBlack);
+  display->fillCircle(kScreenWidth / 2, 92, 34, kMorning);
+  display->fillCircle(kScreenWidth / 2 - 11, 87, 4, kBlack);
+  display->fillCircle(kScreenWidth / 2 + 11, 87, 4, kBlack);
+  display->drawArc(kScreenWidth / 2, 98, 14, 12, 20, 160, kBlack);
+
+  switch (step) {
+    case 0:
+      centered("HOLA", 178, 3, kWhite);
+      centered(ownerName, 238, 4, kMorning);
+      centered("QUE GUSTO CONOCERTE", 330, 1, kGray);
+      break;
+    case 1:
+      centered("BIENVENIDO", 190, 3, kWhite);
+      centered("A LEOPOLD", 250, 3, kMorning);
+      break;
+    default:
+      centered("SOY TU", 190, 3, kWhite);
+      centered("ASISTENTE", 250, 3, kMorning);
+      centered("VAMOS A EMPEZAR", 330, 1, kGray);
+      break;
+  }
+}
+
 void DisplayManager::drawComponent(const SduiComponent& component) {
   switch (component.type) {
     case ComponentType::kText: {

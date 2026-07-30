@@ -20,6 +20,7 @@ class DisplayManager {
       const char* title,
       const char* payload,
       const char* footer = nullptr);
+  void showWelcome(const char* ownerName, uint8_t step);
   void renderSdui(const SduiDocument& document);
   void drawIndicators(
       bool wifiConnected,

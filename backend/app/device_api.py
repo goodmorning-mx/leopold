@@ -297,6 +297,7 @@ def connect_device(
         ui_poll_interval_seconds=settings.ui_poll_interval_seconds,
         ui_revision=revision,
         claimed=claimed,
+        owner_display_name=device.owner.display_name if device.owner else None,
         onboarding_url=setup_url,
     )
 
@@ -310,7 +311,10 @@ def device_onboarding_status(
     device: AuthenticatedDevice,
 ) -> OnboardingStatusResponse:
     db.refresh(device)
-    return OnboardingStatusResponse(claimed=device.owner_id is not None)
+    return OnboardingStatusResponse(
+        claimed=device.owner_id is not None,
+        owner_display_name=device.owner.display_name if device.owner else None,
+    )
 
 
 @router.get("/device/ui", response_model=UIDocument)
