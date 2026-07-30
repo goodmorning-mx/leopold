@@ -137,7 +137,16 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     devices = client.get("/v1/me/devices")
     assert devices.status_code == 200
     assert len(devices.json()) == 1
+    assert devices.json()[0]["device_id"] == credentials["device_id"]
     assert devices.json()[0]["label"] == "Leopold onboarding"
+
+    removed = client.delete(f"/v1/me/devices/{credentials['device_id']}")
+    assert removed.status_code == 204
+    assert client.get("/v1/me/devices").json() == []
+    assert (
+        client.delete(f"/v1/me/devices/{credentials['device_id']}").status_code
+        == 404
+    )
 
 
 def test_login_logout_and_claim_security(client) -> None:

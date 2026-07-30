@@ -147,6 +147,7 @@ class ClaimStatusResponse(BaseModel):
 
 
 class ClaimedDeviceResponse(BaseModel):
+    device_id: str
     label: str | None
     status: str
     firmware_version: str | None
