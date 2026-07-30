@@ -9,17 +9,27 @@ struct TouchPoint {
   uint16_t y = 0;
 };
 
+enum class TouchGesture : uint8_t {
+  kNone,
+  kTap,
+  kSwipeLeft,
+  kSwipeRight,
+};
+
 class TouchInput {
  public:
   void begin();
-  bool pollTap(TouchPoint& point, uint32_t now);
+  bool pollGesture(TouchGesture& gesture, TouchPoint& point, uint32_t now);
 
  private:
   bool read(TouchPoint& point);
 
   uint8_t address_ = 0;
   bool wasDown_ = false;
-  uint32_t lastTapAt_ = 0;
+  TouchPoint touchStart_;
+  TouchPoint touchLast_;
+  uint32_t touchStartedAt_ = 0;
+  uint32_t lastGestureAt_ = 0;
 };
 
 }  // namespace leopold

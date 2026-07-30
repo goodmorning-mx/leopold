@@ -23,7 +23,7 @@ constexpr uint32_t kIndicatorRefreshMs = 1000;
 constexpr uint32_t kDefaultHeartbeatMs = 30000;
 constexpr uint32_t kDefaultUiPollMs = 5000;
 constexpr uint32_t kOnboardingPollMs = 5000;
-constexpr uint32_t kWelcomeScreenMs = 2600;
+constexpr uint32_t kWelcomeScreenMs = 3000;
 constexpr uint8_t kEventQueueSize = 4;
 constexpr uint8_t kEventMaxAttempts = 3;
 
@@ -69,6 +69,7 @@ uint32_t nextCloudAttemptAt = 0;
 uint32_t nextUiPollAt = 0;
 uint32_t nextOnboardingPollAt = 0;
 uint32_t nextHeartbeatAt = 0;
+uint32_t nextWelcomeAt = 0;
 uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
 uint32_t lastIndicatorAt = 0;
 uint32_t eventSequence = 0;
@@ -82,9 +83,10 @@ void startWelcome(const char* ownerName, uint32_t now) {
   strlcpy(ownerDisplayName, ownerName, sizeof(ownerDisplayName));
   welcomeShownThisBoot = true;
   welcomeActive = true;
+  assistantReady = true;
   welcomeStep = 0;
   screen.showWelcome(ownerDisplayName, welcomeStep);
-  nextUiPollAt = now + kWelcomeScreenMs * 2;
+  nextWelcomeAt = now + kWelcomeScreenMs;
   Serial.printf("Starting welcome for %s\n", ownerDisplayName);
 }
 
@@ -92,19 +94,21 @@ void processWelcome(uint32_t now) {
   if (!welcomeActive) {
     return;
   }
-  const uint32_t startedAt = nextUiPollAt - kWelcomeScreenMs * 2;
-  const uint8_t desiredStep =
-      min<uint8_t>((now - startedAt) / kWelcomeScreenMs, 1);
-  if (desiredStep != welcomeStep) {
-    welcomeStep = desiredStep;
+  if (now >= nextWelcomeAt) {
+    welcomeStep = (welcomeStep + 1) % 2;
     screen.showWelcome(ownerDisplayName, welcomeStep);
+    nextWelcomeAt = now + kWelcomeScreenMs;
   }
-  if (now >= nextUiPollAt) {
-    welcomeActive = false;
-    assistantReady = true;
-    screen.showReadyFace();
-    Serial.println("Welcome complete");
+}
+
+void moveWelcome(int8_t direction, uint32_t now) {
+  if (!welcomeActive) {
+    return;
   }
+  welcomeStep =
+      direction > 0 ? (welcomeStep + 1) % 2 : (welcomeStep + 1) % 2;
+  screen.showWelcome(ownerDisplayName, welcomeStep);
+  nextWelcomeAt = now + kWelcomeScreenMs;
 }
 
 void setState(
@@ -385,7 +389,16 @@ const SduiComponent* onlyButton() {
 
 void processInput(uint32_t now) {
   TouchPoint point;
-  if (touch.pollTap(point, now) && hasUi) {
+  TouchGesture gesture = TouchGesture::kNone;
+  if (touch.pollGesture(gesture, point, now) && welcomeActive &&
+      (gesture == TouchGesture::kSwipeLeft ||
+       gesture == TouchGesture::kSwipeRight)) {
+    moveWelcome(gesture == TouchGesture::kSwipeLeft ? 1 : -1, now);
+    Serial.println(
+        gesture == TouchGesture::kSwipeLeft
+            ? "Welcome swiped left"
+            : "Welcome swiped right");
+  } else if (gesture == TouchGesture::kTap && hasUi) {
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button = findButtonAt(currentUi, point.x, point.y);
     if (button == nullptr) {

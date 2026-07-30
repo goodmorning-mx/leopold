@@ -36,16 +36,50 @@ void TouchInput::begin() {
   }
 }
 
-bool TouchInput::pollTap(TouchPoint& point, uint32_t now) {
+bool TouchInput::pollGesture(
+    TouchGesture& gesture,
+    TouchPoint& point,
+    uint32_t now) {
+  gesture = TouchGesture::kNone;
   TouchPoint current;
   const bool down = read(current);
-  const bool tapped = down && !wasDown_ && now - lastTapAt_ >= 250;
-  wasDown_ = down;
-  if (!tapped) {
+  if (down) {
+    if (!wasDown_) {
+      touchStart_ = current;
+      touchStartedAt_ = now;
+    }
+    touchLast_ = current;
+    wasDown_ = true;
     return false;
   }
-  lastTapAt_ = now;
-  point = current;
+
+  if (!wasDown_) {
+    return false;
+  }
+  wasDown_ = false;
+  if (now - lastGestureAt_ < 180) {
+    return false;
+  }
+
+  const int16_t deltaX =
+      static_cast<int16_t>(touchLast_.x) -
+      static_cast<int16_t>(touchStart_.x);
+  const int16_t deltaY =
+      static_cast<int16_t>(touchLast_.y) -
+      static_cast<int16_t>(touchStart_.y);
+  const uint16_t horizontalDistance = abs(deltaX);
+  const uint16_t verticalDistance = abs(deltaY);
+  if (horizontalDistance >= 55 && horizontalDistance > verticalDistance) {
+    gesture =
+        deltaX < 0 ? TouchGesture::kSwipeLeft : TouchGesture::kSwipeRight;
+  } else if (now - touchStartedAt_ <= 650 &&
+             horizontalDistance < 24 && verticalDistance < 24) {
+    gesture = TouchGesture::kTap;
+  } else {
+    return false;
+  }
+  lastGestureAt_ = now;
+  point = touchLast_;
   return true;
 }
 
