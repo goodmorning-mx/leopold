@@ -1,0 +1,149 @@
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.config import Settings, get_settings
+from app.database import get_db
+from app.main import app
+from app.models import Base
+
+
+@pytest.fixture
+def client():
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def override_db():
+        with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        DATABASE_URL="sqlite+pysqlite:///:memory:",
+        CORS_ORIGINS="http://localhost:5173",
+        LEOPOLD_ADMIN_PROVISIONING_TOKEN="local-test-admin-token",
+    )
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+def provision(client: TestClient) -> dict:
+    response = client.post(
+        "/v1/admin/devices",
+        headers={"Authorization": "Bearer local-test-admin-token"},
+        json={"label": "Leopold onboarding"},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def device_headers(credentials: dict) -> dict[str, str]:
+    return {
+        "X-Leopold-Device-ID": credentials["device_id"],
+        "Authorization": f"Bearer {credentials['device_secret']}",
+    }
+
+
+def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
+    credentials = provision(client)
+    connected = client.post(
+        "/v1/device/connect",
+        headers=device_headers(credentials),
+        json={
+            "firmware_version": "0.3.0",
+            "capabilities": {"display": "466x466", "touch": True},
+        },
+    )
+    assert connected.status_code == 200
+    payload = connected.json()
+    assert payload["claimed"] is False
+    assert payload["onboarding_url"].startswith("http://localhost:5173/setup/")
+    token = payload["onboarding_url"].rsplit("/", 1)[1]
+
+    status = client.get(f"/v1/onboarding/{token}")
+    assert status.status_code == 200
+    assert status.json()["valid"] is True
+    assert status.json()["claimed"] is False
+
+    registered = client.post(
+        "/v1/auth/register",
+        json={
+            "email": "owner@example.com",
+            "display_name": "Owner",
+            "password": "correct horse battery staple",
+        },
+    )
+    assert registered.status_code == 201
+    assert registered.json() == {
+        "email": "owner@example.com",
+        "display_name": "Owner",
+    }
+    assert registered.cookies.get("leopold_session")
+
+    claimed = client.post(f"/v1/onboarding/{token}/claim")
+    assert claimed.status_code == 200
+    assert claimed.json()["claimed"] is True
+
+    device_status = client.post(
+        "/v1/device/onboarding/status",
+        headers=device_headers(credentials),
+        json={},
+    )
+    assert device_status.status_code == 200
+    assert device_status.json() == {"claimed": True}
+
+    devices = client.get("/v1/me/devices")
+    assert devices.status_code == 200
+    assert len(devices.json()) == 1
+    assert devices.json()[0]["label"] == "Leopold onboarding"
+
+
+def test_login_logout_and_claim_security(client) -> None:
+    credentials = provision(client)
+    connected = client.post(
+        "/v1/device/connect",
+        headers=device_headers(credentials),
+        json={"firmware_version": "0.3.0", "capabilities": {}},
+    )
+    token = connected.json()["onboarding_url"].rsplit("/", 1)[1]
+
+    assert client.post(f"/v1/onboarding/{token}/claim").status_code == 401
+    assert (
+        client.post(
+            "/v1/auth/register",
+            json={
+                "email": "person@example.com",
+                "display_name": "Person",
+                "password": "secure-password",
+            },
+        ).status_code
+        == 201
+    )
+    assert client.post("/v1/auth/logout").status_code == 204
+    assert client.get("/v1/auth/me").status_code == 401
+    assert (
+        client.post(
+            "/v1/auth/login",
+            json={"email": "person@example.com", "password": "wrong-password"},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/v1/auth/login",
+            json={"email": "person@example.com", "password": "secure-password"},
+        ).status_code
+        == 200
+    )
+    assert client.post(f"/v1/onboarding/{token}/claim").status_code == 200
+    assert client.post(f"/v1/onboarding/{token}/claim").status_code == 410

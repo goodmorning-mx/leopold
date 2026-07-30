@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
@@ -11,13 +11,20 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.database import get_db
-from app.models import Device, DeviceEvent, DeviceStatus, DeviceUIDocument
+from app.models import (
+    Device,
+    DeviceClaimToken,
+    DeviceEvent,
+    DeviceStatus,
+    DeviceUIDocument,
+)
 from app.schemas import (
     ConnectRequest,
     ConnectResponse,
     DeviceEventRequest,
     HeartbeatRequest,
     HeartbeatResponse,
+    OnboardingStatusResponse,
     ProvisionDeviceRequest,
     ProvisionDeviceResponse,
     Screen,
@@ -29,10 +36,31 @@ router = APIRouter(prefix="/v1")
 Db = Annotated[Session, Depends(get_db)]
 Config = Annotated[Settings, Depends(get_settings)]
 _DUMMY_HASH = hashlib.sha256(b"invalid-device-secret").hexdigest()
+CLAIM_MINUTES = 15
 
 
 def secret_hash(secret: str) -> str:
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()
+
+
+def onboarding_url(db: Session, device: Device, settings: Settings) -> str | None:
+    if device.owner_id is not None:
+        return None
+    now = datetime.now(timezone.utc)
+    db.query(DeviceClaimToken).filter(
+        DeviceClaimToken.device_id == device.id,
+        DeviceClaimToken.used_at.is_(None),
+    ).update({DeviceClaimToken.used_at: now})
+    raw_token = secrets.token_urlsafe(24)
+    db.add(
+        DeviceClaimToken(
+            device_id=device.id,
+            token_hash=secret_hash(raw_token),
+            expires_at=now + timedelta(minutes=CLAIM_MINUTES),
+        )
+    )
+    web_base = settings.allowed_origins[0].rstrip("/")
+    return f"{web_base}/setup/{raw_token}"
 
 
 def require_admin_token(settings: Settings, authorization: str | None) -> None:
@@ -259,6 +287,8 @@ def connect_device(
     device.capabilities = payload.capabilities
     mark_seen(device, request)
     revision = active_ui(db, device).revision
+    setup_url = onboarding_url(db, device, settings)
+    claimed = device.owner_id is not None
     db.commit()
     return ConnectResponse(
         device_id=device.device_id,
@@ -266,7 +296,21 @@ def connect_device(
         heartbeat_interval_seconds=settings.heartbeat_interval_seconds,
         ui_poll_interval_seconds=settings.ui_poll_interval_seconds,
         ui_revision=revision,
+        claimed=claimed,
+        onboarding_url=setup_url,
     )
+
+
+@router.post(
+    "/device/onboarding/status",
+    response_model=OnboardingStatusResponse,
+)
+def device_onboarding_status(
+    db: Db,
+    device: AuthenticatedDevice,
+) -> OnboardingStatusResponse:
+    db.refresh(device)
+    return OnboardingStatusResponse(claimed=device.owner_id is not None)
 
 
 @router.get("/device/ui", response_model=UIDocument)

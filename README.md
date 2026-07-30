@@ -75,6 +75,14 @@ python -m pytest
 alembic history --verbose
 ```
 
+## Onboarding de Leopold
+
+El flujo no requiere aplicación móvil. Un equipo sin Wi‑Fi muestra un QR para
+unirse a su portal cautivo local. Después de conectarse a Internet, muestra un
+segundo QR HTTPS para crear cuenta o iniciar sesión y reclamar el dispositivo.
+Los enlaces de claim son de un solo uso, expiran en 15 minutos y preparan la
+relación usuario–dispositivo para futuras integraciones OAuth como Spotify.
+
 Docker validation:
 ```bash
 docker compose config

@@ -1,6 +1,7 @@
 #include "display_manager.h"
 
 #include <Arduino_GFX_Library.h>
+#include <qrcode.h>
 
 #include "board_config.h"
 
@@ -127,6 +128,46 @@ void DisplayManager::showUpdateRequired() {
       AppState::kError,
       "ACTUALIZACION",
       "NECESARIA");
+}
+
+void DisplayManager::showQr(
+    const char* title,
+    const char* payload,
+    const char* footer) {
+  constexpr uint8_t kQrVersion = 8;
+  uint8_t qrData[qrcode_getBufferSize(kQrVersion)];
+  QRCode qr;
+  qrcode_initText(&qr, qrData, kQrVersion, ECC_LOW, payload);
+
+  const int16_t scale = 5;
+  const int16_t qrPixels = qr.size * scale;
+  const int16_t originX = (kScreenWidth - qrPixels) / 2;
+  const int16_t originY = 94;
+
+  display->fillScreen(kBlack);
+  centered(title, 48, 2, kWhite);
+  display->fillRoundRect(
+      originX - 12,
+      originY - 12,
+      qrPixels + 24,
+      qrPixels + 24,
+      14,
+      kWhite);
+  for (uint8_t y = 0; y < qr.size; ++y) {
+    for (uint8_t x = 0; x < qr.size; ++x) {
+      if (qrcode_getModule(&qr, x, y)) {
+        display->fillRect(
+            originX + x * scale,
+            originY + y * scale,
+            scale,
+            scale,
+            kBlack);
+      }
+    }
+  }
+  if (footer != nullptr && footer[0] != '\0') {
+    centered(footer, 420, 1, kGray);
+  }
 }
 
 void DisplayManager::drawComponent(const SduiComponent& component) {

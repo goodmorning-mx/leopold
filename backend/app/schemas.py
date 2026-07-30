@@ -107,6 +107,41 @@ class ConnectResponse(BaseModel):
     heartbeat_interval_seconds: int
     ui_poll_interval_seconds: int
     ui_revision: int
+    claimed: bool
+    onboarding_url: str | None = None
+
+
+class OnboardingStatusResponse(BaseModel):
+    claimed: bool
+
+
+class RegisterRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    display_name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserResponse(BaseModel):
+    email: str
+    display_name: str
+
+
+class ClaimStatusResponse(BaseModel):
+    valid: bool
+    claimed: bool
+    expires_at: datetime | None = None
+
+
+class ClaimedDeviceResponse(BaseModel):
+    label: str | None
+    status: str
+    firmware_version: str | None
+    last_seen_at: datetime | None
 
 
 class DeviceEventRequest(BaseModel):
