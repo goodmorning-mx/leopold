@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import QrScanner from 'qr-scanner';
 
 type User = { email: string; display_name: string };
 type Device = {
@@ -166,14 +167,24 @@ function SetupFlow({ token }: { token: string }) {
       });
   }, [claim, token, user]);
 
-  if (!claim || claim.pending) {
+  const ssid = new URLSearchParams(window.location.search).get('ssid') ?? 'Leopold-XXXX';
+
+  if (!claim) {
     return (
       <StatusPanel
-        title="Conectando tu Leopold"
-        copy="Ya guardamos la sesión. Esperamos a que el dispositivo se conecte a internet."
+        title="Preparando el dispositivo"
+        copy="Estamos recuperando la sesión de emparejamiento."
         loading
       />
     );
+  }
+
+  if (!user) {
+    return <AuthForm context="setup" onAuthenticated={setUser} />;
+  }
+
+  if (claim.pending) {
+    return <WifiInstructions ssid={ssid} />;
   }
 
   if (claim.claimed) {
@@ -196,10 +207,6 @@ function SetupFlow({ token }: { token: string }) {
     );
   }
 
-  if (!user) {
-    return <AuthForm context="setup" onAuthenticated={setUser} />;
-  }
-
   return (
     <StatusPanel
       title={`Vinculando para ${user.display_name}`}
@@ -207,6 +214,109 @@ function SetupFlow({ token }: { token: string }) {
       loading
       message={message}
     />
+  );
+}
+
+function WifiInstructions({ ssid }: { ssid: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyNetwork() {
+    await navigator.clipboard.writeText(ssid);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <section className="panel wifi-panel">
+      <div className="wordmark">GOODMORNING</div>
+      <p className="kicker">Agregar dispositivo · Paso 2 de 2</p>
+      <h1>Conéctate a Leopold.</h1>
+      <p className="muted">
+        La sesión ya está guardada en tu perfil. Ahora conecta temporalmente el teléfono al dispositivo.
+      </p>
+      <div className="network-card">
+        <span>Red Wi‑Fi</span>
+        <strong>{ssid}</strong>
+        <button className="text-button" onClick={() => void copyNetwork()}>
+          {copied ? 'Copiada' : 'Copiar nombre'}
+        </button>
+      </div>
+      <ol className="setup-steps">
+        <li><span>1</span><div><strong>Abre Ajustes → Wi‑Fi</strong><small>Esta página puede quedarse abierta.</small></div></li>
+        <li><span>2</span><div><strong>Selecciona {ssid}</strong><small>El portal de Leopold aparecerá automáticamente.</small></div></li>
+        <li><span>3</span><div><strong>Elige el Wi‑Fi de tu casa</strong><small>Cuando Leopold tenga internet, terminaremos solos.</small></div></li>
+      </ol>
+      <div className="waiting-line"><div className="spinner small" /> Esperando conexión del dispositivo…</div>
+    </section>
+  );
+}
+
+function PairingScanner({ onClose }: { onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [message, setMessage] = useState('');
+
+  function openPairing(rawValue: string) {
+    try {
+      const url = new URL(rawValue);
+      const apiHost = new URL(apiUrl).host;
+      const validHost = url.host === window.location.host || url.host === apiHost;
+      const validPath =
+        /^\/setup\/[A-Fa-f0-9]{32,64}$/.test(url.pathname) ||
+        /^\/v1\/onboarding\/[A-Fa-f0-9]{32,64}\/continue$/.test(url.pathname);
+      if (!validHost || !validPath) throw new Error('Este QR no pertenece a un Leopold');
+      window.location.assign(url.toString());
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No pudimos leer el QR');
+    }
+  }
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    const scanner = new QrScanner(
+      videoRef.current,
+      (result) => openPairing(result.data),
+      {
+        highlightScanRegion: true,
+        highlightCodeOutline: true,
+        returnDetailedScanResult: true,
+      },
+    );
+    void scanner.start().catch(() => {
+      setMessage('Permite el acceso a la cámara o selecciona una foto del QR.');
+    });
+    return () => scanner.destroy();
+  }, []);
+
+  async function scanFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
+      openPairing(result.data);
+    } catch {
+      setMessage('No encontramos un QR de Leopold en esa imagen.');
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Escanear Leopold">
+      <section className="scanner-modal">
+        <div className="modal-heading">
+          <div>
+            <p className="kicker">Agregar dispositivo · Paso 1 de 2</p>
+            <h2>Escanea tu Leopold</h2>
+          </div>
+          <button className="close-button" onClick={onClose} aria-label="Cerrar">×</button>
+        </div>
+        <p className="muted">Apunta al QR que aparece en la pantalla del dispositivo.</p>
+        <div className="camera-frame"><video ref={videoRef} muted playsInline /></div>
+        <label className="button secondary file-button">
+          Elegir foto del QR
+          <input type="file" accept="image/*" capture="environment" onChange={(event) => void scanFile(event)} />
+        </label>
+        {message && <p className="notice error">{message}</p>}
+      </section>
+    </div>
   );
 }
 
@@ -238,7 +348,7 @@ function StatusPanel({
 function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [message, setMessage] = useState('');
 
   async function loadDevices() {
@@ -287,21 +397,12 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
             <p className="kicker">Mis dispositivos</p>
             <h2>Leopold</h2>
           </div>
-          <button className="button primary compact" onClick={() => setShowAdd((value) => !value)}>
-            {showAdd ? 'Cerrar' : 'Agregar dispositivo'}
+          <button className="button primary compact" onClick={() => setShowScanner(true)}>
+            Agregar dispositivo
           </button>
         </div>
 
-        {showAdd && (
-          <div className="instruction">
-            <strong>Agregar un Leopold</strong>
-            <ol>
-              <li>Enciende o restaura el dispositivo.</li>
-              <li>Escanea el único QR de su pantalla.</li>
-              <li>Configura Wi‑Fi. Volverás aquí automáticamente.</li>
-            </ol>
-          </div>
-        )}
+        {showScanner && <PairingScanner onClose={() => setShowScanner(false)} />}
 
         {loading ? (
           <div className="empty"><div className="spinner small" /> Cargando dispositivos…</div>

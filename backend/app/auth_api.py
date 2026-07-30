@@ -211,12 +211,21 @@ def onboarding_status(
 
 
 @router.get("/onboarding/{token}/continue", include_in_schema=False)
-def continue_onboarding(token: str, settings: Config) -> RedirectResponse:
+def continue_onboarding(
+    token: str,
+    settings: Config,
+    ssid: str | None = None,
+) -> RedirectResponse:
     if not re.fullmatch(r"[A-Fa-f0-9]{32,64}", token):
         raise HTTPException(status_code=404, detail="Setup session not found")
+    if ssid is not None and not re.fullmatch(r"Leopold-[A-Za-z0-9-]{1,16}", ssid):
+        raise HTTPException(status_code=422, detail="Invalid setup network")
     web_base = settings.allowed_origins[0].rstrip("/")
+    destination = f"{web_base}/setup/{token}"
+    if ssid:
+        destination += f"?ssid={ssid}"
     return RedirectResponse(
-        f"{web_base}/setup/{token}",
+        destination,
         status_code=307,
         headers={"Cache-Control": "no-store, max-age=0"},
     )

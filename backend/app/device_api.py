@@ -49,7 +49,7 @@ def onboarding_url(
     settings: Settings,
     requested_token: str | None = None,
 ) -> str | None:
-    if device.owner_id is not None:
+    if device.owner_id is not None and requested_token is None:
         return None
     now = datetime.now(timezone.utc)
     raw_token = requested_token or secrets.token_urlsafe(24)
@@ -60,11 +60,27 @@ def onboarding_url(
         )
     )
     if existing is not None:
-        if existing.device_id != device.id or existing.used_at is not None:
+        if existing.device_id != device.id:
             raise HTTPException(status_code=409, detail="Setup session conflict")
         existing.expires_at = now + timedelta(minutes=CLAIM_MINUTES)
+        if device.owner_id is not None:
+            existing.used_at = now
+            return None
+        if existing.used_at is not None:
+            raise HTTPException(status_code=409, detail="Setup session conflict")
         web_base = settings.allowed_origins[0].rstrip("/")
         return f"{web_base}/setup/{raw_token}"
+
+    if device.owner_id is not None:
+        db.add(
+            DeviceClaimToken(
+                device_id=device.id,
+                token_hash=token_digest,
+                expires_at=now + timedelta(minutes=CLAIM_MINUTES),
+                used_at=now,
+            )
+        )
+        return None
 
     db.query(DeviceClaimToken).filter(
         DeviceClaimToken.device_id == device.id,

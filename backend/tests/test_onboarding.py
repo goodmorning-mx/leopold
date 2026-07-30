@@ -63,13 +63,13 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     assert pending.json()["pending"] is True
     assert pending.headers["cache-control"] == "no-store, max-age=0"
     continuation = client.get(
-        f"/v1/onboarding/{setup_token}/continue",
+        f"/v1/onboarding/{setup_token}/continue?ssid=Leopold-7817",
         follow_redirects=False,
     )
     assert continuation.status_code == 307
     assert continuation.headers["cache-control"] == "no-store, max-age=0"
     assert continuation.headers["location"] == (
-        f"http://localhost:5173/setup/{setup_token}"
+        f"http://localhost:5173/setup/{setup_token}?ssid=Leopold-7817"
     )
 
     connected = client.post(
@@ -135,6 +135,21 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     assert reconnected.json()["claimed"] is True
     assert reconnected.json()["owner_display_name"] == "Owner"
     assert reconnected.json()["onboarding_url"] is None
+
+    reconnect_token = "fedcba9876543210fedcba9876543210"
+    restored = client.post(
+        "/v1/device/connect",
+        headers=device_headers(credentials),
+        json={
+            "firmware_version": "0.5.0",
+            "setup_token": reconnect_token,
+            "capabilities": {},
+        },
+    )
+    assert restored.status_code == 200
+    restored_status = client.get(f"/v1/onboarding/{reconnect_token}")
+    assert restored_status.status_code == 200
+    assert restored_status.json()["claimed"] is True
 
     devices = client.get("/v1/me/devices")
     assert devices.status_code == 200

@@ -106,24 +106,25 @@ Para entrar manualmente al bootloader: mantén `BOOT`, pulsa `RESET`, suelta
 ## Configurar Wi‑Fi desde el teléfono
 
 1. Sin credenciales guardadas, Leopold crea inmediatamente `Leopold-XXXX` y
-   muestra un QR de Wi‑Fi. Si hay credenciales, intenta usarlas durante
+   muestra un QR HTTPS de emparejamiento. Si hay credenciales, intenta usarlas durante
    aproximadamente 20 segundos antes de abrir el portal.
-2. Escanea el QR con la cámara del teléfono para unirte a esa red.
-3. El portal cautivo se abre automáticamente. Si no aparece, abre
+2. Desde el perfil GoodMorning, pulsa `Agregar dispositivo` y escanea el QR.
+3. Sigue la indicación para conectarte manualmente a `Leopold-XXXX`.
+4. El portal cautivo se abre automáticamente. Si no aparece, abre
    `http://192.168.4.1`.
-4. Selecciona una red, escribe su contraseña y guarda.
-5. Leopold detiene el portal y muestra `WIFI CONECTADO`.
+5. Selecciona una red, escribe su contraseña y guarda.
+6. Leopold detiene el portal y muestra `WIFI CONECTADO`.
 
 La contraseña Wi‑Fi no se muestra en pantalla ni se imprime por Serial.
 
 ## Vincular Leopold a una cuenta
 
-El QR de Wi‑Fi inicia también una sesión local de onboarding. Al guardar la red,
-el portal mantiene la página abierta mientras Leopold obtiene Internet y
-continúa automáticamente en la web pública:
+El QR HTTPS inicia una sesión local de onboarding antes de que Leopold tenga
+Internet. La página pública conserva esa sesión mientras el usuario cambia de
+red. Al guardar el Wi‑Fi, el portal continúa hacia el perfil:
 
-1. Crea una cuenta o inicia sesión en la página que aparece.
-2. El backend vincula Leopold automáticamente, sin segundo QR ni otro botón.
+1. Inicia sesión antes de escanear o hazlo en la página que abre el QR.
+2. El backend vincula Leopold automáticamente cuando el equipo aparece online.
 3. El firmware consulta el estado cada cinco segundos y reproduce la bienvenida
    personalizada cuando el backend confirma el vínculo.
 
