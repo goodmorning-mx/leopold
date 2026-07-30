@@ -67,6 +67,7 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     assert connected.status_code == 200
     payload = connected.json()
     assert payload["claimed"] is False
+    assert payload["owner_display_name"] is None
     assert payload["onboarding_url"].startswith("http://localhost:5173/setup/")
     token = payload["onboarding_url"].rsplit("/", 1)[1]
 
@@ -100,7 +101,20 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
         json={},
     )
     assert device_status.status_code == 200
-    assert device_status.json() == {"claimed": True}
+    assert device_status.json() == {
+        "claimed": True,
+        "owner_display_name": "Owner",
+    }
+
+    reconnected = client.post(
+        "/v1/device/connect",
+        headers=device_headers(credentials),
+        json={"firmware_version": "0.3.1", "capabilities": {}},
+    )
+    assert reconnected.status_code == 200
+    assert reconnected.json()["claimed"] is True
+    assert reconnected.json()["owner_display_name"] == "Owner"
+    assert reconnected.json()["onboarding_url"] is None
 
     devices = client.get("/v1/me/devices")
     assert devices.status_code == 200
