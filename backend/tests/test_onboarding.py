@@ -61,11 +61,13 @@ def test_qr_onboarding_registers_user_and_claims_device(client) -> None:
     pending = client.get(f"/v1/onboarding/{setup_token}")
     assert pending.status_code == 200
     assert pending.json()["pending"] is True
+    assert pending.headers["cache-control"] == "no-store, max-age=0"
     continuation = client.get(
         f"/v1/onboarding/{setup_token}/continue",
         follow_redirects=False,
     )
     assert continuation.status_code == 307
+    assert continuation.headers["cache-control"] == "no-store, max-age=0"
     assert continuation.headers["location"] == (
         f"http://localhost:5173/setup/{setup_token}"
     )
