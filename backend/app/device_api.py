@@ -355,6 +355,7 @@ def device_onboarding_status(
 @router.get("/device/ui", response_model=UIDocument)
 def get_device_ui(
     db: Db,
+    settings: Config,
     device: AuthenticatedDevice,
     if_none_match: Annotated[str | None, Header(alias="If-None-Match")] = None,
 ) -> Response:
@@ -373,6 +374,21 @@ def get_device_ui(
     screen_id = (stored.document.get("screen") or {}).get("id")
     if device.owner_id is not None and connection is None and screen_id != "leopold-welcome":
         return Response(status_code=304, headers={"ETag": etag})
+    if connection is not None:
+        from app.spotify import player_state, spotify_document
+
+        live_document = UIDocument.model_validate(
+            spotify_document(
+                int(datetime.now(timezone.utc).timestamp()),
+                player_state(db, connection, settings),
+            )
+        )
+        live_etag = f'"spotify-{live_document.revision}"'
+        return Response(
+            content=live_document.model_dump_json(),
+            media_type="application/json",
+            headers={"ETag": live_etag, "Cache-Control": "private, no-store"},
+        )
     if if_none_match and any(
         tag.strip() in {etag, f"W/{etag}"} for tag in if_none_match.split(",")
     ):

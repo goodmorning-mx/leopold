@@ -14,6 +14,7 @@ enum class ComponentType : uint8_t {
   kIndicator,
   kButton,
   kProgress,
+  kIcon,
 };
 
 enum class TextAlign : uint8_t {
@@ -26,6 +27,7 @@ struct SduiComponent {
   ComponentType type = ComponentType::kText;
   char id[kMaxComponentId + 1] = {};
   char text[kMaxComponentText + 1] = {};
+  char icon[17] = {};
   int16_t x = 0;
   int16_t y = 0;
   int16_t width = 0;

@@ -33,8 +33,16 @@ class IndicatorComponent(ComponentBase):
 class ButtonComponent(ComponentBase):
     type: Literal["button"]
     label: str = Field(min_length=1, max_length=80)
+    icon: Literal["previous", "play", "pause", "next"] | None = None
     width: int = Field(gt=0, le=466)
     height: int = Field(gt=0, le=466)
+
+
+class IconComponent(ComponentBase):
+    type: Literal["icon"]
+    name: Literal["spotify"]
+    size: int = Field(ge=24, le=160)
+    color: Color
 
 
 class ProgressComponent(ComponentBase):
@@ -45,7 +53,13 @@ class ProgressComponent(ComponentBase):
 
 
 Component = Annotated[
-    Union[TextComponent, IndicatorComponent, ButtonComponent, ProgressComponent],
+    Union[
+        TextComponent,
+        IndicatorComponent,
+        ButtonComponent,
+        ProgressComponent,
+        IconComponent,
+    ],
     Field(discriminator="type"),
 ]
 

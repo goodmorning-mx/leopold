@@ -35,6 +35,16 @@ class DisplayManager {
   void centered(const char* text, int16_t y, uint8_t size, uint16_t color);
   void drawComponent(const SduiComponent& component);
   void drawEye(int16_t x, int16_t y, int8_t pupilX, int8_t pupilY);
+  void drawControlIcon(
+      const char* icon,
+      int16_t centerX,
+      int16_t centerY,
+      uint16_t color);
+  void drawSpotifyIcon(
+      int16_t centerX,
+      int16_t centerY,
+      int16_t size,
+      uint16_t color);
 
   uint8_t localExpression_ = 0;
   uint32_t lastFaceFrameAt_ = 0;
