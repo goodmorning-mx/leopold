@@ -137,21 +137,25 @@ void DisplayManager::showQr(
   constexpr uint8_t kQrVersion = 8;
   uint8_t qrData[qrcode_getBufferSize(kQrVersion)];
   QRCode qr;
-  qrcode_initText(&qr, qrData, kQrVersion, ECC_LOW, payload);
+  qrcode_initText(&qr, qrData, kQrVersion, ECC_MEDIUM, payload);
 
-  const int16_t scale = 5;
+  // Phone cameras need a crisp four-module quiet zone around the complete
+  // symbol. Six physical pixels per module also avoids sub-pixel resampling
+  // when the round display is photographed at an angle.
+  constexpr int16_t scale = 6;
+  constexpr int16_t quietModules = 4;
+  constexpr int16_t quietPixels = quietModules * scale;
   const int16_t qrPixels = qr.size * scale;
   const int16_t originX = (kScreenWidth - qrPixels) / 2;
-  const int16_t originY = 94;
+  const int16_t originY = 90;
 
   display->fillScreen(kBlack);
   centered(title, 48, 2, kWhite);
-  display->fillRoundRect(
-      originX - 12,
-      originY - 12,
-      qrPixels + 24,
-      qrPixels + 24,
-      14,
+  display->fillRect(
+      originX - quietPixels,
+      originY - quietPixels,
+      qrPixels + quietPixels * 2,
+      qrPixels + quietPixels * 2,
       kWhite);
   for (uint8_t y = 0; y < qr.size; ++y) {
     for (uint8_t x = 0; x < qr.size; ++x) {
@@ -166,7 +170,7 @@ void DisplayManager::showQr(
     }
   }
   if (footer != nullptr && footer[0] != '\0') {
-    centered(footer, 420, 1, kGray);
+    centered(footer, 430, 1, kGray);
   }
 }
 
