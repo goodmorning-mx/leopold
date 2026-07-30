@@ -198,8 +198,23 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
+  char previousScreenId[kMaxComponentId + 1] = {};
+  if (hasUi && currentUi.screenCount > 0) {
+    strlcpy(
+        previousScreenId,
+        currentUi.active().screenId,
+        sizeof(previousScreenId));
+  }
+  if (previousScreenId[0] != '\0') {
+    for (uint8_t index = 0; index < candidate.screenCount; ++index) {
+      if (strcmp(candidate.screens[index].screenId, previousScreenId) == 0) {
+        candidate.activeScreen = index;
+        break;
+      }
+    }
+  }
   currentUi = candidate;
-  if (strcmp(currentUi.screenId, "leopold-welcome") == 0) {
+  if (strcmp(currentUi.active().screenId, "leopold-welcome") == 0) {
     hasUi = false;
     assistantReady = true;
     welcomeActive = true;
@@ -379,9 +394,10 @@ void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
 }
 
 const SduiComponent* firstButton() {
-  for (uint8_t index = 0; index < currentUi.componentCount; ++index) {
-    if (currentUi.components[index].type == ComponentType::kButton) {
-      return &currentUi.components[index];
+  const SduiScreen& active = currentUi.active();
+  for (uint8_t index = 0; index < active.componentCount; ++index) {
+    if (active.components[index].type == ComponentType::kButton) {
+      return &active.components[index];
     }
   }
   return nullptr;
@@ -389,14 +405,15 @@ const SduiComponent* firstButton() {
 
 const SduiComponent* onlyButton() {
   const SduiComponent* match = nullptr;
-  for (uint8_t index = 0; index < currentUi.componentCount; ++index) {
-    if (currentUi.components[index].type != ComponentType::kButton) {
+  const SduiScreen& active = currentUi.active();
+  for (uint8_t index = 0; index < active.componentCount; ++index) {
+    if (active.components[index].type != ComponentType::kButton) {
       continue;
     }
     if (match != nullptr) {
       return nullptr;
     }
-    match = &currentUi.components[index];
+    match = &active.components[index];
   }
   return match;
 }
@@ -412,9 +429,29 @@ void processInput(uint32_t now) {
         gesture == TouchGesture::kSwipeLeft
             ? "Welcome swiped left"
             : "Welcome swiped right");
+  } else if (hasUi &&
+             (gesture == TouchGesture::kSwipeLeft ||
+              gesture == TouchGesture::kSwipeRight) &&
+             currentUi.screenCount > 1) {
+    if (gesture == TouchGesture::kSwipeLeft) {
+      currentUi.activeScreen =
+          (currentUi.activeScreen + 1) % currentUi.screenCount;
+    } else {
+      currentUi.activeScreen =
+          (currentUi.activeScreen + currentUi.screenCount - 1) %
+          currentUi.screenCount;
+    }
+    screen.renderSduiScreen(currentUi);
+    lastIndicatorAt = 0;
+    Serial.printf(
+        "SDUI screen: %s (%u/%u)\n",
+        currentUi.active().screenId,
+        currentUi.activeScreen + 1,
+        currentUi.screenCount);
   } else if (gesture == TouchGesture::kTap && hasUi) {
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
-    const SduiComponent* button = findButtonAt(currentUi, point.x, point.y);
+    const SduiComponent* button =
+        findButtonAt(currentUi.active(), point.x, point.y);
     if (button == nullptr) {
       button = onlyButton();
     }

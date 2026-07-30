@@ -194,30 +194,58 @@ def spotify_document(revision: int, state: dict) -> dict:
     album = str(state.get("album") or "Spotify Connect")[:38]
     playing = bool(state.get("is_playing"))
     owner_name = str(state.get("owner_name") or "Leopold")[:18].upper()
+    bluetooth_name = str(state.get("bluetooth_name") or "Leopold")[:24]
     return {
         "schema_version": 1,
         "revision": revision,
         "poll_after_ms": 5000,
-        "screen": {
+        "screens": [
+        {
+            "id": "home",
+            "background": "#000000",
+            "components": [
+                {
+                    "type": "text",
+                    "id": "home-owner",
+                    "text": f"HOLA, {owner_name}",
+                    "x": 233,
+                    "y": 105,
+                    "align": "center",
+                    "size": 3,
+                    "color": "#FFFFFF",
+                },
+                {
+                    "type": "text",
+                    "id": "home-title",
+                    "text": "SOY TU ASISTENTE",
+                    "x": 233,
+                    "y": 175,
+                    "align": "center",
+                    "size": 2,
+                    "color": "#FD9D20",
+                },
+                {
+                    "type": "text",
+                    "id": "home-hint",
+                    "text": "DESLIZA PARA EXPLORAR",
+                    "x": 233,
+                    "y": 330,
+                    "align": "center",
+                    "size": 1,
+                    "color": "#686868",
+                },
+            ],
+        },
+        {
             "id": "spotify-player",
             "background": "#000000",
             "components": [
                 {
                     "type": "text",
-                    "id": "owner",
-                    "text": f"HOLA, {owner_name}",
-                    "x": 233,
-                    "y": 44,
-                    "align": "center",
-                    "size": 2,
-                    "color": "#FFFFFF",
-                },
-                {
-                    "type": "text",
                     "id": "track",
                     "text": title,
                     "x": 233,
-                    "y": 96,
+                    "y": 72,
                     "align": "center",
                     "size": 2,
                     "color": "#FFFFFF",
@@ -227,7 +255,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "artist",
                     "text": artist,
                     "x": 233,
-                    "y": 137,
+                    "y": 113,
                     "align": "center",
                     "size": 1,
                     "color": "#A7A7A7",
@@ -237,7 +265,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "album",
                     "text": album,
                     "x": 233,
-                    "y": 165,
+                    "y": 141,
                     "align": "center",
                     "size": 1,
                     "color": "#686868",
@@ -247,7 +275,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "progress",
                     "value": int(state.get("progress") or 0),
                     "x": 73,
-                    "y": 220,
+                    "y": 202,
                     "width": 320,
                     "color": "#1DB954",
                 },
@@ -256,7 +284,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "elapsed",
                     "text": format_millis(int(state.get("progress_ms") or 0)),
                     "x": 73,
-                    "y": 249,
+                    "y": 231,
                     "align": "left",
                     "size": 1,
                     "color": "#A7A7A7",
@@ -266,7 +294,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "duration",
                     "text": format_millis(int(state.get("duration_ms") or 0)),
                     "x": 393,
-                    "y": 249,
+                    "y": 231,
                     "align": "right",
                     "size": 1,
                     "color": "#A7A7A7",
@@ -277,7 +305,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "label": "Anterior",
                     "icon": "previous",
                     "x": 70,
-                    "y": 310,
+                    "y": 294,
                     "width": 72,
                     "height": 72,
                     "color": "#FFFFFF",
@@ -288,7 +316,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "label": "Pausa" if playing else "Reproducir",
                     "icon": "pause" if playing else "play",
                     "x": 191,
-                    "y": 304,
+                    "y": 288,
                     "width": 84,
                     "height": 84,
                     "color": "#1DB954",
@@ -299,13 +327,59 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "label": "Siguiente",
                     "icon": "next",
                     "x": 324,
-                    "y": 310,
+                    "y": 294,
                     "width": 72,
                     "height": 72,
                     "color": "#FFFFFF",
                 },
             ],
         },
+        {
+            "id": "bluetooth",
+            "background": "#000000",
+            "components": [
+                {
+                    "type": "icon",
+                    "id": "bluetooth-icon",
+                    "name": "bluetooth",
+                    "x": 233,
+                    "y": 130,
+                    "size": 96,
+                    "color": "#3D7FFF",
+                },
+                {
+                    "type": "text",
+                    "id": "bluetooth-title",
+                    "text": "BLUETOOTH",
+                    "x": 233,
+                    "y": 220,
+                    "align": "center",
+                    "size": 3,
+                    "color": "#FFFFFF",
+                },
+                {
+                    "type": "text",
+                    "id": "bluetooth-name",
+                    "text": bluetooth_name,
+                    "x": 233,
+                    "y": 274,
+                    "align": "center",
+                    "size": 2,
+                    "color": "#A7A7A7",
+                },
+                {
+                    "type": "text",
+                    "id": "bluetooth-state",
+                    "text": "VISIBLE",
+                    "x": 233,
+                    "y": 326,
+                    "align": "center",
+                    "size": 1,
+                    "color": "#3D7FFF",
+                },
+            ],
+        },
+        ],
     }
 
 
@@ -314,11 +388,11 @@ def welcome_document(revision: int) -> dict:
         "schema_version": 1,
         "revision": revision,
         "poll_after_ms": 5000,
-        "screen": {
+        "screens": [{
             "id": "leopold-welcome",
             "background": "#000000",
             "components": [],
-        },
+        }],
     }
 
 
@@ -349,7 +423,18 @@ def publish_spotify_ui(
     state = player_state(db, connection, settings)
     state["owner_name"] = user.display_name
     for device in user.devices:
-        publish_document(db, device, lambda revision: spotify_document(revision, state))
+        device_state = {
+            **state,
+            "bluetooth_name": f"Leopold-{device.device_id[-4:]}",
+        }
+        publish_document(
+            db,
+            device,
+            lambda revision, current=device_state: spotify_document(
+                revision,
+                current,
+            ),
+        )
     db.commit()
 
 

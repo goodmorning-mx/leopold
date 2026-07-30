@@ -305,6 +305,15 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
             component.y,
             component.width,
             component.color);
+      } else if (strcmp(component.icon, "bluetooth") == 0) {
+        const int16_t scale = max<int16_t>(2, component.width / 32);
+        const int16_t x = component.x;
+        const int16_t y = component.y;
+        display->drawLine(x, y - 12 * scale, x, y + 12 * scale, component.color);
+        display->drawLine(x, y - 12 * scale, x + 7 * scale, y - 5 * scale, component.color);
+        display->drawLine(x + 7 * scale, y - 5 * scale, x - 6 * scale, y + 7 * scale, component.color);
+        display->drawLine(x - 6 * scale, y - 7 * scale, x + 7 * scale, y + 5 * scale, component.color);
+        display->drawLine(x + 7 * scale, y + 5 * scale, x, y + 12 * scale, component.color);
       }
       break;
   }
@@ -376,9 +385,26 @@ void DisplayManager::drawSpotifyIcon(
 }
 
 void DisplayManager::renderSdui(const SduiDocument& document) {
-  display->fillScreen(document.background);
-  for (uint8_t index = 0; index < document.componentCount; ++index) {
-    drawComponent(document.components[index]);
+  renderSduiScreen(document);
+}
+
+void DisplayManager::renderSduiScreen(const SduiDocument& document) {
+  const SduiScreen& active = document.active();
+  display->fillScreen(active.background);
+  for (uint8_t index = 0; index < active.componentCount; ++index) {
+    drawComponent(active.components[index]);
+  }
+  if (document.screenCount > 1) {
+    const int16_t gap = 18;
+    const int16_t start =
+        (kScreenWidth - (document.screenCount - 1) * gap) / 2;
+    for (uint8_t index = 0; index < document.screenCount; ++index) {
+      display->fillCircle(
+          start + index * gap,
+          423,
+          index == document.activeScreen ? 5 : 3,
+          index == document.activeScreen ? kWhite : kGray);
+    }
   }
 }
 

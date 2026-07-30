@@ -33,6 +33,6 @@ static_assert(
     sizeof(LEOPOLD_TLS_ROOT_CA) > 100,
     "LEOPOLD_TLS_ROOT_CA must contain a trusted public root certificate");
 
-constexpr char kFirmwareVersion[] = "0.7.0";
+constexpr char kFirmwareVersion[] = "0.8.0";
 
 }  // namespace leopold::config

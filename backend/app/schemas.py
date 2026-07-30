@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Color = Annotated[str, Field(pattern=r"^#[0-9A-Fa-f]{6}$")]
 Coordinate = Annotated[int, Field(ge=0, le=465)]
@@ -41,7 +41,7 @@ class ButtonComponent(ComponentBase):
 
 class IconComponent(ComponentBase):
     type: Literal["icon"]
-    name: Literal["spotify"]
+    name: Literal["spotify", "bluetooth"]
     size: int = Field(ge=24, le=160)
     color: Color
 
@@ -79,7 +79,14 @@ class UIDocument(BaseModel):
     schema_version: Literal[1]
     revision: int = Field(ge=1)
     poll_after_ms: int = Field(ge=1000, le=300000)
-    screen: Screen
+    screens: list[Screen] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade_single_screen(cls, value):
+        if isinstance(value, dict) and "screens" not in value and "screen" in value:
+            value = {**value, "screens": [value["screen"]]}
+        return value
 
 
 class UIPublishDocument(BaseModel):
@@ -90,7 +97,14 @@ class UIPublishDocument(BaseModel):
     schema_version: Literal[1]
     revision: None = None
     poll_after_ms: int = Field(ge=1000, le=300000)
-    screen: Screen
+    screens: list[Screen] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade_single_screen(cls, value):
+        if isinstance(value, dict) and "screens" not in value and "screen" in value:
+            value = {**value, "screens": [value["screen"]]}
+        return value
 
 
 class ProvisionDeviceRequest(BaseModel):

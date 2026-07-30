@@ -23,6 +23,7 @@ class DisplayManager {
   void showWelcome(const char* ownerName, uint8_t step);
   void showReadyFace();
   void renderSdui(const SduiDocument& document);
+  void renderSduiScreen(const SduiDocument& document);
   void drawIndicators(
       bool wifiConnected,
       bool cloudConnected,
