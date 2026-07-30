@@ -284,6 +284,38 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 }
 .remove-button:hover { border-color: #fff; color: #fff; }
 
+.services-section {
+  width: min(calc(100% - 48px), 920px);
+  margin: 28px auto 0;
+  padding-bottom: 64px;
+}
+.service-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  background: #101010;
+}
+.spotify-mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #000;
+  background: #1db954;
+  font-size: 34px;
+}
+.spotify-button {
+  color: #000;
+  border-color: #1db954;
+  background: #1db954;
+}
+.spotify-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
 @media (max-width: 620px) {
   .topbar { padding-inline: 20px; }
   .account-heading, .devices-section { width: min(calc(100% - 32px), 920px); }
@@ -292,4 +324,7 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
   .device-row { align-items: flex-start; flex-wrap: wrap; }
   .device-copy { min-width: calc(100% - 70px); }
   .remove-button { width: 100%; }
+  .services-section { width: min(calc(100% - 32px), 920px); }
+  .service-row { grid-template-columns: auto 1fr; }
+  .service-row > button { grid-column: 1 / -1; width: 100%; }
 }

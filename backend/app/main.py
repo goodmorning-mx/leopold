@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.auth_api import router as auth_router
 from app.device_api import router as device_router
+from app.spotify_api import router as spotify_router
 
 settings = get_settings()
 
@@ -13,11 +14,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 app.include_router(device_router)
 app.include_router(auth_router)
+app.include_router(spotify_router)
 
 
 @app.middleware("http")
