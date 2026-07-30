@@ -28,22 +28,29 @@ void WifiPortal::begin(const char* deviceId) {
         "%02x",
         static_cast<unsigned int>(esp_random() & 0xFF));
   }
-  const String continueUrl =
-      String(LEOPOLD_API_BASE_URL) + "/v1/onboarding/" + setupToken_ +
-      "/continue";
+  snprintf(
+      setupUrl_,
+      sizeof(setupUrl_),
+      "%s/v1/onboarding/%s/continue?ssid=%s",
+      LEOPOLD_API_BASE_URL,
+      setupToken_,
+      accessPointName_);
   snprintf(
       customHead_,
       sizeof(customHead_),
       "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-      "<style>.lp{padding:24px;text-align:center}.lp b{font-size:24px}"
-      ".lp p{line-height:1.5}</style><script>"
+      "<style>body{background:#080808!important;color:#fff!important}"
+      ".wrap{background:#111!important}.lp{padding:28px;text-align:center}"
+      ".lp b{font-size:24px}.lp p{color:#aaa;line-height:1.5}"
+      "button{background:#fff!important;color:#080808!important;"
+      "border-radius:8px!important}</style><script>"
       "if(location.pathname=='/wifisave'){addEventListener('DOMContentLoaded',"
       "()=>{document.body.innerHTML=\"<div class='lp'><b>Conectando "
       "Leopold...</b><p>No cierres esta pagina. Continuaremos "
       "automaticamente.</p></div>\";const u='%s';const go=()=>fetch(u,"
       "{mode:'no-cors',cache:'no-store'}).then(()=>location.replace(u))"
       ".catch(()=>setTimeout(go,1200));setTimeout(go,2500)})}</script>",
-      continueUrl.c_str());
+      setupUrl_);
 
   manager_.setConfigPortalBlocking(false);
   manager_.setDebugOutput(false);
@@ -108,6 +115,10 @@ const char* WifiPortal::accessPointName() const {
 
 const char* WifiPortal::setupToken() const {
   return setupToken_;
+}
+
+const char* WifiPortal::setupUrl() const {
+  return setupUrl_;
 }
 
 void WifiPortal::startPortal(uint32_t now) {

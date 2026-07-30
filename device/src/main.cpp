@@ -435,16 +435,10 @@ void processNetwork(uint32_t now) {
   if (wifi.portalActive()) {
     if (appState != AppState::kWifiPortal) {
       appState = AppState::kWifiPortal;
-      char wifiQr[96] = {};
-      snprintf(
-          wifiQr,
-          sizeof(wifiQr),
-          "WIFI:T:nopass;S:%s;;",
-          wifi.accessPointName());
       screen.showQr(
-          "CONFIGURA WIFI",
-          wifiQr,
-          "ESCANEA CON TU TELEFONO");
+          "AGREGA LEOPOLD",
+          wifi.setupUrl(),
+          "ESCANEA DESDE TU PERFIL");
       Serial.printf("Leopold state: %s\n", appStateName(appState));
     }
     return;

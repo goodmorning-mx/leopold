@@ -77,12 +77,13 @@ alembic history --verbose
 
 ## Onboarding de Leopold
 
-El flujo no requiere aplicación móvil y usa un solo QR. El teléfono se une al
-portal cautivo local, configura Wi‑Fi y continúa automáticamente en la web
-pública con la misma sesión. Después de registro o login, el dispositivo se
-reclama sin otro escaneo ni botón adicional. Las sesiones expiran en 15 minutos
-y preparan la relación usuario–dispositivo para futuras integraciones OAuth
-como Spotify.
+El flujo no requiere aplicación móvil. El usuario inicia sesión en su perfil,
+pulsa `Agregar dispositivo` y escanea el único QR público mostrado por Leopold.
+La web conserva la sesión y guía al usuario para conectarse temporalmente a
+`Leopold-XXXX`; el portal cautivo configura el Wi‑Fi de casa. Cuando el equipo
+obtiene Internet, el claim se completa automáticamente y Leopold reproduce la
+bienvenida personalizada. Las sesiones expiran en 15 minutos y preparan la
+relación usuario–dispositivo para futuras integraciones OAuth como Spotify.
 
 Docker validation:
 ```bash
