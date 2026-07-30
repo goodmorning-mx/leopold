@@ -60,6 +60,7 @@ bool fatalError = false;
 bool onboardingPending = false;
 bool welcomeActive = false;
 bool welcomeShownThisBoot = false;
+bool assistantReady = false;
 uint8_t welcomeStep = 0;
 uint8_t activeEventIndex = 0;
 uint8_t cloudFailures = 0;
@@ -83,7 +84,7 @@ void startWelcome(const char* ownerName, uint32_t now) {
   welcomeActive = true;
   welcomeStep = 0;
   screen.showWelcome(ownerDisplayName, welcomeStep);
-  nextUiPollAt = now + kWelcomeScreenMs * 3;
+  nextUiPollAt = now + kWelcomeScreenMs * 2;
   Serial.printf("Starting welcome for %s\n", ownerDisplayName);
 }
 
@@ -91,16 +92,17 @@ void processWelcome(uint32_t now) {
   if (!welcomeActive) {
     return;
   }
-  const uint32_t startedAt = nextUiPollAt - kWelcomeScreenMs * 3;
+  const uint32_t startedAt = nextUiPollAt - kWelcomeScreenMs * 2;
   const uint8_t desiredStep =
-      min<uint8_t>((now - startedAt) / kWelcomeScreenMs, 2);
+      min<uint8_t>((now - startedAt) / kWelcomeScreenMs, 1);
   if (desiredStep != welcomeStep) {
     welcomeStep = desiredStep;
     screen.showWelcome(ownerDisplayName, welcomeStep);
   }
   if (now >= nextUiPollAt) {
     welcomeActive = false;
-    nextUiPollAt = now;
+    assistantReady = true;
+    screen.showReadyFace();
     Serial.println("Welcome complete");
   }
 }
@@ -114,8 +116,9 @@ void setState(
     Serial.printf("Leopold state: %s\n", appStateName(state));
   }
   const bool preserveUi =
-      hasUi && (state == AppState::kCloudConnecting ||
-                state == AppState::kOnline || state == AppState::kOffline);
+      assistantReady ||
+      (hasUi && (state == AppState::kCloudConnecting ||
+                state == AppState::kOnline || state == AppState::kOffline));
   if (!preserveUi) {
     screen.showState(state, detail, secondary);
   }
@@ -487,6 +490,7 @@ void processNetwork(uint32_t now) {
     }
   }
   if (cloudConnected && !onboardingPending && !welcomeActive &&
+      !assistantReady &&
       !uiPending && now >= nextUiPollAt) {
     uiPending = cloud.requestUi(uiEtag);
   }
@@ -533,10 +537,8 @@ void setup() {
 
   touch.begin();
   telemetry.begin();
-  hasUi = uiStore.begin() && uiStore.load(currentUi, cachedRawUi);
-  if (hasUi) {
-    screen.renderSdui(currentUi);
-  }
+  uiStore.begin();
+  hasUi = false;
   cachedRawUi = String();
 
   if (!cloud.begin()) {
@@ -569,12 +571,12 @@ void loop() {
   }
 
   processEvents(now);
-  if (!welcomeActive && !onboardingPending && !hasUi &&
+  if (!welcomeActive && !assistantReady && !onboardingPending && !hasUi &&
       (appState == leopold::AppState::kOffline ||
                  appState == leopold::AppState::kOnline)) {
     screen.showLocalFace(now);
   }
-  if (!welcomeActive) {
+  if (!welcomeActive && !assistantReady) {
     refreshIndicators(now);
   }
   delay(5);
