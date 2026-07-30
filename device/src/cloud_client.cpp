@@ -6,6 +6,7 @@
 
 #include "config_guard.h"
 #include "sdui.h"
+#include "tls_roots.h"
 
 namespace leopold {
 namespace {
@@ -150,7 +151,7 @@ CloudResponse CloudClient::perform(const Request& request) {
   }
 
   WiFiClientSecure secure;
-  secure.setCACert(LEOPOLD_TLS_ROOT_CA);
+  secure.setCACert(kLetsEncryptRootYrByX1);
   secure.setHandshakeTimeout(5);
 
   HTTPClient http;

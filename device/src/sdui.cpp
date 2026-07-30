@@ -131,9 +131,9 @@ SduiParseResult SduiParser::parse(
     return SduiParseResult::kInvalid;
   }
 
-  SduiDocument candidate;
-  candidate.revision = parsed["revision"] | 0;
-  candidate.pollAfterMs = constrain(
+  memset(&output, 0, sizeof(output));
+  output.revision = parsed["revision"] | 0;
+  output.pollAfterMs = constrain(
       parsed["poll_after_ms"] | 5000,
       kMinimumPollMs,
       kMaximumPollMs);
@@ -143,7 +143,7 @@ SduiParseResult SduiParser::parse(
     if (components.isNull() || components.size() > kMaxSduiComponents) {
       return SduiParseResult::kInvalid;
     }
-    SduiScreen& target = candidate.screens[candidate.screenCount];
+    SduiScreen& target = output.screens[output.screenCount];
     target.background =
         rgb565(sourceScreen["background"] | "#000000", 0);
     if (!copyBounded(target.screenId, sourceScreen["id"] | "") ||
@@ -166,10 +166,8 @@ SduiParseResult SduiParser::parse(
       }
       target.components[target.componentCount++] = component;
     }
-    ++candidate.screenCount;
+    ++output.screenCount;
   }
-
-  output = candidate;
   return SduiParseResult::kOk;
 }
 
