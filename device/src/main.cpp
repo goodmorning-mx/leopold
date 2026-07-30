@@ -221,12 +221,12 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
         setState(AppState::kOnline);
         nextHeartbeatAt = now + heartbeatIntervalMs;
         if (onboardingPending && onboardingUrl[0] != '\0') {
-          screen.showQr(
-              "ACTIVA LEOPOLD",
-              onboardingUrl,
-              "ESCANEA CON TU TELEFONO");
+          screen.showState(
+              AppState::kOnline,
+              "TERMINA EN",
+              "TU TELEFONO");
           nextOnboardingPollAt = now + kOnboardingPollMs;
-          Serial.println("Waiting for device claim");
+          Serial.println("Waiting for claim from captive onboarding");
         } else {
           startWelcome(ownerDisplayName, now);
           if (!welcomeActive) {
@@ -473,7 +473,7 @@ void processNetwork(uint32_t now) {
 
   if (!cloudConnected && !connectPending && now >= nextCloudAttemptAt) {
     setState(AppState::kCloudConnecting);
-    connectPending = cloud.requestConnect();
+    connectPending = cloud.requestConnect(wifi.setupToken());
     if (!connectPending) {
       nextCloudAttemptAt = now + 1000;
     }

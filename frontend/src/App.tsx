@@ -1,7 +1,12 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type User = { email: string; display_name: string };
-type ClaimStatus = { valid: boolean; claimed: boolean; expires_at: string | null };
+type ClaimStatus = {
+  valid: boolean;
+  claimed: boolean;
+  pending: boolean;
+  expires_at: string | null;
+};
 type Mode = 'register' | 'login';
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -34,17 +39,47 @@ function App() {
   const [mode, setMode] = useState<Mode>('register');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const autoClaimStarted = useRef(false);
 
   useEffect(() => {
     if (!token) return;
-    void Promise.all([
-      api<ClaimStatus>(`/v1/onboarding/${token}`),
-      api<User>('/v1/auth/me').catch(() => null),
-    ]).then(([claimStatus, currentUser]) => {
-      setClaim(claimStatus);
-      setUser(currentUser);
-    }).catch((error: Error) => setMessage(error.message));
+    let stopped = false;
+    const loadStatus = async () => {
+      try {
+        const status = await api<ClaimStatus>(`/v1/onboarding/${token}`);
+        if (!stopped) setClaim(status);
+        return status;
+      } catch (error) {
+        if (!stopped) {
+          setMessage(error instanceof Error ? error.message : 'No pudimos encontrar Leopold');
+        }
+        return null;
+      }
+    };
+    void loadStatus();
+    const interval = window.setInterval(async () => {
+      const status = await loadStatus();
+      if (status?.valid || status?.claimed) window.clearInterval(interval);
+    }, 1500);
+    void api<User>('/v1/auth/me').then(setUser).catch(() => null);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+    };
   }, [token]);
+
+  useEffect(() => {
+    if (
+      token &&
+      user &&
+      claim?.valid &&
+      !claim.claimed &&
+      !autoClaimStarted.current
+    ) {
+      autoClaimStarted.current = true;
+      void claimDevice();
+    }
+  }, [claim, token, user]);
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,9 +136,16 @@ function App() {
     );
   }
 
-  if (!claim) {
+  if (!claim || claim.pending) {
     return (
-      <main className="shell"><section className="card centered"><div className="loader" /><p>Buscando tu Leopold…</p></section></main>
+      <main className="shell">
+        <section className="card centered">
+          <div className="loader" />
+          <p className="eyebrow">Configurando Leopold</p>
+          <h1>Conectándolo a internet…</h1>
+          <p className="lede">Mantén esta página abierta. Continuará automáticamente.</p>
+        </section>
+      </main>
     );
   }
 
@@ -162,14 +204,14 @@ function App() {
         ) : (
           <>
             <p className="eyebrow">Hola, {user.display_name}</p>
-            <h1>Encontramos tu Leopold.</h1>
-            <p className="lede">Vincúlalo a tu cuenta para enviarle experiencias y conectar servicios.</p>
+            <h1>Vinculando tu Leopold…</h1>
+            <p className="lede">No necesitas hacer nada más.</p>
             <div className="device">
               <div className="mini-orb"><span /><span /></div>
-              <div><strong>Leopold Pocket</strong><small>Listo para vincular</small></div>
+              <div><strong>Leopold Pocket</strong><small>Finalizando configuración</small></div>
               <i />
             </div>
-            <button className="primary" disabled={busy} onClick={claimDevice}>{busy ? 'Vinculando…' : 'Vincular Leopold'}</button>
+            <div className="loader" />
           </>
         )}
         {message && <p className="error" role="alert">{message}</p>}

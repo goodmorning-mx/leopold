@@ -77,11 +77,12 @@ alembic history --verbose
 
 ## Onboarding de Leopold
 
-El flujo no requiere aplicación móvil. Un equipo sin Wi‑Fi muestra un QR para
-unirse a su portal cautivo local. Después de conectarse a Internet, muestra un
-segundo QR HTTPS para crear cuenta o iniciar sesión y reclamar el dispositivo.
-Los enlaces de claim son de un solo uso, expiran en 15 minutos y preparan la
-relación usuario–dispositivo para futuras integraciones OAuth como Spotify.
+El flujo no requiere aplicación móvil y usa un solo QR. El teléfono se une al
+portal cautivo local, configura Wi‑Fi y continúa automáticamente en la web
+pública con la misma sesión. Después de registro o login, el dispositivo se
+reclama sin otro escaneo ni botón adicional. Las sesiones expiran en 15 minutos
+y preparan la relación usuario–dispositivo para futuras integraciones OAuth
+como Spotify.
 
 Docker validation:
 ```bash

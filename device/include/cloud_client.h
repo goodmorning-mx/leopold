@@ -25,7 +25,7 @@ struct CloudResponse {
 class CloudClient {
  public:
   bool begin();
-  bool requestConnect();
+  bool requestConnect(const char* setupToken);
   bool requestOnboardingStatus();
   bool requestUi(const char* etag);
   bool requestHeartbeat(

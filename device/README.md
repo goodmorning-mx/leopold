@@ -118,19 +118,19 @@ La contraseña Wi‑Fi no se muestra en pantalla ni se imprime por Serial.
 
 ## Vincular Leopold a una cuenta
 
-Después de conectarse a Wi‑Fi, un Leopold sin propietario solicita al backend
-un enlace HTTPS de un solo uso y lo muestra como QR. El enlace expira después de
-15 minutos. Desde el teléfono:
+El QR de Wi‑Fi inicia también una sesión local de onboarding. Al guardar la red,
+el portal mantiene la página abierta mientras Leopold obtiene Internet y
+continúa automáticamente en la web pública:
 
-1. Escanea el QR `ACTIVA LEOPOLD`.
-2. Crea una cuenta o inicia sesión.
-3. Pulsa `Vincular Leopold`.
-4. El firmware consulta el estado cada cinco segundos y continúa
-   automáticamente cuando el backend confirma el vínculo.
+1. Crea una cuenta o inicia sesión en la página que aparece.
+2. El backend vincula Leopold automáticamente, sin segundo QR ni otro botón.
+3. El firmware consulta el estado cada cinco segundos y reproduce la bienvenida
+   personalizada cuando el backend confirma el vínculo.
 
 La contraseña de la cuenta nunca llega al dispositivo. El firmware conserva
 únicamente su identidad técnica; el backend almacena hashes de contraseñas,
-sesiones y tokens de claim. Los QR usados o vencidos no pueden reutilizarse.
+sesiones y tokens de claim. Las sesiones usadas o vencidas no pueden
+reutilizarse.
 
 Para borrar solo la configuración Wi‑Fi, mantén `BOOT` durante cinco segundos.
 Leopold conserva su identidad, borra las redes guardadas y reinicia el portal.

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -194,13 +195,21 @@ def onboarding_status(token: str, db: Db) -> ClaimStatusResponse:
     claim = find_claim(db, token)
     now = datetime.now(timezone.utc)
     if claim is None:
-        return ClaimStatusResponse(valid=False, claimed=False)
+        return ClaimStatusResponse(valid=False, claimed=False, pending=True)
     expired = as_utc(claim.expires_at) <= now
     return ClaimStatusResponse(
         valid=not expired and claim.used_at is None,
         claimed=claim.device.owner_id is not None,
         expires_at=claim.expires_at,
     )
+
+
+@router.get("/onboarding/{token}/continue", include_in_schema=False)
+def continue_onboarding(token: str, settings: Config) -> RedirectResponse:
+    if not re.fullmatch(r"[A-Fa-f0-9]{32,64}", token):
+        raise HTTPException(status_code=404, detail="Setup session not found")
+    web_base = settings.allowed_origins[0].rstrip("/")
+    return RedirectResponse(f"{web_base}/setup/{token}", status_code=307)
 
 
 @router.post("/onboarding/{token}/claim", response_model=ClaimStatusResponse)
