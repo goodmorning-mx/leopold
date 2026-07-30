@@ -34,6 +34,9 @@ void WifiPortal::begin(const char* deviceId) {
   WiFi.begin();
   connectStartedAt_ = millis();
   disconnectedAt_ = connectStartedAt_;
+  if (!manager_.getWiFiIsSaved()) {
+    startPortal(connectStartedAt_);
+  }
 }
 
 void WifiPortal::loop(uint32_t now) {

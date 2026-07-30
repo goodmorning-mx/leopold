@@ -82,6 +82,17 @@ pio run --target upload --upload-port /dev/ttyACM0
 pio device monitor --port /dev/ttyACM0 --baud 115200
 ```
 
+Para un reinicio completo durante testing, borra toda la flash antes de volver
+a cargar. Esto elimina Wi‑Fi, NVS y la caché LittleFS:
+
+```bash
+pio run --target erase --upload-port /dev/ttyACM0
+pio run --target upload --upload-port /dev/ttyACM0
+```
+
+Para repetir también el onboarding de cuenta, elimina la vinculación exacta del
+dispositivo en el backend de `dev`. Nunca ejecutes esa operación en producción.
+
 Si Linux niega acceso al puerto, agrega tu usuario al grupo `dialout` y vuelve a
 iniciar sesión, o concede acceso temporal al dispositivo:
 
@@ -94,14 +105,14 @@ Para entrar manualmente al bootloader: mantén `BOOT`, pulsa `RESET`, suelta
 
 ## Configurar Wi‑Fi desde el teléfono
 
-1. Leopold intenta conectarse durante aproximadamente 20 segundos usando las
-   credenciales guardadas por el ESP32.
-2. Si no conecta, crea `Leopold-XXXX` y muestra un QR de Wi‑Fi.
-3. Escanea el QR con la cámara del teléfono para unirte a esa red.
-4. El portal cautivo se abre automáticamente. Si no aparece, abre
+1. Sin credenciales guardadas, Leopold crea inmediatamente `Leopold-XXXX` y
+   muestra un QR de Wi‑Fi. Si hay credenciales, intenta usarlas durante
+   aproximadamente 20 segundos antes de abrir el portal.
+2. Escanea el QR con la cámara del teléfono para unirte a esa red.
+3. El portal cautivo se abre automáticamente. Si no aparece, abre
    `http://192.168.4.1`.
-5. Selecciona una red, escribe su contraseña y guarda.
-6. Leopold detiene el portal y muestra `WIFI CONECTADO`.
+4. Selecciona una red, escribe su contraseña y guarda.
+5. Leopold detiene el portal y muestra `WIFI CONECTADO`.
 
 La contraseña Wi‑Fi no se muestra en pantalla ni se imprime por Serial.
 
