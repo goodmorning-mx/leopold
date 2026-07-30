@@ -125,10 +125,9 @@ SduiParseResult SduiParser::parse(
     return SduiParseResult::kUnsupportedSchema;
   }
 
-  JsonObjectConst screen = parsed["screen"].as<JsonObjectConst>();
-  JsonArrayConst components = screen["components"].as<JsonArrayConst>();
-  if (screen.isNull() || components.isNull() ||
-      components.size() > kMaxSduiComponents) {
+  JsonArrayConst screens = parsed["screens"].as<JsonArrayConst>();
+  if (screens.isNull() || screens.size() == 0 ||
+      screens.size() > kMaxSduiScreens) {
     return SduiParseResult::kInvalid;
   }
 
@@ -138,26 +137,36 @@ SduiParseResult SduiParser::parse(
       parsed["poll_after_ms"] | 5000,
       kMinimumPollMs,
       kMaximumPollMs);
-  candidate.background = rgb565(screen["background"] | "#000000", 0);
-  if (!copyBounded(candidate.screenId, screen["id"] | "")) {
-    return SduiParseResult::kInvalid;
-  }
-
-  for (JsonObjectConst source : components) {
-    SduiComponent component;
-    const char* type = source["type"] | "";
-    const bool known = strcmp(type, "text") == 0 ||
-                       strcmp(type, "indicator") == 0 ||
-                       strcmp(type, "button") == 0 ||
-                       strcmp(type, "progress") == 0 ||
-                       strcmp(type, "icon") == 0;
-    if (!known) {
-      continue;
-    }
-    if (!parseComponent(source, component)) {
+  for (JsonObjectConst sourceScreen : screens) {
+    JsonArrayConst components =
+        sourceScreen["components"].as<JsonArrayConst>();
+    if (components.isNull() || components.size() > kMaxSduiComponents) {
       return SduiParseResult::kInvalid;
     }
-    candidate.components[candidate.componentCount++] = component;
+    SduiScreen& target = candidate.screens[candidate.screenCount];
+    target.background =
+        rgb565(sourceScreen["background"] | "#000000", 0);
+    if (!copyBounded(target.screenId, sourceScreen["id"] | "") ||
+        !isSafeId(target.screenId)) {
+      return SduiParseResult::kInvalid;
+    }
+    for (JsonObjectConst source : components) {
+      SduiComponent component;
+      const char* type = source["type"] | "";
+      const bool known = strcmp(type, "text") == 0 ||
+                         strcmp(type, "indicator") == 0 ||
+                         strcmp(type, "button") == 0 ||
+                         strcmp(type, "progress") == 0 ||
+                         strcmp(type, "icon") == 0;
+      if (!known) {
+        continue;
+      }
+      if (!parseComponent(source, component)) {
+        return SduiParseResult::kInvalid;
+      }
+      target.components[target.componentCount++] = component;
+    }
+    ++candidate.screenCount;
   }
 
   output = candidate;
@@ -210,11 +219,11 @@ bool SduiStore::save(const char* json, size_t length) {
 }
 
 const SduiComponent* findButtonAt(
-    const SduiDocument& document,
+    const SduiScreen& screen,
     int16_t x,
     int16_t y) {
-  for (uint8_t index = 0; index < document.componentCount; ++index) {
-    const SduiComponent& component = document.components[index];
+  for (uint8_t index = 0; index < screen.componentCount; ++index) {
+    const SduiComponent& component = screen.components[index];
     if (component.type == ComponentType::kButton &&
         x >= component.x && x < component.x + component.width &&
         y >= component.y && y < component.y + component.height) {

@@ -206,7 +206,7 @@ def test_ui_is_valid_and_supports_etag(client) -> None:
     document = response.json()
     assert document["schema_version"] == 1
     assert document["revision"] == 1
-    assert {component["type"] for component in document["screen"]["components"]} == {
+    assert {component["type"] for component in document["screens"][0]["components"]} == {
         "text",
         "indicator",
         "button",
@@ -232,7 +232,7 @@ def test_admin_publishes_revision_two_and_device_receives_it(
     assert response.status_code == 200
     assert response.headers["etag"] == '"2"'
     assert response.json()["revision"] == 2
-    assert response.json()["screen"]["id"] == "remote-home"
+    assert response.json()["screens"][0]["id"] == "remote-home"
 
     with session_factory() as db:
         device = db.scalar(
@@ -269,7 +269,7 @@ def test_publish_ui_accepts_document_without_revision(client) -> None:
         json={
             "schema_version": 1,
             "poll_after_ms": 7000,
-            "screen": replacement_screen("full-document"),
+            "screens": [replacement_screen("full-document")],
         },
     )
     assert response.status_code == 200

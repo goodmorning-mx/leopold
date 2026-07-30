@@ -132,7 +132,7 @@ def initial_document(revision: int, poll_seconds: int) -> dict:
         schema_version=1,
         revision=revision,
         poll_after_ms=poll_seconds * 1000,
-        screen={
+        screens=[{
             "id": "home",
             "background": "#000000",
             "components": [
@@ -164,7 +164,7 @@ def initial_document(revision: int, poll_seconds: int) -> dict:
                     "height": 58,
                 },
             ],
-        },
+        }],
     ).model_dump(mode="json")
 
 
@@ -276,9 +276,9 @@ def publish_device_ui(
             schema_version=1,
             revision=revision,
             poll_after_ms=poll_after_ms,
-            screen=payload.screen
+            screens=payload.screens
             if isinstance(payload, UIPublishDocument)
-            else payload,
+            else [payload],
         )
 
         previous.is_active = False
@@ -371,14 +371,21 @@ def get_device_ui(
         if device.owner_id
         else None
     )
-    screen_id = (stored.document.get("screen") or {}).get("id")
-    if device.owner_id is not None and connection is None and screen_id != "leopold-welcome":
+    screens = stored.document.get("screens") or []
+    legacy_screen = stored.document.get("screen") or {}
+    screen_id = screens[0].get("id") if screens else legacy_screen.get("id")
+    if (
+        device.owner_id is not None
+        and connection is None
+        and screen_id != "leopold-welcome"
+    ):
         return Response(status_code=304, headers={"ETag": etag})
     if connection is not None:
         from app.spotify import player_state, spotify_document
 
         state = player_state(db, connection, settings)
         state["owner_name"] = device.owner.display_name if device.owner else "Leopold"
+        state["bluetooth_name"] = f"Leopold-{device.device_id[-4:]}"
         live_document = UIDocument.model_validate(
             spotify_document(
                 int(datetime.now(timezone.utc).timestamp()),

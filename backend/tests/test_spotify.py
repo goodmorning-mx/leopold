@@ -26,16 +26,21 @@ def test_spotify_documents_follow_sdui_contract() -> None:
             "owner_name": "Abel",
         },
     )
-    assert playing["screen"]["id"] == "spotify-player"
+    assert [screen["id"] for screen in playing["screens"]] == [
+        "home",
+        "spotify-player",
+        "bluetooth",
+    ]
     UIDocument.model_validate(playing)
-    assert len(playing["screen"]["components"]) == 10
-    assert playing["screen"]["components"][0]["text"] == "HOLA, ABEL"
+    spotify = playing["screens"][1]
+    assert len(spotify["components"]) == 9
+    assert playing["screens"][0]["components"][0]["text"] == "HOLA, ABEL"
     assert next(
         item
-        for item in playing["screen"]["components"]
+        for item in spotify["components"]
         if item["id"] == "spotify-toggle"
     )["icon"] == "pause"
-    assert welcome_document(5)["screen"]["id"] == "leopold-welcome"
+    assert welcome_document(5)["screens"][0]["id"] == "leopold-welcome"
 
 
 def test_spotify_status_and_connect_require_server_configuration() -> None:
