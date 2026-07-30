@@ -135,7 +135,11 @@ void scheduleCloudRetry(uint32_t now) {
   heartbeatPending = false;
   ++cloudFailures;
   nextCloudAttemptAt = now + retryDelayMs(cloudFailures);
-  setState(AppState::kOffline);
+  if (onboardingPending) {
+    setState(AppState::kOffline, "TERMINA EN", "TU TELEFONO");
+  } else {
+    setState(AppState::kOffline);
+  }
 }
 
 bool parseConnectResponse(const CloudResponse& response) {
@@ -228,6 +232,7 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
           nextOnboardingPollAt = now + kOnboardingPollMs;
           Serial.println("Waiting for claim from captive onboarding");
         } else {
+          wifi.completeSetup();
           startWelcome(ownerDisplayName, now);
           if (!welcomeActive) {
             nextUiPollAt = now;
@@ -246,6 +251,7 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
             (document["claimed"] | false)) {
           onboardingPending = false;
           onboardingUrl[0] = '\0';
+          wifi.completeSetup();
           const char* ownerName = document["owner_display_name"] | "";
           startWelcome(ownerName, now);
           if (!welcomeActive) {
@@ -563,7 +569,7 @@ void loop() {
   }
 
   processEvents(now);
-  if (!welcomeActive && !hasUi &&
+  if (!welcomeActive && !onboardingPending && !hasUi &&
       (appState == leopold::AppState::kOffline ||
                  appState == leopold::AppState::kOnline)) {
     screen.showLocalFace(now);

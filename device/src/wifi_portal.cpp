@@ -1,5 +1,6 @@
 #include "wifi_portal.h"
 
+#include <Preferences.h>
 #include <WiFi.h>
 #include <esp_system.h>
 
@@ -21,13 +22,22 @@ void WifiPortal::begin(const char* deviceId) {
       sizeof(accessPointName_),
       "Leopold-%s",
       suffix);
-  for (uint8_t index = 0; index < 16; ++index) {
-    snprintf(
-        setupToken_ + index * 2,
-        sizeof(setupToken_) - index * 2,
-        "%02x",
-        static_cast<unsigned int>(esp_random() & 0xFF));
+  Preferences preferences;
+  preferences.begin("leopold", false);
+  const String savedToken = preferences.getString("setup_token", "");
+  if (savedToken.length() == 32) {
+    strlcpy(setupToken_, savedToken.c_str(), sizeof(setupToken_));
+  } else {
+    for (uint8_t index = 0; index < 16; ++index) {
+      snprintf(
+          setupToken_ + index * 2,
+          sizeof(setupToken_) - index * 2,
+          "%02x",
+          static_cast<unsigned int>(esp_random() & 0xFF));
+    }
+    preferences.putString("setup_token", setupToken_);
   }
+  preferences.end();
   snprintf(
       setupUrl_,
       sizeof(setupUrl_),
@@ -78,6 +88,8 @@ void WifiPortal::loop(uint32_t now) {
     manager_.process();
     if (WiFi.status() == WL_CONNECTED) {
       manager_.stopConfigPortal();
+      WiFi.softAPdisconnect(true);
+      WiFi.mode(WIFI_STA);
       portalActive_ = false;
       disconnectedAt_ = 0;
     }
@@ -119,6 +131,13 @@ const char* WifiPortal::setupToken() const {
 
 const char* WifiPortal::setupUrl() const {
   return setupUrl_;
+}
+
+void WifiPortal::completeSetup() {
+  Preferences preferences;
+  preferences.begin("leopold", false);
+  preferences.remove("setup_token");
+  preferences.end();
 }
 
 void WifiPortal::startPortal(uint32_t now) {
