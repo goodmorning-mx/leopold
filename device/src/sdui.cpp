@@ -66,6 +66,7 @@ bool parseComponent(JsonObjectConst source, SduiComponent& component) {
   } else if (strcmp(type, "button") == 0) {
     component.type = ComponentType::kButton;
     if (!copyBounded(component.text, source["label"] | "") ||
+        !copyBounded(component.icon, source["icon"] | "") ||
         !readInt16(source["width"], component.width) ||
         !readInt16(source["height"], component.height) ||
         component.width <= 0 || component.height <= 0) {
@@ -77,6 +78,12 @@ bool parseComponent(JsonObjectConst source, SduiComponent& component) {
     component.maximum = constrain(source["max"] | 100, 1, 65535);
     component.width = constrain(source["width"] | 200, 20, 466);
     component.height = constrain(source["height"] | 18, 6, 80);
+  } else if (strcmp(type, "icon") == 0) {
+    component.type = ComponentType::kIcon;
+    if (!copyBounded(component.icon, source["name"] | "")) {
+      return false;
+    }
+    component.width = constrain(source["size"] | 64, 24, 160);
   } else {
     return false;
   }
@@ -142,7 +149,8 @@ SduiParseResult SduiParser::parse(
     const bool known = strcmp(type, "text") == 0 ||
                        strcmp(type, "indicator") == 0 ||
                        strcmp(type, "button") == 0 ||
-                       strcmp(type, "progress") == 0;
+                       strcmp(type, "progress") == 0 ||
+                       strcmp(type, "icon") == 0;
     if (!known) {
       continue;
     }

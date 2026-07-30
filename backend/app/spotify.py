@@ -167,20 +167,31 @@ def player_state(
     item = payload.get("item") or {}
     artists = item.get("artists") or []
     duration = max(int(item.get("duration_ms") or 1), 1)
-    progress = min(int((int(payload.get("progress_ms") or 0) * 100) / duration), 100)
+    progress_ms = int(payload.get("progress_ms") or 0)
+    progress = min(int((progress_ms * 100) / duration), 100)
+    album = item.get("album") or {}
     return {
         "available": bool(item),
         "is_playing": bool(payload.get("is_playing")),
         "track": item.get("name") or "Sin reproducción",
         "artist": ", ".join(artist.get("name", "") for artist in artists if artist.get("name"))
         or "Abre Spotify en tu teléfono",
+        "album": album.get("name") or "",
         "progress": progress,
+        "progress_ms": progress_ms,
+        "duration_ms": duration,
     }
 
 
+def format_millis(value: int) -> str:
+    total_seconds = max(value, 0) // 1000
+    return f"{total_seconds // 60}:{total_seconds % 60:02d}"
+
+
 def spotify_document(revision: int, state: dict) -> dict:
-    title = str(state.get("track") or "Spotify")[:42]
-    artist = str(state.get("artist") or "Selecciona música en Spotify")[:55]
+    title = str(state.get("track") or "Sin reproducción")[:26]
+    artist = str(state.get("artist") or "Abre Spotify en tu teléfono")[:38]
+    album = str(state.get("album") or "Spotify Connect")[:38]
     playing = bool(state.get("is_playing"))
     return {
         "schema_version": 1,
@@ -191,13 +202,12 @@ def spotify_document(revision: int, state: dict) -> dict:
             "background": "#000000",
             "components": [
                 {
-                    "type": "text",
-                    "id": "spotify",
-                    "text": "SPOTIFY",
+                    "type": "icon",
+                    "id": "spotify-logo",
+                    "name": "spotify",
                     "x": 233,
-                    "y": 66,
-                    "align": "center",
-                    "size": 3,
+                    "y": 58,
+                    "size": 62,
                     "color": "#1DB954",
                 },
                 {
@@ -205,7 +215,7 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "track",
                     "text": title,
                     "x": 233,
-                    "y": 145,
+                    "y": 108,
                     "align": "center",
                     "size": 2,
                     "color": "#FFFFFF",
@@ -215,46 +225,79 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "id": "artist",
                     "text": artist,
                     "x": 233,
-                    "y": 190,
+                    "y": 153,
                     "align": "center",
                     "size": 1,
                     "color": "#A7A7A7",
+                },
+                {
+                    "type": "text",
+                    "id": "album",
+                    "text": album,
+                    "x": 233,
+                    "y": 181,
+                    "align": "center",
+                    "size": 1,
+                    "color": "#686868",
                 },
                 {
                     "type": "progress",
                     "id": "progress",
                     "value": int(state.get("progress") or 0),
                     "x": 73,
-                    "y": 265,
+                    "y": 236,
                     "width": 320,
                     "color": "#1DB954",
                 },
                 {
+                    "type": "text",
+                    "id": "elapsed",
+                    "text": format_millis(int(state.get("progress_ms") or 0)),
+                    "x": 73,
+                    "y": 265,
+                    "align": "left",
+                    "size": 1,
+                    "color": "#A7A7A7",
+                },
+                {
+                    "type": "text",
+                    "id": "duration",
+                    "text": format_millis(int(state.get("duration_ms") or 0)),
+                    "x": 393,
+                    "y": 265,
+                    "align": "right",
+                    "size": 1,
+                    "color": "#A7A7A7",
+                },
+                {
                     "type": "button",
                     "id": "spotify-prev",
-                    "label": "ANT",
+                    "label": "Anterior",
+                    "icon": "previous",
                     "x": 38,
-                    "y": 330,
+                    "y": 318,
                     "width": 110,
-                    "height": 64,
+                    "height": 76,
                 },
                 {
                     "type": "button",
                     "id": "spotify-toggle",
-                    "label": "PAUSA" if playing else "PLAY",
+                    "label": "Pausa" if playing else "Reproducir",
+                    "icon": "pause" if playing else "play",
                     "x": 178,
-                    "y": 330,
+                    "y": 318,
                     "width": 110,
-                    "height": 64,
+                    "height": 76,
                 },
                 {
                     "type": "button",
                     "id": "spotify-next",
-                    "label": "SIG",
+                    "label": "Siguiente",
+                    "icon": "next",
                     "x": 318,
-                    "y": 330,
+                    "y": 318,
                     "width": 110,
-                    "height": 64,
+                    "height": 76,
                 },
             ],
         },

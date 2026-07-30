@@ -248,7 +248,13 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
           component.height,
           min<int16_t>(component.height / 2, 24),
           component.color);
-      {
+      if (component.icon[0] != '\0') {
+        drawControlIcon(
+            component.icon,
+            component.x + component.width / 2,
+            component.y + component.height / 2,
+            component.color);
+      } else {
         const uint8_t textSize = component.size > 1 ? component.size : 2;
         int16_t x1 = 0;
         int16_t y1 = 0;
@@ -292,6 +298,86 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
       }
       break;
     }
+    case ComponentType::kIcon:
+      if (strcmp(component.icon, "spotify") == 0) {
+        drawSpotifyIcon(
+            component.x,
+            component.y,
+            component.width,
+            component.color);
+      }
+      break;
+  }
+}
+
+void DisplayManager::drawControlIcon(
+    const char* icon,
+    int16_t centerX,
+    int16_t centerY,
+    uint16_t color) {
+  if (strcmp(icon, "play") == 0) {
+    display->fillTriangle(
+        centerX - 12,
+        centerY - 17,
+        centerX - 12,
+        centerY + 17,
+        centerX + 18,
+        centerY,
+        color);
+  } else if (strcmp(icon, "pause") == 0) {
+    display->fillRoundRect(centerX - 16, centerY - 18, 11, 36, 3, color);
+    display->fillRoundRect(centerX + 5, centerY - 18, 11, 36, 3, color);
+  } else if (strcmp(icon, "previous") == 0) {
+    display->fillRect(centerX - 20, centerY - 17, 5, 34, color);
+    display->fillTriangle(
+        centerX - 14, centerY, centerX + 4, centerY - 17,
+        centerX + 4, centerY + 17, color);
+    display->fillTriangle(
+        centerX + 2, centerY, centerX + 20, centerY - 17,
+        centerX + 20, centerY + 17, color);
+  } else if (strcmp(icon, "next") == 0) {
+    display->fillRect(centerX + 15, centerY - 17, 5, 34, color);
+    display->fillTriangle(
+        centerX + 14, centerY, centerX - 4, centerY - 17,
+        centerX - 4, centerY + 17, color);
+    display->fillTriangle(
+        centerX - 2, centerY, centerX - 20, centerY - 17,
+        centerX - 20, centerY + 17, color);
+  }
+}
+
+void DisplayManager::drawSpotifyIcon(
+    int16_t centerX,
+    int16_t centerY,
+    int16_t size,
+    uint16_t color) {
+  const int16_t radius = size / 2;
+  display->fillCircle(centerX, centerY, radius, color);
+  for (int8_t thickness = 0; thickness < 4; ++thickness) {
+    display->drawArc(
+        centerX,
+        centerY - 4 + thickness,
+        radius - 13,
+        radius - 16,
+        205,
+        338,
+        kBlack);
+    display->drawArc(
+        centerX,
+        centerY + 8 + thickness,
+        radius - 20,
+        radius - 23,
+        205,
+        338,
+        kBlack);
+    display->drawArc(
+        centerX,
+        centerY + 18 + thickness,
+        radius - 27,
+        radius - 30,
+        205,
+        338,
+        kBlack);
   }
 }
 

@@ -9,6 +9,7 @@ from app.database import get_db
 from app.main import app
 from app.models import Base
 from app.spotify import spotify_document, welcome_document
+from app.schemas import UIDocument
 
 
 def test_spotify_documents_follow_sdui_contract() -> None:
@@ -17,17 +18,22 @@ def test_spotify_documents_follow_sdui_contract() -> None:
         {
             "track": "A Song",
             "artist": "An Artist",
+            "album": "An Album",
             "progress": 42,
+            "progress_ms": 61000,
+            "duration_ms": 180000,
             "is_playing": True,
         },
     )
     assert playing["screen"]["id"] == "spotify-player"
-    assert len(playing["screen"]["components"]) == 7
+    UIDocument.model_validate(playing)
+    assert len(playing["screen"]["components"]) == 10
+    assert playing["screen"]["components"][0]["type"] == "icon"
     assert next(
         item
         for item in playing["screen"]["components"]
         if item["id"] == "spotify-toggle"
-    )["label"] == "PAUSA"
+    )["icon"] == "pause"
     assert welcome_document(5)["screen"]["id"] == "leopold-welcome"
 
 
