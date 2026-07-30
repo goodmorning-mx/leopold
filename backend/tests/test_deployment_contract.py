@@ -68,7 +68,10 @@ def test_compose_local_contract() -> None:
     assert "condition: service_healthy" in compose
     assert "build: ./backend" in compose
     assert '"8000:8000"' in compose
-    assert "postgresql+psycopg://goodmorning:goodmorning_local_password@postgres:5432/goodmorning_mvp" in compose
+    assert (
+        "postgresql+psycopg://goodmorning:goodmorning_local_password@postgres:5432/goodmorning_mvp"
+        in compose
+    )
     assert "image: postgres:16-alpine" in compose
     assert "postgres_data:/var/lib/postgresql/data" in compose
     assert "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" in compose
@@ -92,11 +95,17 @@ def test_alembic_infrastructure_and_safe_database_url_handling() -> None:
     versions = list((ROOT / "backend/alembic/versions").glob("*.py"))
     assert versions
     combined = "\n".join(path.read_text(encoding="utf-8") for path in versions)
-    assert "create_table" not in combined
+    assert '"devices"' in combined
+    assert '"device_ui_documents"' in combined
+    assert '"device_events"' in combined
 
 
-def test_database_url_with_percent_encoded_password_is_accepted_without_output(monkeypatch, capsys) -> None:
-    database_url = "postgresql+psycopg://gm:p%25ss%40word@db.internal:5432/gm?sslmode=require"
+def test_database_url_with_percent_encoded_password_is_accepted_without_output(
+    monkeypatch, capsys
+) -> None:
+    database_url = (
+        "postgresql+psycopg://gm:p%25ss%40word@db.internal:5432/gm?sslmode=require"
+    )
     monkeypatch.setenv("DATABASE_URL", database_url)
     get_settings.cache_clear()
     assert get_settings().database_url == database_url
@@ -111,7 +120,11 @@ def test_alembic_history_does_not_connect_or_print_database_url() -> None:
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
     result = subprocess.run(
-        [sys.executable, "-c", "from alembic.config import main; main(argv=['-c', 'backend/alembic.ini', 'history', '--verbose'])"],
+        [
+            sys.executable,
+            "-c",
+            "from alembic.config import main; main(argv=['-c', 'backend/alembic.ini', 'history', '--verbose'])",
+        ],
         cwd=ROOT,
         env=env,
         text=True,
@@ -134,7 +147,10 @@ def test_documentation_separates_resource_variables_and_driver_contract() -> Non
     assert "Local Docker Compose only" in docs
     assert "SQLAlchemy with psycopg 3" in docs
     assert "postgresql+psycopg://" in docs
-    assert "converting only that initial scheme" in docs or "convierte solo ese esquema inicial" in docs
+    assert (
+        "converting only that initial scheme" in docs
+        or "convierte solo ese esquema inicial" in docs
+    )
     assert "Do not copy every variable" in docs
     assert "DATABASE_URL must never" in docs
 

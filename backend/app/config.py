@@ -14,12 +14,26 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://goodmorning:goodmorning_local_password@localhost:5432/goodmorning_mvp",
         alias="DATABASE_URL",
     )
+    admin_provisioning_token: str | None = Field(
+        default=None, alias="LEOPOLD_ADMIN_PROVISIONING_TOKEN"
+    )
+    device_offline_after_seconds: int = Field(
+        default=90, ge=30, le=3600, alias="LEOPOLD_DEVICE_OFFLINE_AFTER_SECONDS"
+    )
+    ui_poll_interval_seconds: int = Field(
+        default=5, ge=1, le=300, alias="LEOPOLD_UI_POLL_INTERVAL_SECONDS"
+    )
+    heartbeat_interval_seconds: int = Field(
+        default=30, ge=5, le=3600, alias="LEOPOLD_HEARTBEAT_INTERVAL_SECONDS"
+    )
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
     def allowed_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
 
 
 @lru_cache
