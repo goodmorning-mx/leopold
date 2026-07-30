@@ -197,6 +197,18 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
   }
 
   currentUi = candidate;
+  if (strcmp(currentUi.screenId, "leopold-welcome") == 0) {
+    hasUi = false;
+    assistantReady = true;
+    welcomeActive = true;
+    welcomeStep = 0;
+    screen.showWelcome(ownerDisplayName, welcomeStep);
+    nextWelcomeAt = now + kWelcomeScreenMs;
+    nextUiPollAt = now + currentUi.pollAfterMs;
+    return;
+  }
+  welcomeActive = false;
+  assistantReady = false;
   hasUi = true;
   if (response.etag[0] != '\0') {
     strlcpy(uiEtag, response.etag, sizeof(uiEtag));
@@ -502,8 +514,7 @@ void processNetwork(uint32_t now) {
       nextOnboardingPollAt = now + 1000;
     }
   }
-  if (cloudConnected && !onboardingPending && !welcomeActive &&
-      !assistantReady &&
+  if (cloudConnected && !onboardingPending &&
       !uiPending && now >= nextUiPollAt) {
     uiPending = cloud.requestUi(uiEtag);
   }

@@ -17,6 +17,7 @@ from app.models import (
     DeviceEvent,
     DeviceStatus,
     DeviceUIDocument,
+    SpotifyConnection,
 )
 from app.schemas import (
     ConnectRequest,
@@ -359,6 +360,19 @@ def get_device_ui(
 ) -> Response:
     stored = active_ui(db, device)
     etag = f'"{stored.revision}"'
+    connection = (
+        db.scalar(
+            select(SpotifyConnection).where(
+                SpotifyConnection.user_id == device.owner_id,
+                SpotifyConnection.active.is_(True),
+            )
+        )
+        if device.owner_id
+        else None
+    )
+    screen_id = (stored.document.get("screen") or {}).get("id")
+    if device.owner_id is not None and connection is None and screen_id != "leopold-welcome":
+        return Response(status_code=304, headers={"ETag": etag})
     if if_none_match and any(
         tag.strip() in {etag, f"W/{etag}"} for tag in if_none_match.split(",")
     ):
@@ -375,8 +389,12 @@ def get_device_ui(
 def record_event(
     payload: DeviceEventRequest,
     db: Db,
+    settings: Config,
     device: AuthenticatedDevice,
 ) -> dict[str, bool]:
+    from app.spotify import handle_device_spotify_event
+
+    handle_device_spotify_event(db, device, payload.component_id, settings)
     existing = db.scalar(
         select(DeviceEvent.id).where(
             DeviceEvent.device_id == device.id,

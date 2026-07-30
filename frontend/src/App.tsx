@@ -15,6 +15,11 @@ type ClaimStatus = {
   pending: boolean;
   expires_at: string | null;
 };
+type SpotifyStatus = {
+  configured: boolean;
+  connected: boolean;
+  display_name: string | null;
+};
 type Mode = 'register' | 'login';
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -350,6 +355,7 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
   const [message, setMessage] = useState('');
+  const [spotify, setSpotify] = useState<SpotifyStatus | null>(null);
 
   async function loadDevices() {
     setLoading(true);
@@ -364,7 +370,33 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   useEffect(() => {
     void loadDevices();
+    void api<SpotifyStatus>('/v1/integrations/spotify/status')
+      .then(setSpotify)
+      .catch((error: Error) => setMessage(error.message));
+    const result = new URLSearchParams(window.location.search).get('spotify');
+    if (result === 'connected') {
+      setMessage('Spotify quedó conectado. Leopold recibirá el reproductor automáticamente.');
+      window.history.replaceState({}, '', '/');
+    } else if (result === 'denied') {
+      setMessage('La conexión con Spotify fue cancelada.');
+      window.history.replaceState({}, '', '/');
+    }
   }, []);
+
+  function connectSpotify() {
+    window.location.assign(`${apiUrl}/v1/integrations/spotify/connect`);
+  }
+
+  async function disconnectSpotify() {
+    if (!window.confirm('¿Desconectar Spotify de todos tus dispositivos Leopold?')) return;
+    try {
+      await api<void>('/v1/integrations/spotify', { method: 'DELETE' });
+      setSpotify({ configured: true, connected: false, display_name: null });
+      setMessage('Spotify fue desconectado. Leopold volvió a su pantalla principal.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No pudimos desconectar Spotify');
+    }
+  }
 
   async function removeDevice(device: Device) {
     const name = device.label || device.device_id;
@@ -433,6 +465,46 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
           </div>
         )}
         {message && <p className="notice error" role="alert">{message}</p>}
+      </section>
+
+      <section className="services-section">
+        <div className="section-heading">
+          <div>
+            <p className="kicker">Servicios</p>
+            <h2>Experiencias</h2>
+          </div>
+        </div>
+        <article className="service-row spotify-service">
+          <div className="spotify-mark" aria-hidden="true">●</div>
+          <div className="device-copy">
+            <strong>Spotify</strong>
+            <span>
+              {spotify?.connected
+                ? `Conectado${spotify.display_name ? ` como ${spotify.display_name}` : ''}`
+                : 'Controla la música desde Leopold'}
+            </span>
+            <small>
+              {spotify?.connected
+                ? 'El reproductor ya se envía a tus dispositivos'
+                : spotify?.configured === false
+                  ? 'Pendiente de configurar en el servidor'
+                  : 'Requiere Spotify Premium para controlar reproducción'}
+            </small>
+          </div>
+          {spotify?.connected ? (
+            <button className="remove-button" onClick={() => void disconnectSpotify()}>
+              Desconectar
+            </button>
+          ) : (
+            <button
+              className="button spotify-button compact"
+              disabled={!spotify?.configured}
+              onClick={connectSpotify}
+            >
+              Conectar
+            </button>
+          )}
+        </article>
       </section>
     </main>
   );

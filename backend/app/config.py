@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     heartbeat_interval_seconds: int = Field(
         default=30, ge=5, le=3600, alias="LEOPOLD_HEARTBEAT_INTERVAL_SECONDS"
     )
+    spotify_client_id: str | None = Field(default=None, alias="SPOTIFY_CLIENT_ID")
+    spotify_client_secret: str | None = Field(
+        default=None, alias="SPOTIFY_CLIENT_SECRET"
+    )
+    spotify_redirect_uri: str = Field(
+        default="http://localhost:8000/v1/integrations/spotify/callback",
+        alias="SPOTIFY_REDIRECT_URI",
+    )
+    integration_encryption_key: str | None = Field(
+        default=None, alias="LEOPOLD_INTEGRATION_ENCRYPTION_KEY"
+    )
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
