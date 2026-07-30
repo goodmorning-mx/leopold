@@ -246,7 +246,7 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
           component.y,
           component.width,
           component.height,
-          min<int16_t>(component.height / 2, 24),
+          component.height / 2,
           component.color);
       if (component.icon[0] != '\0') {
         drawControlIcon(
@@ -328,21 +328,15 @@ void DisplayManager::drawControlIcon(
     display->fillRoundRect(centerX - 16, centerY - 18, 11, 36, 3, color);
     display->fillRoundRect(centerX + 5, centerY - 18, 11, 36, 3, color);
   } else if (strcmp(icon, "previous") == 0) {
-    display->fillRect(centerX - 20, centerY - 17, 5, 34, color);
+    display->fillRect(centerX - 13, centerY - 13, 4, 26, color);
     display->fillTriangle(
-        centerX - 14, centerY, centerX + 4, centerY - 17,
-        centerX + 4, centerY + 17, color);
-    display->fillTriangle(
-        centerX + 2, centerY, centerX + 20, centerY - 17,
-        centerX + 20, centerY + 17, color);
+        centerX - 8, centerY, centerX + 13, centerY - 14,
+        centerX + 13, centerY + 14, color);
   } else if (strcmp(icon, "next") == 0) {
-    display->fillRect(centerX + 15, centerY - 17, 5, 34, color);
+    display->fillRect(centerX + 9, centerY - 13, 4, 26, color);
     display->fillTriangle(
-        centerX + 14, centerY, centerX - 4, centerY - 17,
-        centerX - 4, centerY + 17, color);
-    display->fillTriangle(
-        centerX - 2, centerY, centerX - 20, centerY - 17,
-        centerX - 20, centerY + 17, color);
+        centerX + 8, centerY, centerX - 13, centerY - 14,
+        centerX - 13, centerY + 14, color);
   }
 }
 
@@ -391,21 +385,45 @@ void DisplayManager::renderSdui(const SduiDocument& document) {
 void DisplayManager::drawIndicators(
     bool wifiConnected,
     bool cloudConnected,
+    bool bluetoothEnabled,
     uint8_t batteryPercent,
     const char* timeText) {
-  display->fillRect(0, 0, kScreenWidth, 30, kBlack);
+  display->fillRect(0, 0, kScreenWidth, 31, kBlack);
   display->setTextSize(1);
-  display->setTextColor(wifiConnected ? kGreen : kRed);
-  display->setCursor(18, 11);
-  display->print(wifiConnected ? "WIFI" : "WIFI--");
-  display->setTextColor(cloudConnected ? kGreen : kRed);
-  display->setCursor(102, 11);
-  display->print(cloudConnected ? "CLOUD" : "CLOUD--");
-  display->setTextColor(kWhite);
-  display->setCursor(224, 11);
+  drawBluetoothIcon(24, 15, bluetoothEnabled);
+  drawInternetIcon(420, 15, wifiConnected && cloudConnected);
+  display->setTextColor(kGray);
+  display->setCursor(338, 11);
   display->printf("%u%%", batteryPercent);
-  display->setCursor(382, 11);
+  display->setCursor(210, 11);
   display->print(timeText);
+}
+
+void DisplayManager::drawInternetIcon(
+    int16_t x,
+    int16_t y,
+    bool connected) {
+  const uint16_t color = connected ? kGreen : kRed;
+  display->drawCircle(x, y, 10, color);
+  display->drawLine(x - 9, y, x + 9, y, color);
+  display->drawArc(x, y, 6, 5, 90, 270, color);
+  display->drawArc(x, y, 6, 5, 270, 90, color);
+  if (!connected) {
+    display->drawLine(x - 9, y - 9, x + 9, y + 9, kRed);
+    display->drawLine(x - 8, y - 9, x + 10, y + 9, kRed);
+  }
+}
+
+void DisplayManager::drawBluetoothIcon(
+    int16_t x,
+    int16_t y,
+    bool enabled) {
+  const uint16_t color = enabled ? kBlue : kGray;
+  display->drawLine(x, y - 11, x, y + 11, color);
+  display->drawLine(x, y - 11, x + 7, y - 4, color);
+  display->drawLine(x + 7, y - 4, x - 6, y + 7, color);
+  display->drawLine(x - 6, y - 7, x + 7, y + 4, color);
+  display->drawLine(x + 7, y + 4, x, y + 11, color);
 }
 
 void DisplayManager::drawEye(

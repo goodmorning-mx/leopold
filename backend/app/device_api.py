@@ -377,10 +377,12 @@ def get_device_ui(
     if connection is not None:
         from app.spotify import player_state, spotify_document
 
+        state = player_state(db, connection, settings)
+        state["owner_name"] = device.owner.display_name if device.owner else "Leopold"
         live_document = UIDocument.model_validate(
             spotify_document(
                 int(datetime.now(timezone.utc).timestamp()),
-                player_state(db, connection, settings),
+                state,
             )
         )
         live_etag = f'"spotify-{live_document.revision}"'

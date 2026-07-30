@@ -34,6 +34,7 @@ class ButtonComponent(ComponentBase):
     type: Literal["button"]
     label: str = Field(min_length=1, max_length=80)
     icon: Literal["previous", "play", "pause", "next"] | None = None
+    color: Color | None = None
     width: int = Field(gt=0, le=466)
     height: int = Field(gt=0, le=466)
 

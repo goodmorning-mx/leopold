@@ -26,6 +26,7 @@ class DisplayManager {
   void drawIndicators(
       bool wifiConnected,
       bool cloudConnected,
+      bool bluetoothEnabled,
       uint8_t batteryPercent,
       const char* timeText);
   void showLocalFace(uint32_t now, bool force = false);
@@ -45,6 +46,8 @@ class DisplayManager {
       int16_t centerY,
       int16_t size,
       uint16_t color);
+  void drawInternetIcon(int16_t x, int16_t y, bool connected);
+  void drawBluetoothIcon(int16_t x, int16_t y, bool enabled);
 
   uint8_t localExpression_ = 0;
   uint32_t lastFaceFrameAt_ = 0;
