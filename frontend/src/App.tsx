@@ -21,6 +21,7 @@ const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
+    cache: 'no-store',
     credentials: 'include',
     headers: {
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),

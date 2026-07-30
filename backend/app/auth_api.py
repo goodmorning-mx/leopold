@@ -191,7 +191,13 @@ def find_claim(db: Session, token: str) -> DeviceClaimToken | None:
 
 
 @router.get("/onboarding/{token}", response_model=ClaimStatusResponse)
-def onboarding_status(token: str, db: Db) -> ClaimStatusResponse:
+def onboarding_status(
+    token: str,
+    response: Response,
+    db: Db,
+) -> ClaimStatusResponse:
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    response.headers["Pragma"] = "no-cache"
     claim = find_claim(db, token)
     now = datetime.now(timezone.utc)
     if claim is None:
@@ -209,7 +215,11 @@ def continue_onboarding(token: str, settings: Config) -> RedirectResponse:
     if not re.fullmatch(r"[A-Fa-f0-9]{32,64}", token):
         raise HTTPException(status_code=404, detail="Setup session not found")
     web_base = settings.allowed_origins[0].rstrip("/")
-    return RedirectResponse(f"{web_base}/setup/{token}", status_code=307)
+    return RedirectResponse(
+        f"{web_base}/setup/{token}",
+        status_code=307,
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 @router.post("/onboarding/{token}/claim", response_model=ClaimStatusResponse)
