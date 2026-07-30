@@ -14,6 +14,7 @@ class WifiPortal {
   const char* accessPointName() const;
   const char* setupToken() const;
   const char* setupUrl() const;
+  void completeSetup();
   void clearCredentialsAndRestart();
 
  private:
