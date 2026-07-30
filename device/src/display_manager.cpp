@@ -176,27 +176,30 @@ void DisplayManager::showQr(
 
 void DisplayManager::showWelcome(const char* ownerName, uint8_t step) {
   display->fillScreen(kBlack);
-  display->fillCircle(kScreenWidth / 2, 92, 34, kMorning);
-  display->fillCircle(kScreenWidth / 2 - 11, 87, 4, kBlack);
-  display->fillCircle(kScreenWidth / 2 + 11, 87, 4, kBlack);
-  display->drawArc(kScreenWidth / 2, 98, 14, 12, 20, 160, kBlack);
+  display->fillCircle(kScreenWidth / 2, 105, 45, kMorning);
+  display->fillCircle(kScreenWidth / 2 - 15, 98, 5, kBlack);
+  display->fillCircle(kScreenWidth / 2 + 15, 98, 5, kBlack);
+  display->drawArc(kScreenWidth / 2, 111, 20, 17, 20, 160, kBlack);
 
   switch (step) {
     case 0:
-      centered("HOLA", 178, 3, kWhite);
-      centered(ownerName, 238, 4, kMorning);
-      centered("QUE GUSTO CONOCERTE", 330, 1, kGray);
-      break;
-    case 1:
-      centered("BIENVENIDO", 190, 3, kWhite);
-      centered("A LEOPOLD", 250, 3, kMorning);
+      centered("HOLA", 195, 3, kWhite);
+      centered(ownerName, 255, 4, kMorning);
       break;
     default:
-      centered("SOY TU", 190, 3, kWhite);
-      centered("ASISTENTE", 250, 3, kMorning);
-      centered("VAMOS A EMPEZAR", 330, 1, kGray);
+      centered("SOY TU", 205, 3, kWhite);
+      centered("ASISTENTE", 265, 3, kMorning);
       break;
   }
+}
+
+void DisplayManager::showReadyFace() {
+  display->fillScreen(kBlack);
+  display->fillCircle(164, 215, 30, kWhite);
+  display->fillCircle(302, 215, 30, kWhite);
+  display->fillCircle(164, 215, 11, kBlack);
+  display->fillCircle(302, 215, 11, kBlack);
+  display->drawArc(kScreenWidth / 2, 250, 70, 54, 20, 160, kMorning);
 }
 
 void DisplayManager::drawComponent(const SduiComponent& component) {
