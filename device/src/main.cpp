@@ -64,6 +64,7 @@ bool welcomeActive = false;
 bool welcomeShownThisBoot = false;
 bool assistantReady = false;
 uint8_t welcomeStep = 0;
+uint8_t welcomeStepsShown = 0;
 uint8_t activeEventIndex = 0;
 uint8_t cloudFailures = 0;
 uint32_t bootPressedAt = 0;
@@ -87,6 +88,7 @@ void startWelcome(const char* ownerName, uint32_t now) {
   welcomeActive = true;
   assistantReady = true;
   welcomeStep = 0;
+  welcomeStepsShown = 1;
   screen.showWelcome(ownerDisplayName, welcomeStep);
   nextWelcomeAt = now + kWelcomeScreenMs;
   Serial.printf("Starting welcome for %s\n", ownerDisplayName);
@@ -97,7 +99,15 @@ void processWelcome(uint32_t now) {
     return;
   }
   if (now >= nextWelcomeAt) {
+    if (welcomeStepsShown >= 2) {
+      welcomeActive = false;
+      assistantReady = false;
+      nextUiPollAt = now;
+      Serial.println("Welcome complete; loading SDUI screens");
+      return;
+    }
     welcomeStep = (welcomeStep + 1) % 2;
+    ++welcomeStepsShown;
     screen.showWelcome(ownerDisplayName, welcomeStep);
     nextWelcomeAt = now + kWelcomeScreenMs;
   }
@@ -184,9 +194,15 @@ bool parseConnectResponse(const CloudResponse& response) {
 }
 
 void acceptUi(const CloudResponse& response, uint32_t now) {
-  SduiDocument candidate;
+  char previousScreenId[kMaxComponentId + 1] = {};
+  if (hasUi && currentUi.screenCount > 0) {
+    strlcpy(
+        previousScreenId,
+        currentUi.active().screenId,
+        sizeof(previousScreenId));
+  }
   const SduiParseResult parsed =
-      SduiParser::parse(response.body, response.bodyLength, candidate);
+      SduiParser::parse(response.body, response.bodyLength, currentUi);
   if (parsed == SduiParseResult::kUnsupportedSchema) {
     screen.showUpdateRequired();
     nextUiPollAt = now + 30000;
@@ -198,27 +214,20 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
-  char previousScreenId[kMaxComponentId + 1] = {};
-  if (hasUi && currentUi.screenCount > 0) {
-    strlcpy(
-        previousScreenId,
-        currentUi.active().screenId,
-        sizeof(previousScreenId));
-  }
   if (previousScreenId[0] != '\0') {
-    for (uint8_t index = 0; index < candidate.screenCount; ++index) {
-      if (strcmp(candidate.screens[index].screenId, previousScreenId) == 0) {
-        candidate.activeScreen = index;
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, previousScreenId) == 0) {
+        currentUi.activeScreen = index;
         break;
       }
     }
   }
-  currentUi = candidate;
   if (strcmp(currentUi.active().screenId, "leopold-welcome") == 0) {
     hasUi = false;
     assistantReady = true;
     welcomeActive = true;
     welcomeStep = 0;
+    welcomeStepsShown = 1;
     screen.showWelcome(ownerDisplayName, welcomeStep);
     nextWelcomeAt = now + kWelcomeScreenMs;
     nextUiPollAt = now + currentUi.pollAfterMs;
@@ -234,7 +243,7 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
         uiEtag,
         sizeof(uiEtag),
         "\"rev-%lu\"",
-        static_cast<unsigned long>(candidate.revision));
+        static_cast<unsigned long>(currentUi.revision));
   }
   if (!uiStore.save(response.body, response.bodyLength)) {
     Serial.println("SDUI cache write failed");
