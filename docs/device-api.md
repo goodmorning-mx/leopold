@@ -74,7 +74,7 @@ curl --fail-with-body \
   -H "X-Leopold-Device-ID: $LEOPOLD_DEVICE_ID" \
   -H "Authorization: Bearer $LEOPOLD_DEVICE_SECRET" \
   -H 'Content-Type: application/json' \
-  --data '{"firmware_version":"0.2.0","capabilities":{"display":"466x466","touch":true,"audio":false,"battery":true}}'
+  --data '{"firmware_version":"0.3.0","capabilities":{"display":"466x466","touch":true,"audio":false,"battery":true}}'
 ```
 
 Respuesta `200`:
@@ -85,7 +85,9 @@ Respuesta `200`:
   "server_time": "2026-07-29T08:00:00Z",
   "heartbeat_interval_seconds": 30,
   "ui_poll_interval_seconds": 5,
-  "ui_revision": 1
+  "ui_revision": 1,
+  "claimed": false,
+  "onboarding_url": "https://dev.leopold.goodmorning.mx/setup/<TOKEN>"
 }
 ```
 
@@ -201,8 +203,38 @@ curl --fail-with-body -X POST "$LEOPOLD_API_URL/v1/device/heartbeat" \
   -H "X-Leopold-Device-ID: $LEOPOLD_DEVICE_ID" \
   -H "Authorization: Bearer $LEOPOLD_DEVICE_SECRET" \
   -H 'Content-Type: application/json' \
-  --data '{"firmware_version":"0.2.0","wifi_rssi":-54,"battery_percent":82,"uptime_seconds":150}'
+  --data '{"firmware_version":"0.3.0","wifi_rssi":-54,"battery_percent":82,"uptime_seconds":150}'
 ```
+
+## Onboarding web por QR
+
+`POST /v1/device/connect` devuelve `claimed` y, para dispositivos sin
+propietario, un `onboarding_url` HTTPS de un solo uso. El token expira en 15
+minutos y se almacena únicamente como SHA-256.
+
+El firmware muestra ese enlace como QR y consulta:
+
+```http
+POST /v1/device/onboarding/status
+```
+
+Cuando responde `{"claimed":true}`, Leopold deja el QR y continúa con la UI
+remota.
+
+La web usa los siguientes endpoints:
+
+- `POST /v1/auth/register`
+- `POST /v1/auth/login`
+- `POST /v1/auth/logout`
+- `GET /v1/auth/me`
+- `GET /v1/onboarding/{token}`
+- `POST /v1/onboarding/{token}/claim`
+- `GET /v1/me/devices`
+
+Las contraseñas usan `scrypt` con salt aleatorio. Las sesiones son tokens
+aleatorios almacenados como hash y entregados en cookie `HttpOnly`, `Secure` en
+entornos remotos y `SameSite=Lax`. El token administrativo de aprovisionamiento
+no forma parte de este flujo y nunca se entrega al navegador.
 
 Respuesta `200`:
 

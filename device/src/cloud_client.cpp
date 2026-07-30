@@ -17,6 +17,8 @@ const char* pathFor(CloudOperation operation) {
   switch (operation) {
     case CloudOperation::kConnect:
       return "/v1/device/connect";
+    case CloudOperation::kOnboardingStatus:
+      return "/v1/device/onboarding/status";
     case CloudOperation::kFetchUi:
       return "/v1/device/ui";
     case CloudOperation::kHeartbeat:
@@ -63,6 +65,13 @@ bool CloudClient::requestConnect() {
       "{\"firmware_version\":\"%s\",\"capabilities\":{\"display\":"
       "\"466x466\",\"touch\":true,\"audio\":false,\"battery\":true}}",
       config::kFirmwareVersion);
+  return enqueue(request);
+}
+
+bool CloudClient::requestOnboardingStatus() {
+  Request request;
+  request.operation = CloudOperation::kOnboardingStatus;
+  strlcpy(request.payload, "{}", sizeof(request.payload));
   return enqueue(request);
 }
 
@@ -164,6 +173,7 @@ CloudResponse CloudClient::perform(const Request& request) {
                           ? http.GET()
                           : http.POST(String(request.payload));
   const bool expectsBody = request.operation == CloudOperation::kConnect ||
+                           request.operation == CloudOperation::kOnboardingStatus ||
                            request.operation == CloudOperation::kFetchUi;
   if (expectsBody && response.httpCode > 0 &&
       response.httpCode != HTTP_CODE_NOT_MODIFIED) {

@@ -96,14 +96,30 @@ Para entrar manualmente al bootloader: mantén `BOOT`, pulsa `RESET`, suelta
 
 1. Leopold intenta conectarse durante aproximadamente 20 segundos usando las
    credenciales guardadas por el ESP32.
-2. Si no conecta, crea `Leopold-XXXX`, donde `XXXX` son los últimos caracteres
-   del identificador del dispositivo.
-3. Conecta el teléfono a esa red.
-4. Abre `http://192.168.4.1` si el portal cautivo no aparece automáticamente.
+2. Si no conecta, crea `Leopold-XXXX` y muestra un QR de Wi‑Fi.
+3. Escanea el QR con la cámara del teléfono para unirte a esa red.
+4. El portal cautivo se abre automáticamente. Si no aparece, abre
+   `http://192.168.4.1`.
 5. Selecciona una red, escribe su contraseña y guarda.
 6. Leopold detiene el portal y muestra `WIFI CONECTADO`.
 
 La contraseña Wi‑Fi no se muestra en pantalla ni se imprime por Serial.
+
+## Vincular Leopold a una cuenta
+
+Después de conectarse a Wi‑Fi, un Leopold sin propietario solicita al backend
+un enlace HTTPS de un solo uso y lo muestra como QR. El enlace expira después de
+15 minutos. Desde el teléfono:
+
+1. Escanea el QR `ACTIVA LEOPOLD`.
+2. Crea una cuenta o inicia sesión.
+3. Pulsa `Vincular Leopold`.
+4. El firmware consulta el estado cada cinco segundos y continúa
+   automáticamente cuando el backend confirma el vínculo.
+
+La contraseña de la cuenta nunca llega al dispositivo. El firmware conserva
+únicamente su identidad técnica; el backend almacena hashes de contraseñas,
+sesiones y tokens de claim. Los QR usados o vencidos no pueden reutilizarse.
 
 Para borrar solo la configuración Wi‑Fi, mantén `BOOT` durante cinco segundos.
 Leopold conserva su identidad, borra las redes guardadas y reinicia el portal.

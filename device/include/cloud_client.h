@@ -6,6 +6,7 @@ namespace leopold {
 
 enum class CloudOperation : uint8_t {
   kConnect,
+  kOnboardingStatus,
   kFetchUi,
   kHeartbeat,
   kEvent,
@@ -25,6 +26,7 @@ class CloudClient {
  public:
   bool begin();
   bool requestConnect();
+  bool requestOnboardingStatus();
   bool requestUi(const char* etag);
   bool requestHeartbeat(
       int32_t wifiRssi,

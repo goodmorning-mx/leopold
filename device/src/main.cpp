@@ -22,6 +22,7 @@ constexpr uint32_t kBootResetHoldMs = 5000;
 constexpr uint32_t kIndicatorRefreshMs = 1000;
 constexpr uint32_t kDefaultHeartbeatMs = 30000;
 constexpr uint32_t kDefaultUiPollMs = 5000;
+constexpr uint32_t kOnboardingPollMs = 5000;
 constexpr uint8_t kEventQueueSize = 4;
 constexpr uint8_t kEventMaxAttempts = 3;
 
@@ -47,6 +48,7 @@ char uiEtag[64] = {};
 bool hasUi = false;
 bool cloudConnected = false;
 bool connectPending = false;
+bool onboardingStatusPending = false;
 bool uiPending = false;
 bool heartbeatPending = false;
 bool eventPending = false;
@@ -54,15 +56,18 @@ bool bootWasDown = false;
 bool bootLongPressHandled = false;
 bool wifiWasConnected = false;
 bool fatalError = false;
+bool onboardingPending = false;
 uint8_t activeEventIndex = 0;
 uint8_t cloudFailures = 0;
 uint32_t bootPressedAt = 0;
 uint32_t nextCloudAttemptAt = 0;
 uint32_t nextUiPollAt = 0;
+uint32_t nextOnboardingPollAt = 0;
 uint32_t nextHeartbeatAt = 0;
 uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
 uint32_t lastIndicatorAt = 0;
 uint32_t eventSequence = 0;
+char onboardingUrl[256] = {};
 
 void setState(
     AppState state,
@@ -89,6 +94,7 @@ uint32_t retryDelayMs(uint8_t failures) {
 void scheduleCloudRetry(uint32_t now) {
   cloudConnected = false;
   connectPending = false;
+  onboardingStatusPending = false;
   uiPending = false;
   heartbeatPending = false;
   ++cloudFailures;
@@ -114,6 +120,13 @@ bool parseConnectResponse(const CloudResponse& response) {
       300);
   heartbeatIntervalMs = heartbeatSeconds * 1000UL;
   currentUi.pollAfterMs = pollSeconds * 1000UL;
+  onboardingPending = !(document["claimed"] | false);
+  const char* setupUrl = document["onboarding_url"] | "";
+  if (onboardingPending && setupUrl[0] != '\0') {
+    strlcpy(onboardingUrl, setupUrl, sizeof(onboardingUrl));
+  } else if (!onboardingPending) {
+    onboardingUrl[0] = '\0';
+  }
   return true;
 }
 
@@ -166,10 +179,41 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
         cloudConnected = true;
         cloudFailures = 0;
         setState(AppState::kOnline);
-        nextUiPollAt = now;
         nextHeartbeatAt = now + heartbeatIntervalMs;
+        if (onboardingPending && onboardingUrl[0] != '\0') {
+          screen.showQr(
+              "ACTIVA LEOPOLD",
+              onboardingUrl,
+              "ESCANEA CON TU TELEFONO");
+          nextOnboardingPollAt = now + kOnboardingPollMs;
+          Serial.println("Waiting for device claim");
+        } else {
+          nextUiPollAt = now;
+        }
       } else {
         scheduleCloudRetry(now);
+      }
+      break;
+
+    case CloudOperation::kOnboardingStatus:
+      onboardingStatusPending = false;
+      if (successful && response.body != nullptr) {
+        JsonDocument document;
+        if (!deserializeJson(document, response.body, response.bodyLength) &&
+            (document["claimed"] | false)) {
+          onboardingPending = false;
+          onboardingUrl[0] = '\0';
+          nextUiPollAt = now;
+          screen.showState(
+              AppState::kOnline,
+              "CONFIGURACION LISTA",
+              "CARGANDO EXPERIENCIA");
+          Serial.println("Device claimed successfully");
+        } else {
+          nextOnboardingPollAt = now + kOnboardingPollMs;
+        }
+      } else {
+        nextOnboardingPollAt = now + kOnboardingPollMs;
       }
       break;
 
@@ -347,10 +391,18 @@ void processNetwork(uint32_t now) {
   wifi.loop(now);
   if (wifi.portalActive()) {
     if (appState != AppState::kWifiPortal) {
-      setState(
-          AppState::kWifiPortal,
-          wifi.accessPointName(),
-          "ABRE 192.168.4.1");
+      appState = AppState::kWifiPortal;
+      char wifiQr[96] = {};
+      snprintf(
+          wifiQr,
+          sizeof(wifiQr),
+          "WIFI:T:nopass;S:%s;;",
+          wifi.accessPointName());
+      screen.showQr(
+          "CONFIGURA WIFI",
+          wifiQr,
+          "ESCANEA CON TU TELEFONO");
+      Serial.printf("Leopold state: %s\n", appStateName(appState));
     }
     return;
   }
@@ -384,7 +436,15 @@ void processNetwork(uint32_t now) {
     }
   }
 
-  if (cloudConnected && !uiPending && now >= nextUiPollAt) {
+  if (cloudConnected && onboardingPending &&
+      !onboardingStatusPending && now >= nextOnboardingPollAt) {
+    onboardingStatusPending = cloud.requestOnboardingStatus();
+    if (!onboardingStatusPending) {
+      nextOnboardingPollAt = now + 1000;
+    }
+  }
+  if (cloudConnected && !onboardingPending &&
+      !uiPending && now >= nextUiPollAt) {
     uiPending = cloud.requestUi(uiEtag);
   }
   if (cloudConnected && !heartbeatPending && now >= nextHeartbeatAt) {
@@ -414,7 +474,9 @@ void refreshIndicators(uint32_t now) {
 void setup() {
   Serial.begin(115200);
   delay(100);
-  Serial.println("Leopold firmware 0.2.0 starting");
+  Serial.printf(
+      "Leopold firmware %s starting\n",
+      leopold::config::kFirmwareVersion);
   randomSeed(micros());
 
   pinMode(leopold::board::kBootButton, INPUT_PULLUP);

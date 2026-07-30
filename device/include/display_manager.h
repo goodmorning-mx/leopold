@@ -16,6 +16,10 @@ class DisplayManager {
       const char* secondary = nullptr);
   void showNotActivated();
   void showUpdateRequired();
+  void showQr(
+      const char* title,
+      const char* payload,
+      const char* footer = nullptr);
   void renderSdui(const SduiDocument& document);
   void drawIndicators(
       bool wifiConnected,
