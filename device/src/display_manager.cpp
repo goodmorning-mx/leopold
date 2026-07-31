@@ -1,6 +1,7 @@
 #include "display_manager.h"
 
 #include <Arduino_GFX_Library.h>
+#include <Preferences.h>
 #include <qrcode.h>
 
 #include "board_config.h"
@@ -38,6 +39,7 @@ Arduino_CO5300* display = new Arduino_CO5300(
     0,
     0,
     0);
+Preferences displayPreferences;
 
 }  // namespace
 
@@ -47,7 +49,10 @@ bool DisplayManager::begin() {
   if (!display->begin(80000000)) {
     return false;
   }
-  display->setBrightness(180);
+  displayPreferences.begin("display", false);
+  brightnessPercent_ =
+      constrain(displayPreferences.getUChar("brightness", 70), 5, 100);
+  display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   display->fillScreen(kBlack);
   return true;
 }
@@ -298,6 +303,34 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
       }
       break;
     }
+    case ComponentType::kSlider: {
+      const int16_t trackY = component.y + component.height / 2;
+      const int16_t radius = component.height / 2;
+      const int16_t thumbX =
+          component.x +
+          static_cast<uint32_t>(component.width) *
+              min(component.value, component.maximum) /
+              component.maximum;
+      display->fillRoundRect(
+          component.x,
+          trackY - 4,
+          component.width,
+          8,
+          4,
+          kGray);
+      if (thumbX > component.x) {
+        display->fillRoundRect(
+            component.x,
+            trackY - 4,
+            thumbX - component.x,
+            8,
+            4,
+            component.color);
+      }
+      display->fillCircle(thumbX, trackY, radius, component.color);
+      display->drawCircle(thumbX, trackY, radius, kWhite);
+      break;
+    }
     case ComponentType::kIcon:
       if (strcmp(component.icon, "spotify") == 0) {
         drawSpotifyIcon(
@@ -317,6 +350,16 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
       }
       break;
   }
+}
+
+void DisplayManager::setBrightnessPercent(uint8_t percent) {
+  brightnessPercent_ = constrain(percent, 5, 100);
+  display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
+  displayPreferences.putUChar("brightness", brightnessPercent_);
+}
+
+uint8_t DisplayManager::brightnessPercent() const {
+  return brightnessPercent_;
 }
 
 void DisplayManager::drawControlIcon(

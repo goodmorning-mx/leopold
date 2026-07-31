@@ -214,6 +214,28 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
+  for (uint8_t screenIndex = 0;
+       screenIndex < currentUi.screenCount;
+       ++screenIndex) {
+    SduiScreen& uiScreen = currentUi.screens[screenIndex];
+    for (uint8_t componentIndex = 0;
+         componentIndex < uiScreen.componentCount;
+         ++componentIndex) {
+      SduiComponent& component = uiScreen.components[componentIndex];
+      if (strcmp(component.id, "display-brightness") == 0 &&
+          component.type == ComponentType::kSlider) {
+        component.value = screen.brightnessPercent();
+      } else if (strcmp(component.id, "brightness-value") == 0 &&
+                 component.type == ComponentType::kText) {
+        snprintf(
+            component.text,
+            sizeof(component.text),
+            "%u%%",
+            screen.brightnessPercent());
+      }
+    }
+  }
+
   if (previousScreenId[0] != '\0') {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
       if (strcmp(currentUi.screens[index].screenId, previousScreenId) == 0) {
@@ -402,6 +424,49 @@ void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
   events[slot].occupied = true;
 }
 
+void queueSliderChange(
+    const char* componentId,
+    uint16_t value,
+    uint32_t revision,
+    uint32_t now) {
+  uint8_t slot = kEventQueueSize;
+  for (uint8_t index = 0; index < kEventQueueSize; ++index) {
+    if (!events[index].occupied) {
+      slot = index;
+      break;
+    }
+  }
+  if (slot == kEventQueueSize) {
+    Serial.println("Event queue full; slider change discarded");
+    return;
+  }
+
+  char occurredAt[25] = {};
+  char eventId[64] = {};
+  formatOccurredAt(occurredAt);
+  snprintf(
+      eventId,
+      sizeof(eventId),
+      "%s-%08lx-%04lx",
+      LEOPOLD_DEVICE_ID,
+      static_cast<unsigned long>(now),
+      static_cast<unsigned long>(eventSequence++ & 0xFFFF));
+  snprintf(
+      events[slot].json,
+      sizeof(events[slot].json),
+      "{\"event_id\":\"%s\",\"revision\":%lu,\"type\":\"tap\","
+      "\"component_id\":\"%s\",\"payload\":{\"value\":%u},"
+      "\"occurred_at\":\"%s\"}",
+      eventId,
+      static_cast<unsigned long>(revision),
+      componentId,
+      value,
+      occurredAt);
+  events[slot].attempts = 0;
+  events[slot].retryAt = now;
+  events[slot].occupied = true;
+}
+
 const SduiComponent* firstButton() {
   const SduiScreen& active = currentUi.active();
   for (uint8_t index = 0; index < active.componentCount; ++index) {
@@ -430,7 +495,36 @@ const SduiComponent* onlyButton() {
 void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
-  if (touch.pollGesture(gesture, point, now) && welcomeActive &&
+  const bool hasGesture = touch.pollGesture(gesture, point, now);
+  SduiComponent* slider =
+      hasGesture && hasUi
+          ? findSliderAt(currentUi.active(), point.x, point.y)
+          : nullptr;
+  if (slider != nullptr) {
+    const int16_t relativeX = min<int16_t>(
+        max<int16_t>(point.x - slider->x, 0),
+        slider->width);
+    slider->value =
+        static_cast<uint32_t>(relativeX) * slider->maximum / slider->width;
+    screen.setBrightnessPercent(slider->value);
+    for (uint8_t index = 0;
+         index < currentUi.active().componentCount;
+         ++index) {
+      SduiComponent& component = currentUi.active().components[index];
+      if (component.type == ComponentType::kText &&
+          strcmp(component.id, "brightness-value") == 0) {
+        snprintf(
+            component.text,
+            sizeof(component.text),
+            "%u%%",
+            screen.brightnessPercent());
+      }
+    }
+    screen.renderSduiScreen(currentUi);
+    lastIndicatorAt = 0;
+    queueSliderChange(slider->id, slider->value, currentUi.revision, now);
+    Serial.printf("Brightness changed: %u%%\n", slider->value);
+  } else if (hasGesture && welcomeActive &&
       (gesture == TouchGesture::kSwipeLeft ||
        gesture == TouchGesture::kSwipeRight)) {
     moveWelcome(gesture == TouchGesture::kSwipeLeft ? 1 : -1, now);
