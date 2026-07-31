@@ -53,12 +53,21 @@ class ProgressComponent(ComponentBase):
     color: Color | None = None
 
 
+class SliderComponent(ComponentBase):
+    type: Literal["slider"]
+    value: int = Field(ge=0, le=100)
+    width: int = Field(ge=80, le=420)
+    height: int = Field(ge=20, le=64)
+    color: Color
+
+
 Component = Annotated[
     Union[
         TextComponent,
         IndicatorComponent,
         ButtonComponent,
         ProgressComponent,
+        SliderComponent,
         IconComponent,
     ],
     Field(discriminator="type"),

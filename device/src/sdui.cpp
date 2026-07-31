@@ -78,6 +78,12 @@ bool parseComponent(JsonObjectConst source, SduiComponent& component) {
     component.maximum = constrain(source["max"] | 100, 1, 65535);
     component.width = constrain(source["width"] | 200, 20, 466);
     component.height = constrain(source["height"] | 18, 6, 80);
+  } else if (strcmp(type, "slider") == 0) {
+    component.type = ComponentType::kSlider;
+    component.value = constrain(source["value"] | 70, 0, 100);
+    component.maximum = 100;
+    component.width = constrain(source["width"] | 300, 80, 420);
+    component.height = constrain(source["height"] | 32, 20, 64);
   } else if (strcmp(type, "icon") == 0) {
     component.type = ComponentType::kIcon;
     if (!copyBounded(component.icon, source["name"] | "")) {
@@ -157,6 +163,7 @@ SduiParseResult SduiParser::parse(
                          strcmp(type, "indicator") == 0 ||
                          strcmp(type, "button") == 0 ||
                          strcmp(type, "progress") == 0 ||
+                         strcmp(type, "slider") == 0 ||
                          strcmp(type, "icon") == 0;
       if (!known) {
         continue;
@@ -225,6 +232,24 @@ const SduiComponent* findButtonAt(
     if (component.type == ComponentType::kButton &&
         x >= component.x && x < component.x + component.width &&
         y >= component.y && y < component.y + component.height) {
+      return &component;
+    }
+  }
+  return nullptr;
+}
+
+SduiComponent* findSliderAt(
+    SduiScreen& screen,
+    int16_t x,
+    int16_t y) {
+  for (uint8_t index = 0; index < screen.componentCount; ++index) {
+    SduiComponent& component = screen.components[index];
+    constexpr int16_t kTouchPadding = 16;
+    if (component.type == ComponentType::kSlider &&
+        x >= component.x - kTouchPadding &&
+        x <= component.x + component.width + kTouchPadding &&
+        y >= component.y - kTouchPadding &&
+        y <= component.y + component.height + kTouchPadding) {
       return &component;
     }
   }

@@ -24,6 +24,8 @@ class DisplayManager {
   void showReadyFace();
   void renderSdui(const SduiDocument& document);
   void renderSduiScreen(const SduiDocument& document);
+  void setBrightnessPercent(uint8_t percent);
+  uint8_t brightnessPercent() const;
   void drawIndicators(
       bool wifiConnected,
       bool cloudConnected,
@@ -51,6 +53,7 @@ class DisplayManager {
   void drawBluetoothIcon(int16_t x, int16_t y, bool enabled);
 
   uint8_t localExpression_ = 0;
+  uint8_t brightnessPercent_ = 70;
   uint32_t lastFaceFrameAt_ = 0;
 };
 

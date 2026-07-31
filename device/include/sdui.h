@@ -15,6 +15,7 @@ enum class ComponentType : uint8_t {
   kIndicator,
   kButton,
   kProgress,
+  kSlider,
   kIcon,
 };
 
@@ -84,6 +85,10 @@ class SduiStore {
 
 const SduiComponent* findButtonAt(
     const SduiScreen& screen,
+    int16_t x,
+    int16_t y);
+SduiComponent* findSliderAt(
+    SduiScreen& screen,
     int16_t x,
     int16_t y);
 
