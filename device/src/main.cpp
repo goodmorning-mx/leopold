@@ -193,6 +193,86 @@ bool parseConnectResponse(const CloudResponse& response) {
   return true;
 }
 
+void syncBrightnessScreen() {
+  SduiScreen* settings = nullptr;
+  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+    if (strcmp(currentUi.screens[index].screenId, "display-settings") == 0) {
+      settings = &currentUi.screens[index];
+      break;
+    }
+  }
+  if (settings == nullptr && currentUi.screenCount < kMaxSduiScreens) {
+    settings = &currentUi.screens[currentUi.screenCount++];
+    *settings = SduiScreen();
+    strlcpy(settings->screenId, "display-settings", sizeof(settings->screenId));
+
+    SduiComponent& title = settings->components[settings->componentCount++];
+    title.type = ComponentType::kText;
+    strlcpy(title.id, "brightness-title", sizeof(title.id));
+    strlcpy(title.text, "BRILLO", sizeof(title.text));
+    title.x = 233;
+    title.y = 105;
+    title.size = 3;
+    title.align = TextAlign::kCenter;
+    title.color = 0xFFFF;
+
+    SduiComponent& value = settings->components[settings->componentCount++];
+    value.type = ComponentType::kText;
+    strlcpy(value.id, "brightness-value", sizeof(value.id));
+    value.x = 233;
+    value.y = 185;
+    value.size = 4;
+    value.align = TextAlign::kCenter;
+    value.color = SduiParser::rgb565("#FD9D20");
+
+    SduiComponent& slider = settings->components[settings->componentCount++];
+    slider.type = ComponentType::kSlider;
+    strlcpy(slider.id, "display-brightness", sizeof(slider.id));
+    slider.x = 73;
+    slider.y = 270;
+    slider.width = 320;
+    slider.height = 32;
+    slider.maximum = 100;
+    slider.color = SduiParser::rgb565("#FD9D20");
+
+    SduiComponent& low = settings->components[settings->componentCount++];
+    low.type = ComponentType::kText;
+    strlcpy(low.id, "brightness-low", sizeof(low.id));
+    strlcpy(low.text, "MIN", sizeof(low.text));
+    low.x = 73;
+    low.y = 330;
+    low.size = 1;
+    low.color = SduiParser::rgb565("#686868");
+
+    SduiComponent& high = settings->components[settings->componentCount++];
+    high.type = ComponentType::kText;
+    strlcpy(high.id, "brightness-high", sizeof(high.id));
+    strlcpy(high.text, "MAX", sizeof(high.text));
+    high.x = 393;
+    high.y = 330;
+    high.size = 1;
+    high.align = TextAlign::kRight;
+    high.color = SduiParser::rgb565("#686868");
+  }
+  if (settings == nullptr) {
+    return;
+  }
+  for (uint8_t index = 0; index < settings->componentCount; ++index) {
+    SduiComponent& component = settings->components[index];
+    if (strcmp(component.id, "display-brightness") == 0 &&
+        component.type == ComponentType::kSlider) {
+      component.value = screen.brightnessPercent();
+    } else if (strcmp(component.id, "brightness-value") == 0 &&
+               component.type == ComponentType::kText) {
+      snprintf(
+          component.text,
+          sizeof(component.text),
+          "%u%%",
+          screen.brightnessPercent());
+    }
+  }
+}
+
 void acceptUi(const CloudResponse& response, uint32_t now) {
   char previousScreenId[kMaxComponentId + 1] = {};
   if (hasUi && currentUi.screenCount > 0) {
@@ -214,27 +294,7 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
-  for (uint8_t screenIndex = 0;
-       screenIndex < currentUi.screenCount;
-       ++screenIndex) {
-    SduiScreen& uiScreen = currentUi.screens[screenIndex];
-    for (uint8_t componentIndex = 0;
-         componentIndex < uiScreen.componentCount;
-         ++componentIndex) {
-      SduiComponent& component = uiScreen.components[componentIndex];
-      if (strcmp(component.id, "display-brightness") == 0 &&
-          component.type == ComponentType::kSlider) {
-        component.value = screen.brightnessPercent();
-      } else if (strcmp(component.id, "brightness-value") == 0 &&
-                 component.type == ComponentType::kText) {
-        snprintf(
-            component.text,
-            sizeof(component.text),
-            "%u%%",
-            screen.brightnessPercent());
-      }
-    }
-  }
+  syncBrightnessScreen();
 
   if (previousScreenId[0] != '\0') {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
