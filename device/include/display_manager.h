@@ -10,6 +10,7 @@ namespace leopold {
 class DisplayManager {
  public:
   bool begin();
+  void loop();
   void showState(
       AppState state,
       const char* detail = nullptr,
@@ -26,10 +27,23 @@ class DisplayManager {
   void renderSduiScreen(const SduiDocument& document);
   void setBrightnessPercent(uint8_t percent);
   uint8_t brightnessPercent() const;
+  void updateControlCenterBrightness();
+  void showWifiDetails(
+      bool connected,
+      bool portalActive,
+      const char* networkName,
+      const char* accessPointName,
+      int32_t rssi);
+  void showCloudDetails(
+      bool wifiConnected,
+      bool cloudConnected,
+      bool retrying,
+      uint32_t retryInSeconds);
   void drawIndicators(
       bool wifiConnected,
       bool cloudConnected,
       bool bluetoothEnabled,
+      bool bluetoothConnected,
       uint8_t batteryPercent,
       const char* timeText);
   void showLocalFace(uint32_t now, bool force = false);
@@ -50,11 +64,32 @@ class DisplayManager {
       int16_t size,
       uint16_t color);
   void drawInternetIcon(int16_t x, int16_t y, bool connected);
+  void drawWifiIcon(int16_t x, int16_t y, bool connected);
+  void drawCloudIcon(int16_t x, int16_t y, bool connected);
   void drawBluetoothIcon(int16_t x, int16_t y, bool enabled);
+  void drawWifiGlyph(int16_t x, int16_t y, uint16_t color);
+  void drawCloudGlyph(int16_t x, int16_t y, uint16_t color);
+  void drawBluetoothGlyph(int16_t x, int16_t y, uint16_t color);
+  void drawSunGlyph(int16_t x, int16_t y, uint16_t color);
+  void drawControlCenter();
+  void drawSpotifyPlayer(const SduiScreen& screen);
+  void buildLvglControlCenter();
+  void buildLvglConnectivityDetails(
+      bool wifiScreen,
+      bool primaryConnected,
+      bool secondaryState,
+      const char* primaryDetail,
+      const char* secondaryDetail);
+  void buildLvglSpotifyPlayer(const SduiScreen& screen);
+  void buildLvglSduiScreen(const SduiScreen& screen);
 
   uint8_t localExpression_ = 0;
   uint8_t brightnessPercent_ = 70;
   uint32_t lastFaceFrameAt_ = 0;
+  bool wifiConnected_ = false;
+  bool cloudConnected_ = false;
+  bool bluetoothEnabled_ = false;
+  bool bluetoothConnected_ = false;
 };
 
 }  // namespace leopold

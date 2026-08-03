@@ -154,6 +154,18 @@ La hora muestra `--:--` hasta que NTP sincroniza.
 
 ## Server-Driven UI
 
+Los ajustes esenciales del hardware no dependen de SDUI. El firmware agrega
+localmente `device-control-center` con brillo, Wi-Fi, Bluetooth y estado de
+nube, por lo que permanece disponible aunque el backend no publique una
+pantalla de ajustes. El brillo responde continuamente mientras el usuario
+desliza el dedo y se conserva en NVS.
+
+El centro de control permanece visible si se pierde Internet. Tocar Wi-Fi abre
+una vista local con la red, intensidad de señal, reintento y acceso al portal
+`Leopold-XXXX` para cambiar de red. Tocar Nube muestra el estado de GoodMorning
+Cloud, el siguiente intento automático y permite forzar una reconexión. Estas
+acciones no dependen de un documento SDUI remoto.
+
 El renderer v1 acepta como máximo 12 componentes y 12 KiB de JSON:
 
 - `text`

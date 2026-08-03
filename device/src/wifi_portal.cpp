@@ -133,6 +133,26 @@ const char* WifiPortal::setupUrl() const {
   return setupUrl_;
 }
 
+void WifiPortal::reconnectNow(uint32_t now) {
+  if (portalActive_) {
+    manager_.stopConfigPortal();
+    WiFi.softAPdisconnect(true);
+    portalActive_ = false;
+  }
+  WiFi.mode(WIFI_STA);
+  WiFi.reconnect();
+  connectStartedAt_ = now;
+  disconnectedAt_ = now;
+  Serial.println("Manual Wi-Fi reconnect requested");
+}
+
+void WifiPortal::startConfiguration(uint32_t now) {
+  if (!portalActive_) {
+    startPortal(now);
+  }
+  Serial.printf("Wi-Fi configuration portal active: %s\n", accessPointName_);
+}
+
 void WifiPortal::completeSetup() {
   Preferences preferences;
   preferences.begin("leopold", false);

@@ -50,6 +50,12 @@ bool TouchInput::pollGesture(
     }
     touchLast_ = current;
     wasDown_ = true;
+    if (now - lastDragAt_ >= 16) {
+      gesture = TouchGesture::kDrag;
+      point = current;
+      lastDragAt_ = now;
+      return true;
+    }
     return false;
   }
 

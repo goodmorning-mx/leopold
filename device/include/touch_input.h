@@ -12,6 +12,7 @@ struct TouchPoint {
 enum class TouchGesture : uint8_t {
   kNone,
   kTap,
+  kDrag,
   kSwipeLeft,
   kSwipeRight,
 };
@@ -30,6 +31,7 @@ class TouchInput {
   TouchPoint touchLast_;
   uint32_t touchStartedAt_ = 0;
   uint32_t lastGestureAt_ = 0;
+  uint32_t lastDragAt_ = 0;
 };
 
 }  // namespace leopold

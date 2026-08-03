@@ -28,6 +28,12 @@ constexpr uint32_t kWelcomeScreenMs = 3000;
 constexpr uint8_t kEventQueueSize = 4;
 constexpr uint8_t kEventMaxAttempts = 3;
 
+enum class LocalPanel : uint8_t {
+  kNone,
+  kWifi,
+  kCloud,
+};
+
 struct PendingEvent {
   char json[512] = {};
   uint8_t attempts = 0;
@@ -63,6 +69,11 @@ bool onboardingPending = false;
 bool welcomeActive = false;
 bool welcomeShownThisBoot = false;
 bool assistantReady = false;
+bool indicatorsInitialized = false;
+bool lastWifiIndicator = false;
+bool lastCloudIndicator = false;
+bool lastBluetoothEnabledIndicator = false;
+bool lastBluetoothConnectedIndicator = false;
 uint8_t welcomeStep = 0;
 uint8_t welcomeStepsShown = 0;
 uint8_t activeEventIndex = 0;
@@ -78,6 +89,27 @@ uint32_t lastIndicatorAt = 0;
 uint32_t eventSequence = 0;
 char onboardingUrl[256] = {};
 char ownerDisplayName[81] = {};
+LocalPanel localPanel = LocalPanel::kNone;
+
+void showLocalConnectivityPanel(uint32_t now) {
+  if (localPanel == LocalPanel::kWifi) {
+    const String networkName = wifi.connected() ? WiFi.SSID() : String("Sin red");
+    screen.showWifiDetails(
+        wifi.connected(),
+        wifi.portalActive(),
+        networkName.c_str(),
+        wifi.accessPointName(),
+        wifi.connected() ? WiFi.RSSI() : 0);
+  } else if (localPanel == LocalPanel::kCloud) {
+    const uint32_t retryInSeconds =
+        nextCloudAttemptAt > now ? (nextCloudAttemptAt - now + 999) / 1000 : 0;
+    screen.showCloudDetails(
+        wifi.connected(),
+        cloudConnected,
+        connectPending || !cloudConnected,
+        retryInSeconds);
+  }
+}
 
 void startWelcome(const char* ownerName, uint32_t now) {
   if (welcomeShownThisBoot || ownerName == nullptr || ownerName[0] == '\0') {
@@ -193,84 +225,37 @@ bool parseConnectResponse(const CloudResponse& response) {
   return true;
 }
 
-void syncBrightnessScreen() {
+void syncControlCenterScreen() {
   SduiScreen* settings = nullptr;
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
-    if (strcmp(currentUi.screens[index].screenId, "display-settings") == 0) {
+    if (strcmp(currentUi.screens[index].screenId, "device-control-center") == 0 ||
+        strcmp(currentUi.screens[index].screenId, "display-settings") == 0) {
       settings = &currentUi.screens[index];
       break;
     }
   }
   if (settings == nullptr && currentUi.screenCount < kMaxSduiScreens) {
     settings = &currentUi.screens[currentUi.screenCount++];
-    *settings = SduiScreen();
-    strlcpy(settings->screenId, "display-settings", sizeof(settings->screenId));
-
-    SduiComponent& title = settings->components[settings->componentCount++];
-    title.type = ComponentType::kText;
-    strlcpy(title.id, "brightness-title", sizeof(title.id));
-    strlcpy(title.text, "BRILLO", sizeof(title.text));
-    title.x = 233;
-    title.y = 105;
-    title.size = 3;
-    title.align = TextAlign::kCenter;
-    title.color = 0xFFFF;
-
-    SduiComponent& value = settings->components[settings->componentCount++];
-    value.type = ComponentType::kText;
-    strlcpy(value.id, "brightness-value", sizeof(value.id));
-    value.x = 233;
-    value.y = 185;
-    value.size = 4;
-    value.align = TextAlign::kCenter;
-    value.color = SduiParser::rgb565("#FD9D20");
-
-    SduiComponent& slider = settings->components[settings->componentCount++];
-    slider.type = ComponentType::kSlider;
-    strlcpy(slider.id, "display-brightness", sizeof(slider.id));
-    slider.x = 73;
-    slider.y = 270;
-    slider.width = 320;
-    slider.height = 32;
-    slider.maximum = 100;
-    slider.color = SduiParser::rgb565("#FD9D20");
-
-    SduiComponent& low = settings->components[settings->componentCount++];
-    low.type = ComponentType::kText;
-    strlcpy(low.id, "brightness-low", sizeof(low.id));
-    strlcpy(low.text, "MIN", sizeof(low.text));
-    low.x = 73;
-    low.y = 330;
-    low.size = 1;
-    low.color = SduiParser::rgb565("#686868");
-
-    SduiComponent& high = settings->components[settings->componentCount++];
-    high.type = ComponentType::kText;
-    strlcpy(high.id, "brightness-high", sizeof(high.id));
-    strlcpy(high.text, "MAX", sizeof(high.text));
-    high.x = 393;
-    high.y = 330;
-    high.size = 1;
-    high.align = TextAlign::kRight;
-    high.color = SduiParser::rgb565("#686868");
   }
   if (settings == nullptr) {
     return;
   }
-  for (uint8_t index = 0; index < settings->componentCount; ++index) {
-    SduiComponent& component = settings->components[index];
-    if (strcmp(component.id, "display-brightness") == 0 &&
-        component.type == ComponentType::kSlider) {
-      component.value = screen.brightnessPercent();
-    } else if (strcmp(component.id, "brightness-value") == 0 &&
-               component.type == ComponentType::kText) {
-      snprintf(
-          component.text,
-          sizeof(component.text),
-          "%u%%",
-          screen.brightnessPercent());
-    }
-  }
+  memset(settings, 0, sizeof(*settings));
+  strlcpy(
+      settings->screenId,
+      "device-control-center",
+      sizeof(settings->screenId));
+  settings->background = SduiParser::rgb565("#000000");
+  SduiComponent& slider = settings->components[settings->componentCount++];
+  slider.type = ComponentType::kSlider;
+  strlcpy(slider.id, "display-brightness", sizeof(slider.id));
+  slider.x = 326;
+  slider.y = 120;
+  slider.width = 76;
+  slider.height = 224;
+  slider.value = screen.brightnessPercent();
+  slider.maximum = 100;
+  slider.color = SduiParser::rgb565("#FFD60A");
 }
 
 void acceptUi(const CloudResponse& response, uint32_t now) {
@@ -294,7 +279,7 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
-  syncBrightnessScreen();
+  syncControlCenterScreen();
 
   if (previousScreenId[0] != '\0') {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
@@ -484,49 +469,6 @@ void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
   events[slot].occupied = true;
 }
 
-void queueSliderChange(
-    const char* componentId,
-    uint16_t value,
-    uint32_t revision,
-    uint32_t now) {
-  uint8_t slot = kEventQueueSize;
-  for (uint8_t index = 0; index < kEventQueueSize; ++index) {
-    if (!events[index].occupied) {
-      slot = index;
-      break;
-    }
-  }
-  if (slot == kEventQueueSize) {
-    Serial.println("Event queue full; slider change discarded");
-    return;
-  }
-
-  char occurredAt[25] = {};
-  char eventId[64] = {};
-  formatOccurredAt(occurredAt);
-  snprintf(
-      eventId,
-      sizeof(eventId),
-      "%s-%08lx-%04lx",
-      LEOPOLD_DEVICE_ID,
-      static_cast<unsigned long>(now),
-      static_cast<unsigned long>(eventSequence++ & 0xFFFF));
-  snprintf(
-      events[slot].json,
-      sizeof(events[slot].json),
-      "{\"event_id\":\"%s\",\"revision\":%lu,\"type\":\"tap\","
-      "\"component_id\":\"%s\",\"payload\":{\"value\":%u},"
-      "\"occurred_at\":\"%s\"}",
-      eventId,
-      static_cast<unsigned long>(revision),
-      componentId,
-      value,
-      occurredAt);
-  events[slot].attempts = 0;
-  events[slot].retryAt = now;
-  events[slot].occupied = true;
-}
-
 const SduiComponent* firstButton() {
   const SduiScreen& active = currentUi.active();
   for (uint8_t index = 0; index < active.componentCount; ++index) {
@@ -556,16 +498,61 @@ void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
+  if (hasGesture && gesture == TouchGesture::kTap &&
+      localPanel != LocalPanel::kNone) {
+    if (point.x <= 116 && point.y <= 108) {
+      localPanel = LocalPanel::kNone;
+      screen.renderSduiScreen(currentUi);
+      lastIndicatorAt = 0;
+      Serial.println("Connectivity details closed");
+    } else if (point.y >= 356 && point.y <= 450) {
+      if (localPanel == LocalPanel::kWifi) {
+        if (point.x < 233) {
+          wifi.reconnectNow(now);
+        } else {
+          wifi.startConfiguration(now);
+        }
+      } else if (wifi.connected()) {
+        cloudConnected = false;
+        cloudFailures = 0;
+        nextCloudAttemptAt = now;
+        Serial.println("Manual cloud reconnect requested");
+      }
+      showLocalConnectivityPanel(now);
+    }
+  } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
+             ((point.x >= 72 && point.x <= 170 &&
+               point.y >= 120 && point.y <= 218) ||
+              (point.x >= 124 && point.x <= 222 &&
+               point.y >= 224 && point.y <= 322))) {
+    localPanel = point.y < 224 ? LocalPanel::kWifi : LocalPanel::kCloud;
+    showLocalConnectivityPanel(now);
+    Serial.println(
+        localPanel == LocalPanel::kWifi
+            ? "Wi-Fi details opened"
+            : "Cloud details opened");
+  }
   SduiComponent* slider =
       hasGesture && hasUi
           ? findSliderAt(currentUi.active(), point.x, point.y)
           : nullptr;
-  if (slider != nullptr) {
-    const int16_t relativeX = min<int16_t>(
-        max<int16_t>(point.x - slider->x, 0),
-        slider->width);
-    slider->value =
-        static_cast<uint32_t>(relativeX) * slider->maximum / slider->width;
+  if (localPanel != LocalPanel::kNone) {
+    // Local connectivity screens consume touch before SDUI navigation.
+  } else if (slider != nullptr) {
+    if (slider->height > slider->width) {
+      const int16_t relativeY = min<int16_t>(
+          max<int16_t>(slider->y + slider->height - point.y, 0),
+          slider->height);
+      slider->value = static_cast<uint32_t>(relativeY) * slider->maximum /
+                      slider->height;
+    } else {
+      const int16_t relativeX = min<int16_t>(
+          max<int16_t>(point.x - slider->x, 0),
+          slider->width);
+      slider->value = static_cast<uint32_t>(relativeX) * slider->maximum /
+                      slider->width;
+    }
     screen.setBrightnessPercent(slider->value);
     for (uint8_t index = 0;
          index < currentUi.active().componentCount;
@@ -580,10 +567,12 @@ void processInput(uint32_t now) {
             screen.brightnessPercent());
       }
     }
-    screen.renderSduiScreen(currentUi);
+    if (strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+      screen.updateControlCenterBrightness();
+    } else {
+      screen.renderSduiScreen(currentUi);
+    }
     lastIndicatorAt = 0;
-    queueSliderChange(slider->id, slider->value, currentUi.revision, now);
-    Serial.printf("Brightness changed: %u%%\n", slider->value);
   } else if (hasGesture && welcomeActive &&
       (gesture == TouchGesture::kSwipeLeft ||
        gesture == TouchGesture::kSwipeRight)) {
@@ -670,12 +659,20 @@ void processNetwork(uint32_t now) {
   wifi.loop(now);
   bluetooth.loop();
   if (wifi.portalActive()) {
+    if (localPanel == LocalPanel::kWifi) {
+      return;
+    }
     if (appState != AppState::kWifiPortal) {
       appState = AppState::kWifiPortal;
-      screen.showQr(
-          "AGREGA LEOPOLD",
-          wifi.setupUrl(),
-          "ESCANEA DESDE TU PERFIL");
+      if (hasUi) {
+        screen.renderSduiScreen(currentUi);
+        lastIndicatorAt = 0;
+      } else {
+        screen.showQr(
+            "CONFIGURA WIFI",
+            wifi.setupUrl(),
+            wifi.accessPointName());
+      }
       Serial.printf("Leopold state: %s\n", appStateName(appState));
     }
     return;
@@ -735,12 +732,49 @@ void refreshIndicators(uint32_t now) {
   }
   char timeText[6] = {};
   telemetry.formattedTime(timeText);
+  const bool wifiConnected = wifi.connected();
+  const bool bluetoothEnabled = bluetooth.enabled();
+  const bool bluetoothConnected = bluetooth.connected();
+  const bool statusChanged =
+      !indicatorsInitialized || wifiConnected != lastWifiIndicator ||
+      cloudConnected != lastCloudIndicator ||
+      bluetoothEnabled != lastBluetoothEnabledIndicator ||
+      bluetoothConnected != lastBluetoothConnectedIndicator;
+  if (localPanel != LocalPanel::kNone) {
+    if (statusChanged || now - lastIndicatorAt >= kIndicatorRefreshMs) {
+      showLocalConnectivityPanel(now);
+    }
+    indicatorsInitialized = true;
+    lastWifiIndicator = wifiConnected;
+    lastCloudIndicator = cloudConnected;
+    lastBluetoothEnabledIndicator = bluetoothEnabled;
+    lastBluetoothConnectedIndicator = bluetoothConnected;
+    lastIndicatorAt = now;
+    return;
+  }
   screen.drawIndicators(
-      wifi.connected(),
+      wifiConnected,
       cloudConnected,
-      bluetooth.enabled(),
+      bluetoothEnabled,
+      bluetoothConnected,
       telemetry.batteryPercent(),
       timeText);
+  if (statusChanged && hasUi && currentUi.screenCount > 0 &&
+      strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+    screen.renderSduiScreen(currentUi);
+    screen.drawIndicators(
+        wifiConnected,
+        cloudConnected,
+        bluetoothEnabled,
+        bluetoothConnected,
+        telemetry.batteryPercent(),
+        timeText);
+  }
+  indicatorsInitialized = true;
+  lastWifiIndicator = wifiConnected;
+  lastCloudIndicator = cloudConnected;
+  lastBluetoothEnabledIndicator = bluetoothEnabled;
+  lastBluetoothConnectedIndicator = bluetoothConnected;
   lastIndicatorAt = now;
 }
 
@@ -782,6 +816,12 @@ void setup() {
       "time.google.com",
       "time.cloudflare.com");
   setState(leopold::AppState::kWifiConnecting);
+  memset(&currentUi, 0, sizeof(currentUi));
+  syncControlCenterScreen();
+  hasUi = currentUi.screenCount > 0;
+  if (hasUi) {
+    screen.renderSduiScreen(currentUi);
+  }
 }
 
 void loop() {
@@ -808,5 +848,6 @@ void loop() {
   if (!welcomeActive && !assistantReady) {
     refreshIndicators(now);
   }
+  screen.loop();
   delay(5);
 }
