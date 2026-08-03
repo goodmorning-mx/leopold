@@ -18,6 +18,7 @@ from app.models import (
     DeviceStatus,
     DeviceUIDocument,
     SpotifyConnection,
+    YouTubeConnection,
 )
 from app.schemas import (
     ConnectRequest,
@@ -361,11 +362,21 @@ def get_device_ui(
 ) -> Response:
     stored = active_ui(db, device)
     etag = f'"{stored.revision}"'
-    connection = (
+    spotify_connection = (
         db.scalar(
             select(SpotifyConnection).where(
                 SpotifyConnection.user_id == device.owner_id,
                 SpotifyConnection.active.is_(True),
+            )
+        )
+        if device.owner_id
+        else None
+    )
+    youtube_connection = (
+        db.scalar(
+            select(YouTubeConnection).where(
+                YouTubeConnection.user_id == device.owner_id,
+                YouTubeConnection.active.is_(True),
             )
         )
         if device.owner_id
@@ -376,23 +387,50 @@ def get_device_ui(
     screen_id = screens[0].get("id") if screens else legacy_screen.get("id")
     if (
         device.owner_id is not None
-        and connection is None
+        and spotify_connection is None
+        and youtube_connection is None
         and screen_id != "leopold-welcome"
     ):
         return Response(status_code=304, headers={"ETag": etag})
-    if connection is not None:
+    if spotify_connection is not None or youtube_connection is not None:
         from app.spotify import player_state, spotify_document
+        from app.youtube import youtube_document, youtube_screen
 
-        state = player_state(db, connection, settings)
-        state["owner_name"] = device.owner.display_name if device.owner else "Leopold"
-        state["bluetooth_name"] = f"Leopold-{device.device_id[-4:]}"
-        live_document = UIDocument.model_validate(
-            spotify_document(
-                int(datetime.now(timezone.utc).timestamp()),
-                state,
+        revision = int(datetime.now(timezone.utc).timestamp())
+        owner_name = device.owner.display_name if device.owner else "Leopold"
+        if spotify_connection is not None:
+            state = player_state(db, spotify_connection, settings)
+            state["owner_name"] = owner_name
+            state["bluetooth_name"] = f"Leopold-{device.device_id[-4:]}"
+            raw_document = spotify_document(revision, state)
+            if youtube_connection is not None:
+                youtube = youtube_screen(
+                    youtube_connection.cached_feed or [],
+                    youtube_connection.display_name,
+                )
+                bluetooth_index = next(
+                    (
+                        index
+                        for index, candidate in enumerate(raw_document["screens"])
+                        if candidate["id"] == "bluetooth"
+                    ),
+                    len(raw_document["screens"]),
+                )
+                raw_document["screens"].insert(bluetooth_index, youtube)
+        else:
+            raw_document = youtube_document(
+                revision,
+                youtube_connection.cached_feed or [],
+                youtube_connection.display_name,
+                owner_name,
             )
+        live_document = UIDocument.model_validate(
+            raw_document
         )
-        live_etag = f'"spotify-{live_document.revision}"'
+        services = "spotify-youtube" if spotify_connection and youtube_connection else (
+            "spotify" if spotify_connection else "youtube"
+        )
+        live_etag = f'"{services}-{live_document.revision}"'
         return Response(
             content=live_document.model_dump_json(),
             media_type="application/json",
@@ -418,8 +456,10 @@ def record_event(
     device: AuthenticatedDevice,
 ) -> dict[str, bool]:
     from app.spotify import handle_device_spotify_event
+    from app.youtube import handle_device_youtube_event
 
     handle_device_spotify_event(db, device, payload.component_id, settings)
+    handle_device_youtube_event(db, device, payload.component_id, settings)
     existing = db.scalar(
         select(DeviceEvent.id).where(
             DeviceEvent.device_id == device.id,

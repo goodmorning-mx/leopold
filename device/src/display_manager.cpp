@@ -1155,6 +1155,76 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   }
 }
 
+void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
+  const SduiComponent* account = nullptr;
+  const SduiComponent* titles[3] = {};
+  const SduiComponent* channels[3] = {};
+  for (uint8_t index = 0; index < screen.componentCount; ++index) {
+    const SduiComponent& component = screen.components[index];
+    if (strcmp(component.id, "youtube-account") == 0) {
+      account = &component;
+    } else if (strncmp(component.id, "youtube-title-", 14) == 0) {
+      const uint8_t slot = component.id[14] - '0';
+      if (slot < 3) titles[slot] = &component;
+    } else if (strncmp(component.id, "youtube-channel-", 16) == 0) {
+      const uint8_t slot = component.id[16] - '0';
+      if (slot < 3) channels[slot] = &component;
+    }
+  }
+
+  lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* brand = createRoundPanel(
+      root, 172, 42, 122, 54, 18, lv_color_hex(0xFF453A));
+  lv_obj_t* play = createLabel(
+      brand, LV_SYMBOL_PLAY, &lv_font_montserrat_22, lv_color_white());
+  lv_obj_align(play, LV_ALIGN_LEFT_MID, 17, 0);
+  lv_obj_t* youtube = createLabel(
+      brand, "YouTube", &lv_font_montserrat_16, lv_color_white());
+  lv_obj_align(youtube, LV_ALIGN_RIGHT_MID, -13, 0);
+  lv_obj_t* accountLabel = createLabel(
+      root,
+      account == nullptr ? "Tu feed" : account->text,
+      &lv_font_montserrat_14,
+      lv_color_hex(0xA7A7A7));
+  lv_obj_align(accountLabel, LV_ALIGN_TOP_MID, 0, 105);
+
+  for (uint8_t index = 0; index < 3; ++index) {
+    if (titles[index] == nullptr) continue;
+    lv_obj_t* card = createRoundPanel(
+        root,
+        48,
+        139 + index * 76,
+        370,
+        66,
+        23,
+        lv_color_hex(index == 0 ? 0x211617 : 0x1C1C1E));
+    lv_obj_t* dot = createRoundPanel(
+        card, 16, 18, 30, 30, LV_RADIUS_CIRCLE, lv_color_hex(0xFF453A));
+    lv_obj_t* dotPlay = createLabel(
+        dot, LV_SYMBOL_PLAY, &lv_font_montserrat_12, lv_color_white());
+    lv_obj_center(dotPlay);
+    lv_obj_t* title = createLabel(
+        card, titles[index]->text, &lv_font_montserrat_14, lv_color_white());
+    lv_obj_set_width(title, 285);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 58, 11);
+    lv_obj_t* channel = createLabel(
+        card,
+        channels[index] == nullptr ? "YouTube" : channels[index]->text,
+        &lv_font_montserrat_12,
+        lv_color_hex(0x8E8E93));
+    lv_obj_set_width(channel, 285);
+    lv_label_set_long_mode(channel, LV_LABEL_LONG_DOT);
+    lv_obj_align(channel, LV_ALIGN_TOP_LEFT, 58, 36);
+  }
+
+  lv_obj_t* refresh = createRoundPanel(
+      root, 139, 381, 188, 54, 27, lv_color_hex(0xFF453A));
+  lv_obj_t* refreshLabel = createLabel(
+      refresh, "Actualizar", &lv_font_montserrat_16, lv_color_white());
+  lv_obj_center(refreshLabel);
+}
+
 void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
   lv_obj_t* root = cleanLvglScreen(screen.background);
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
@@ -1220,6 +1290,10 @@ void DisplayManager::renderSdui(const SduiDocument& document) {
 
 void DisplayManager::renderSduiScreen(const SduiDocument& document) {
   const SduiScreen& active = document.active();
+  if (strcmp(active.screenId, "youtube-feed") == 0) {
+    buildLvglYoutubeFeed(active);
+    return;
+  }
   if (strcmp(active.screenId, "spotify-player") == 0) {
     buildLvglSpotifyPlayer(active);
     if (document.screenCount > 1) {

@@ -210,7 +210,9 @@ segundos para no congelar display o touch.
 
 ## Limitaciones del MVP
 
-- No incluye audio, Spotify, LLM, OTA, BLE ni aplicación móvil.
+- Incluye renderers visuales nativos para Spotify y el feed de YouTube enviado
+  por Device Cloud. No reproduce video ni controla sesiones remotas de YouTube.
+- No incluye todavía audio, LLM, OTA ni aplicación móvil.
 - El porcentaje de batería es una estimación lineal calibrable entre 3.3 V y
   4.2 V con divisor nominal 2:1. No debe interpretarse como medición de precisión.
 - Los eventos offline se conservan solo en RAM y se descartan al reiniciar.

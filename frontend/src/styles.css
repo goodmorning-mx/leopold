@@ -299,6 +299,7 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
   border-radius: 12px;
   background: #101010;
 }
+.service-row + .service-row { margin-top: 14px; }
 .spotify-mark {
   display: grid;
   place-items: center;
@@ -315,6 +316,22 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
   background: #1db954;
 }
 .spotify-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.youtube-mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: #fff;
+  background: #ff453a;
+  font-size: 22px;
+}
+.youtube-button {
+  color: #fff;
+  border-color: #ff453a;
+  background: #ff453a;
+}
+.youtube-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 @media (max-width: 620px) {
   .topbar { padding-inline: 20px; }

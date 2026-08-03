@@ -34,6 +34,14 @@ class Settings(BaseSettings):
         default="http://localhost:8000/v1/integrations/spotify/callback",
         alias="SPOTIFY_REDIRECT_URI",
     )
+    youtube_client_id: str | None = Field(default=None, alias="YOUTUBE_CLIENT_ID")
+    youtube_client_secret: str | None = Field(
+        default=None, alias="YOUTUBE_CLIENT_SECRET"
+    )
+    youtube_redirect_uri: str = Field(
+        default="http://localhost:8000/v1/integrations/youtube/callback",
+        alias="YOUTUBE_REDIRECT_URI",
+    )
     integration_encryption_key: str | None = Field(
         default=None, alias="LEOPOLD_INTEGRATION_ENCRYPTION_KEY"
     )

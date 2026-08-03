@@ -20,6 +20,8 @@ type SpotifyStatus = {
   connected: boolean;
   display_name: string | null;
 };
+
+type YouTubeStatus = SpotifyStatus;
 type Mode = 'register' | 'login';
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -356,6 +358,7 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [showScanner, setShowScanner] = useState(false);
   const [message, setMessage] = useState('');
   const [spotify, setSpotify] = useState<SpotifyStatus | null>(null);
+  const [youtube, setYoutube] = useState<YouTubeStatus | null>(null);
 
   async function loadDevices() {
     setLoading(true);
@@ -373,12 +376,23 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
     void api<SpotifyStatus>('/v1/integrations/spotify/status')
       .then(setSpotify)
       .catch((error: Error) => setMessage(error.message));
+    void api<YouTubeStatus>('/v1/integrations/youtube/status')
+      .then(setYoutube)
+      .catch((error: Error) => setMessage(error.message));
     const result = new URLSearchParams(window.location.search).get('spotify');
     if (result === 'connected') {
       setMessage('Spotify quedó conectado. Leopold recibirá el reproductor automáticamente.');
       window.history.replaceState({}, '', '/');
     } else if (result === 'denied') {
       setMessage('La conexión con Spotify fue cancelada.');
+      window.history.replaceState({}, '', '/');
+    }
+    const youtubeResult = new URLSearchParams(window.location.search).get('youtube');
+    if (youtubeResult === 'connected') {
+      setMessage('YouTube quedó conectado. Leopold recibirá tu experiencia visual automáticamente.');
+      window.history.replaceState({}, '', '/');
+    } else if (youtubeResult === 'denied') {
+      setMessage('La conexión con YouTube fue cancelada.');
       window.history.replaceState({}, '', '/');
     }
   }, []);
@@ -395,6 +409,21 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
       setMessage('Spotify fue desconectado. Leopold volvió a su pantalla principal.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No pudimos desconectar Spotify');
+    }
+  }
+
+  function connectYoutube() {
+    window.location.assign(`${apiUrl}/v1/integrations/youtube/connect`);
+  }
+
+  async function disconnectYoutube() {
+    if (!window.confirm('¿Desconectar YouTube de todos tus dispositivos Leopold?')) return;
+    try {
+      await api<void>('/v1/integrations/youtube', { method: 'DELETE' });
+      setYoutube({ configured: true, connected: false, display_name: null });
+      setMessage('YouTube fue desconectado de Leopold.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No pudimos desconectar YouTube');
     }
   }
 
@@ -500,6 +529,37 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
               className="button spotify-button compact"
               disabled={!spotify?.configured}
               onClick={connectSpotify}
+            >
+              Conectar
+            </button>
+          )}
+        </article>
+        <article className="service-row youtube-service">
+          <div className="youtube-mark" aria-hidden="true">▶</div>
+          <div className="device-copy">
+            <strong>YouTube</strong>
+            <span>
+              {youtube?.connected
+                ? `Conectado${youtube.display_name ? ` como ${youtube.display_name}` : ''}`
+                : 'Lleva tus suscripciones y descubrimientos a Leopold'}
+            </span>
+            <small>
+              {youtube?.connected
+                ? 'Cloud envía una experiencia visual a tus dispositivos'
+                : youtube?.configured === false
+                  ? 'Pendiente de configurar OAuth en el servidor'
+                  : 'Acceso de sólo lectura; Leopold nunca publica por ti'}
+            </small>
+          </div>
+          {youtube?.connected ? (
+            <button className="remove-button" onClick={() => void disconnectYoutube()}>
+              Desconectar
+            </button>
+          ) : (
+            <button
+              className="button youtube-button compact"
+              disabled={!youtube?.configured}
+              onClick={connectYoutube}
             >
               Conectar
             </button>

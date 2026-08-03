@@ -138,6 +138,9 @@ class User(Base):
     spotify_connection: Mapped["SpotifyConnection | None"] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False
     )
+    youtube_connection: Mapped["YouTubeConnection | None"] = relationship(
+        back_populates="user", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class UserSession(Base):
@@ -197,6 +200,42 @@ class SpotifyConnection(Base):
 
 class SpotifyOAuthState(Base):
     __tablename__ = "spotify_oauth_states"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class YouTubeConnection(Base):
+    __tablename__ = "youtube_connections"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    channel_id: Mapped[str] = mapped_column(String(128))
+    display_name: Mapped[str | None] = mapped_column(String(160))
+    access_token_encrypted: Mapped[str] = mapped_column(String(4096))
+    refresh_token_encrypted: Mapped[str] = mapped_column(String(4096))
+    token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scope: Mapped[str] = mapped_column(String(512))
+    cached_feed: Mapped[list] = mapped_column(JSON, default=list)
+    feed_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+    user: Mapped[User] = relationship(back_populates="youtube_connection")
+
+
+class YouTubeOAuthState(Base):
+    __tablename__ = "youtube_oauth_states"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(

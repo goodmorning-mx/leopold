@@ -94,6 +94,7 @@ class DisplayManager {
       const char* primaryDetail,
       const char* secondaryDetail);
   void buildLvglSpotifyPlayer(const SduiScreen& screen);
+  void buildLvglYoutubeFeed(const SduiScreen& screen);
   void buildLvglSduiScreen(const SduiScreen& screen);
 
   uint8_t localExpression_ = 0;
