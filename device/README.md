@@ -172,6 +172,10 @@ un teclado táctil y confirmar conexión o error. La contraseña se entrega
 directamente al stack Wi-Fi del ESP32; no se imprime ni se envía como evento
 SDUI.
 
+Por ergonomía en la pantalla circular, la contraseña se captura mediante grupos
+grandes de caracteres en lugar de un QWERTY reducido. Cada vista local conserva
+un control Atrás: carácter, teclado, redes, detalle Wi-Fi y centro de control.
+
 El renderer v1 acepta como máximo 12 componentes y 12 KiB de JSON:
 
 - `text`

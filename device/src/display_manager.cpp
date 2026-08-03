@@ -906,22 +906,23 @@ void DisplayManager::showWifiNetworks(
 void DisplayManager::showWifiPassword(
     const char* networkName,
     uint8_t passwordLength,
-    uint8_t keyboardMode) {
-  static const char* layouts[] = {
-      "qwertyuiopasdfghjklzxcvbnm",
-      "QWERTYUIOPASDFGHJKLZXCVBNM",
-      "1234567890@#$_&-+()/?!;:[]",
-  };
-  const char* keys = layouts[min<uint8_t>(keyboardMode, 2)];
+    int8_t selectedGroup,
+    bool uppercase) {
+  static const char* groupLabels[] = {
+      "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "123"};
+  static const char* lowerGroups[] = {
+      "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz", "1234567890"};
+  static const char* upperGroups[] = {
+      "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "1234567890"};
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 18, 24, 58, 44, 22, lv_color_hex(0x1C1C1E));
+      root, 25, 25, 64, 48, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);
   lv_obj_t* title = createLabel(
-      root, networkName, &lv_font_montserrat_20, lv_color_white());
-  lv_obj_set_width(title, 300);
+      root, networkName, &lv_font_montserrat_18, lv_color_white());
+  lv_obj_set_width(title, 280);
   lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
   lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 31);
 
@@ -940,48 +941,73 @@ void DisplayManager::showWifiPassword(
       field, LV_SYMBOL_BACKSPACE, &lv_font_montserrat_22, lv_color_white());
   lv_obj_align(erase, LV_ALIGN_RIGHT_MID, -18, 0);
 
-  const uint8_t rowCounts[] = {10, 9, 7};
-  uint8_t offset = 0;
-  for (uint8_t row = 0; row < 3; ++row) {
-    const uint8_t count = rowCounts[row];
-    const int16_t keyWidth = 39;
-    const int16_t startX = (466 - count * keyWidth) / 2;
-    for (uint8_t column = 0; column < count; ++column) {
-      char keyText[2] = {keys[offset++], '\0'};
+  if (selectedGroup < 0) {
+    for (uint8_t index = 0; index < 9; ++index) {
+      const uint8_t row = index / 3;
+      const uint8_t column = index % 3;
       lv_obj_t* key = createRoundPanel(
           root,
-          startX + column * keyWidth,
-          164 + row * 58,
-          35,
-          48,
-          9,
+          58 + column * 119,
+          159 + row * 68,
+          111,
+          60,
+          18,
           lv_color_hex(0x2C2C2E));
       lv_obj_t* label = createLabel(
-          key, keyText, &lv_font_montserrat_16, lv_color_white());
+          key, groupLabels[index], &lv_font_montserrat_20, lv_color_white());
       lv_obj_center(label);
     }
+    const char* bottomLabels[] = {uppercase ? "minus" : "MAYUS", "Simbolos", "Unir"};
+    for (uint8_t index = 0; index < 3; ++index) {
+      lv_obj_t* action = createRoundPanel(
+          root,
+          58 + index * 119,
+          368,
+          111,
+          54,
+          18,
+          lv_color_hex(index == 2 ? 0x0A84FF : 0x3A3A3C));
+      lv_obj_t* label = createLabel(
+          action, bottomLabels[index], &lv_font_montserrat_14, lv_color_white());
+      lv_obj_center(label);
+    }
+  } else {
+    const char* characters = selectedGroup == 9
+        ? "@#$_-.!%*?"
+        : (uppercase ? upperGroups[selectedGroup] : lowerGroups[selectedGroup]);
+    const uint8_t count = strlen(characters);
+    const uint8_t columns = count <= 5 ? count : 5;
+    const int16_t width = count <= 5 ? 76 : 64;
+    const int16_t gap = 8;
+    const int16_t startX = (466 - columns * width - (columns - 1) * gap) / 2;
+    for (uint8_t index = 0; index < count; ++index) {
+      char keyText[2] = {characters[index], '\0'};
+      const uint8_t row = index / 5;
+      const uint8_t column = index % 5;
+      lv_obj_t* key = createRoundPanel(
+          root,
+          startX + column * (width + gap),
+          180 + row * 76,
+          width,
+          66,
+          20,
+          lv_color_hex(0x2C2C2E));
+      lv_obj_t* label = createLabel(
+          key, keyText, &lv_font_montserrat_24, lv_color_white());
+      lv_obj_center(label);
+    }
+    lv_obj_t* prompt = createLabel(
+        root,
+        selectedGroup == 9 ? "Elige un simbolo" : "Elige un caracter",
+        &lv_font_montserrat_16,
+        lv_color_hex(0x8E8E93));
+    lv_obj_align(prompt, LV_ALIGN_TOP_MID, 0, 151);
   }
-  lv_obj_t* mode = createRoundPanel(
-      root, 22, 344, 91, 48, 13, lv_color_hex(0x3A3A3C));
-  lv_obj_t* modeLabel = createLabel(
-      mode,
-      keyboardMode == 0 ? "ABC" : (keyboardMode == 1 ? "123" : "abc"),
-      &lv_font_montserrat_14,
-      lv_color_white());
-  lv_obj_center(modeLabel);
-  lv_obj_t* space = createRoundPanel(
-      root, 121, 344, 224, 48, 13, lv_color_hex(0x2C2C2E));
-  lv_obj_t* spaceLabel = createLabel(
-      space, "espacio", &lv_font_montserrat_14, lv_color_white());
-  lv_obj_center(spaceLabel);
-  lv_obj_t* join = createRoundPanel(
-      root, 353, 344, 91, 48, 13, lv_color_hex(0x0A84FF));
-  lv_obj_t* joinLabel = createLabel(
-      join, "Unir", &lv_font_montserrat_14, lv_color_white());
-  lv_obj_center(joinLabel);
   lv_obj_t* hint = createLabel(
       root,
-      "La contrasena se guarda solo en Leopold",
+      selectedGroup < 0
+          ? "Toca un grupo para elegir una letra"
+          : "Atras vuelve a los grupos",
       &lv_font_montserrat_12,
       lv_color_hex(0x8E8E93));
   lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -26);
@@ -991,6 +1017,11 @@ void DisplayManager::showWifiConnecting(
     const char* networkName,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 25, 25, 64, 48, 24, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
+  lv_obj_center(backIcon);
   lv_obj_t* circle = createRoundPanel(
       root, 153, 91, 160, 160, LV_RADIUS_CIRCLE, lv_color_hex(0x1C1C1E));
   lv_obj_set_style_border_width(circle, 5, 0);

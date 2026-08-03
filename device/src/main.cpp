@@ -106,7 +106,8 @@ WifiNetworkChoice wifiNetworks[kVisibleWifiNetworks];
 uint8_t wifiNetworkCount = 0;
 String selectedWifiName;
 String selectedWifiPassword;
-uint8_t wifiKeyboardMode = 0;
+int8_t wifiKeyGroup = -1;
+bool wifiUppercase = false;
 uint32_t wifiSelectionStartedAt = 0;
 bool wifiScanRunning = false;
 
@@ -135,24 +136,32 @@ void beginWifiScan() {
 
 void renderWifiPassword() {
   screen.showWifiPassword(
-      selectedWifiName.c_str(), selectedWifiPassword.length(), wifiKeyboardMode);
+      selectedWifiName.c_str(),
+      selectedWifiPassword.length(),
+      wifiKeyGroup,
+      wifiUppercase);
 }
 
-char wifiKeyAt(uint16_t x, uint16_t y) {
-  static const char* layouts[] = {
-      "qwertyuiopasdfghjklzxcvbnm",
-      "QWERTYUIOPASDFGHJKLZXCVBNM",
-      "1234567890@#$_&-+()/?!;:[]",
-  };
-  if (y < 164 || y >= 338) return '\0';
-  const uint8_t row = min<uint8_t>((y - 164) / 58, 2);
-  const uint8_t counts[] = {10, 9, 7};
-  const uint8_t offsets[] = {0, 10, 19};
-  const int16_t startX = (466 - counts[row] * 39) / 2;
-  if (x < startX) return '\0';
-  const uint8_t column = (x - startX) / 39;
-  if (column >= counts[row] || (x - startX) % 39 >= 35) return '\0';
-  return layouts[min<uint8_t>(wifiKeyboardMode, 2)][offsets[row] + column];
+char selectedWifiCharacterAt(uint16_t x, uint16_t y) {
+  static const char* lowerGroups[] = {
+      "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz", "1234567890"};
+  static const char* upperGroups[] = {
+      "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "1234567890"};
+  if (wifiKeyGroup < 0 || wifiKeyGroup > 9 || y < 180) return '\0';
+  const char* characters = wifiKeyGroup == 9
+      ? "@#$_-.!%*?"
+      : (wifiUppercase ? upperGroups[wifiKeyGroup] : lowerGroups[wifiKeyGroup]);
+  const uint8_t count = strlen(characters);
+  const uint8_t columns = count <= 5 ? count : 5;
+  const int16_t width = count <= 5 ? 76 : 64;
+  const int16_t gap = 8;
+  const int16_t startX = (466 - columns * width - (columns - 1) * gap) / 2;
+  const uint8_t row = (y - 180) / 76;
+  if (row > 1 || x < startX) return '\0';
+  const uint8_t column = (x - startX) / (width + gap);
+  if (column >= columns || (x - startX) % (width + gap) >= width) return '\0';
+  const uint8_t index = row * 5 + column;
+  return index < count ? characters[index] : '\0';
 }
 
 void showLocalConnectivityPanel(uint32_t now) {
@@ -574,7 +583,8 @@ void processInput(uint32_t now) {
       if (index < wifiNetworkCount) {
         selectedWifiName = wifiNetworks[index].name;
         selectedWifiPassword = String();
-        wifiKeyboardMode = 0;
+        wifiKeyGroup = -1;
+        wifiUppercase = false;
         if (wifiNetworks[index].secured) {
           localPanel = LocalPanel::kWifiPassword;
           renderWifiPassword();
@@ -591,22 +601,37 @@ void processInput(uint32_t now) {
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiPassword) {
     if (point.x <= 88 && point.y <= 76) {
-      localPanel = LocalPanel::kWifiNetworks;
-      renderWifiNetworks();
+      if (wifiKeyGroup >= 0) {
+        wifiKeyGroup = -1;
+        renderWifiPassword();
+      } else {
+        localPanel = LocalPanel::kWifiNetworks;
+        renderWifiNetworks();
+      }
     } else if (point.y >= 75 && point.y <= 151 && point.x >= 340) {
       if (!selectedWifiPassword.isEmpty()) {
         selectedWifiPassword.remove(selectedWifiPassword.length() - 1);
         renderWifiPassword();
       }
-    } else if (point.y >= 332 && point.y <= 404) {
-      if (point.x < 116) {
-        wifiKeyboardMode = (wifiKeyboardMode + 1) % 3;
+    } else if (wifiKeyGroup < 0 &&
+               point.y >= 150 && point.y < 360 &&
+               point.x >= 50 && point.x <= 416) {
+      const uint8_t row = (point.y - 159) / 68;
+      const uint8_t column = (point.x - 58) / 119;
+      if (row < 3 && column < 3 &&
+          (point.x - 58) % 119 < 111 &&
+          (point.y - 159) % 68 < 60) {
+        wifiKeyGroup = row * 3 + column;
         renderWifiPassword();
-      } else if (point.x < 350) {
-        if (selectedWifiPassword.length() < 63) {
-          selectedWifiPassword += ' ';
-          renderWifiPassword();
-        }
+      }
+    } else if (wifiKeyGroup < 0 && point.y >= 360 && point.y <= 432) {
+      const uint8_t action = point.x < 177 ? 0 : (point.x < 296 ? 1 : 2);
+      if (action == 0) {
+        wifiUppercase = !wifiUppercase;
+        renderWifiPassword();
+      } else if (action == 1) {
+        wifiKeyGroup = 9;
+        renderWifiPassword();
       } else if (!selectedWifiPassword.isEmpty()) {
         localPanel = LocalPanel::kWifiConnecting;
         wifiSelectionStartedAt = now;
@@ -616,16 +641,22 @@ void processInput(uint32_t now) {
         screen.showWifiConnecting(
             selectedWifiName.c_str(), "Validando contrasena...");
       }
-    } else {
-      const char key = wifiKeyAt(point.x, point.y);
+    } else if (wifiKeyGroup >= 0) {
+      const char key = selectedWifiCharacterAt(point.x, point.y);
       if (key != '\0' && selectedWifiPassword.length() < 63) {
         selectedWifiPassword += key;
+        wifiKeyGroup = -1;
         renderWifiPassword();
       }
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiConnecting) {
-    // Connection progress intentionally consumes touch.
+    if (point.x <= 100 && point.y <= 92) {
+      WiFi.disconnect(false, false);
+      localPanel = LocalPanel::kWifiNetworks;
+      renderWifiNetworks("Conexion cancelada");
+      Serial.println("On-device Wi-Fi connection cancelled");
+    }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel != LocalPanel::kNone) {
     if (point.x <= 116 && point.y <= 108) {

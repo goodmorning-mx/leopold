@@ -49,7 +49,8 @@ class DisplayManager {
   void showWifiPassword(
       const char* networkName,
       uint8_t passwordLength,
-      uint8_t keyboardMode);
+      int8_t selectedGroup,
+      bool uppercase);
   void showWifiConnecting(const char* networkName, const char* message);
   void drawIndicators(
       bool wifiConnected,
