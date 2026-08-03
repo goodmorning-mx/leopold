@@ -166,6 +166,12 @@ una vista local con la red, intensidad de señal, reintento y acceso al portal
 Cloud, el siguiente intento automático y permite forzar una reconexión. Estas
 acciones no dependen de un documento SDUI remoto.
 
+`Cambiar red` completa también todo el flujo en la AMOLED: escanea redes,
+muestra señal y seguridad, permite elegir el SSID, capturar la contraseña con
+un teclado táctil y confirmar conexión o error. La contraseña se entrega
+directamente al stack Wi-Fi del ESP32; no se imprime ni se envía como evento
+SDUI.
+
 El renderer v1 acepta como máximo 12 componentes y 12 KiB de JSON:
 
 - `text`

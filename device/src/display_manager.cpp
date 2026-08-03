@@ -849,6 +849,168 @@ void DisplayManager::showCloudDetails(
       false, cloudConnected, retrying, primary, secondary);
 }
 
+void DisplayManager::showWifiNetworks(
+    const char* const* names,
+    const int32_t* signalStrengths,
+    const bool* secured,
+    uint8_t count,
+    bool scanning,
+    const char* message) {
+  lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 28, 35, 62, 46, 23, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
+  lv_obj_center(backIcon);
+  lv_obj_t* title = createLabel(
+      root, "Elegir Wi-Fi", &lv_font_montserrat_24, lv_color_white());
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 43);
+  lv_obj_t* subtitle = createLabel(
+      root,
+      scanning ? "Buscando redes..." :
+          (message != nullptr ? message : "Redes disponibles"),
+      &lv_font_montserrat_12,
+      lv_color_hex(scanning ? 0x0A84FF : 0x8E8E93));
+  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 80);
+
+  for (uint8_t index = 0; index < count && index < 5; ++index) {
+    const int16_t y = 111 + index * 57;
+    lv_obj_t* row = createRoundPanel(
+        root, 34, y, 398, 49, 17, lv_color_hex(0x1C1C1E));
+    lv_obj_t* wifi = createLabel(
+        row, LV_SYMBOL_WIFI, &lv_font_montserrat_20,
+        lv_color_hex(signalStrengths[index] > -68 ? 0x30D158 : 0x8E8E93));
+    lv_obj_align(wifi, LV_ALIGN_LEFT_MID, 16, 0);
+    lv_obj_t* name = createLabel(
+        row, names[index], &lv_font_montserrat_16, lv_color_white());
+    lv_obj_set_width(name, 265);
+    lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
+    lv_obj_align(name, LV_ALIGN_LEFT_MID, 54, 0);
+    lv_obj_t* lock = createLabel(
+        row,
+        secured[index] ? LV_SYMBOL_EYE_CLOSE : "Abierta",
+        &lv_font_montserrat_12,
+        lv_color_hex(0x8E8E93));
+    lv_obj_align(lock, LV_ALIGN_RIGHT_MID, -15, 0);
+  }
+  lv_obj_t* scan = createRoundPanel(
+      root, 111, 410, 244, 45, 23, lv_color_hex(0x2C2C2E));
+  lv_obj_t* scanLabel = createLabel(
+      scan,
+      scanning ? "Buscando..." : "Buscar otra vez",
+      &lv_font_montserrat_14,
+      lv_color_white());
+  lv_obj_center(scanLabel);
+}
+
+void DisplayManager::showWifiPassword(
+    const char* networkName,
+    uint8_t passwordLength,
+    uint8_t keyboardMode) {
+  static const char* layouts[] = {
+      "qwertyuiopasdfghjklzxcvbnm",
+      "QWERTYUIOPASDFGHJKLZXCVBNM",
+      "1234567890@#$_&-+()/?!;:[]",
+  };
+  const char* keys = layouts[min<uint8_t>(keyboardMode, 2)];
+  lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 18, 24, 58, 44, 22, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
+  lv_obj_center(backIcon);
+  lv_obj_t* title = createLabel(
+      root, networkName, &lv_font_montserrat_20, lv_color_white());
+  lv_obj_set_width(title, 300);
+  lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 31);
+
+  lv_obj_t* field = createRoundPanel(
+      root, 34, 83, 398, 61, 18, lv_color_hex(0x1C1C1E));
+  char masked[65] = {};
+  const uint8_t dots = min<uint8_t>(passwordLength, 32);
+  memset(masked, '*', dots);
+  lv_obj_t* value = createLabel(
+      field,
+      passwordLength == 0 ? "Contrasena" : masked,
+      &lv_font_montserrat_16,
+      lv_color_hex(passwordLength == 0 ? 0x8E8E93 : 0xFFFFFF));
+  lv_obj_align(value, LV_ALIGN_LEFT_MID, 18, 0);
+  lv_obj_t* erase = createLabel(
+      field, LV_SYMBOL_BACKSPACE, &lv_font_montserrat_22, lv_color_white());
+  lv_obj_align(erase, LV_ALIGN_RIGHT_MID, -18, 0);
+
+  const uint8_t rowCounts[] = {10, 9, 7};
+  uint8_t offset = 0;
+  for (uint8_t row = 0; row < 3; ++row) {
+    const uint8_t count = rowCounts[row];
+    const int16_t keyWidth = 39;
+    const int16_t startX = (466 - count * keyWidth) / 2;
+    for (uint8_t column = 0; column < count; ++column) {
+      char keyText[2] = {keys[offset++], '\0'};
+      lv_obj_t* key = createRoundPanel(
+          root,
+          startX + column * keyWidth,
+          164 + row * 58,
+          35,
+          48,
+          9,
+          lv_color_hex(0x2C2C2E));
+      lv_obj_t* label = createLabel(
+          key, keyText, &lv_font_montserrat_16, lv_color_white());
+      lv_obj_center(label);
+    }
+  }
+  lv_obj_t* mode = createRoundPanel(
+      root, 22, 344, 91, 48, 13, lv_color_hex(0x3A3A3C));
+  lv_obj_t* modeLabel = createLabel(
+      mode,
+      keyboardMode == 0 ? "ABC" : (keyboardMode == 1 ? "123" : "abc"),
+      &lv_font_montserrat_14,
+      lv_color_white());
+  lv_obj_center(modeLabel);
+  lv_obj_t* space = createRoundPanel(
+      root, 121, 344, 224, 48, 13, lv_color_hex(0x2C2C2E));
+  lv_obj_t* spaceLabel = createLabel(
+      space, "espacio", &lv_font_montserrat_14, lv_color_white());
+  lv_obj_center(spaceLabel);
+  lv_obj_t* join = createRoundPanel(
+      root, 353, 344, 91, 48, 13, lv_color_hex(0x0A84FF));
+  lv_obj_t* joinLabel = createLabel(
+      join, "Unir", &lv_font_montserrat_14, lv_color_white());
+  lv_obj_center(joinLabel);
+  lv_obj_t* hint = createLabel(
+      root,
+      "La contrasena se guarda solo en Leopold",
+      &lv_font_montserrat_12,
+      lv_color_hex(0x8E8E93));
+  lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -26);
+}
+
+void DisplayManager::showWifiConnecting(
+    const char* networkName,
+    const char* message) {
+  lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* circle = createRoundPanel(
+      root, 153, 91, 160, 160, LV_RADIUS_CIRCLE, lv_color_hex(0x1C1C1E));
+  lv_obj_set_style_border_width(circle, 5, 0);
+  lv_obj_set_style_border_color(circle, lv_color_hex(0x0A84FF), 0);
+  lv_obj_t* wifi = createLabel(
+      circle, LV_SYMBOL_WIFI, &lv_font_montserrat_36, lv_color_hex(0x0A84FF));
+  lv_obj_center(wifi);
+  lv_obj_t* title = createLabel(
+      root, "Conectando", &lv_font_montserrat_24, lv_color_white());
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 282);
+  lv_obj_t* network = createLabel(
+      root, networkName, &lv_font_montserrat_18, lv_color_hex(0xD1D1D6));
+  lv_obj_set_width(network, 390);
+  lv_obj_set_style_text_align(network, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(network, LV_ALIGN_TOP_MID, 0, 321);
+  lv_obj_t* status = createLabel(
+      root, message, &lv_font_montserrat_14, lv_color_hex(0x8E8E93));
+  lv_obj_align(status, LV_ALIGN_TOP_MID, 0, 361);
+}
+
 void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   const SduiComponent* track = nullptr;
   const SduiComponent* artist = nullptr;

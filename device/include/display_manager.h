@@ -39,6 +39,18 @@ class DisplayManager {
       bool cloudConnected,
       bool retrying,
       uint32_t retryInSeconds);
+  void showWifiNetworks(
+      const char* const* names,
+      const int32_t* signalStrengths,
+      const bool* secured,
+      uint8_t count,
+      bool scanning,
+      const char* message = nullptr);
+  void showWifiPassword(
+      const char* networkName,
+      uint8_t passwordLength,
+      uint8_t keyboardMode);
+  void showWifiConnecting(const char* networkName, const char* message);
   void drawIndicators(
       bool wifiConnected,
       bool cloudConnected,

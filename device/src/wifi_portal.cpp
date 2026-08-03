@@ -153,6 +153,29 @@ void WifiPortal::startConfiguration(uint32_t now) {
   Serial.printf("Wi-Fi configuration portal active: %s\n", accessPointName_);
 }
 
+void WifiPortal::prepareForScan() {
+  if (portalActive_) {
+    manager_.stopConfigPortal();
+    WiFi.softAPdisconnect(true);
+    portalActive_ = false;
+  }
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect(false, false);
+  disconnectedAt_ = 0;
+}
+
+void WifiPortal::connectToNetwork(
+    const char* networkName,
+    const char* password,
+    uint32_t now) {
+  prepareForScan();
+  WiFi.persistent(true);
+  WiFi.begin(networkName, password);
+  connectStartedAt_ = now;
+  disconnectedAt_ = now;
+  Serial.printf("Connecting to selected Wi-Fi: %s\n", networkName);
+}
+
 void WifiPortal::completeSetup() {
   Preferences preferences;
   preferences.begin("leopold", false);
