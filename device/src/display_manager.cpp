@@ -7,6 +7,7 @@
 #include <qrcode.h>
 
 #include "board_config.h"
+#include "sky_assets.h"
 
 namespace leopold {
 namespace {
@@ -136,6 +137,30 @@ lv_obj_t* createRoundPanel(
   lv_obj_set_style_border_width(panel, 0, 0);
   lv_obj_set_style_pad_all(panel, 0, 0);
   return panel;
+}
+
+lv_obj_t* createImage(
+    lv_obj_t* parent,
+    const lv_image_dsc_t& source,
+    int16_t x,
+    int16_t y,
+    lv_opa_t opacity = LV_OPA_COVER) {
+  lv_obj_t* image = lv_image_create(parent);
+  lv_image_set_src(image, &source);
+  lv_obj_set_pos(image, x, y);
+  lv_obj_set_style_image_opa(image, opacity, 0);
+  lv_obj_remove_flag(image, LV_OBJ_FLAG_CLICKABLE);
+  return image;
+}
+
+const lv_image_dsc_t* skyButtonIcon(const char* id) {
+  if (strcmp(id, "open-clock") == 0) return &sky::kClockIcon;
+  if (strcmp(id, "open-voltage") == 0) return &sky::kBoltIcon;
+  if (strcmp(id, "open-weather") == 0) return &sky::kWeatherIcon;
+  if (strcmp(id, "open-navigation") == 0) return &sky::kNavigationIcon;
+  if (strcmp(id, "open-rgb") == 0) return &sky::kColorIcon;
+  if (strcmp(id, "open-spotify") == 0) return &sky::kSpotifyIcon;
+  return nullptr;
 }
 
 }  // namespace
@@ -1164,6 +1189,7 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   }
 
   lv_obj_t* root = cleanLvglScreen();
+  createImage(root, sky::kFlowerBackground, 0, 0, LV_OPA_30);
   lv_obj_t* back = createRoundPanel(
       root, 18, 34, 58, 44, 22, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
@@ -1171,18 +1197,20 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   lv_obj_center(backIcon);
   lv_obj_t* card = createRoundPanel(
       root, 38, 39, 390, 360, 48, lv_color_hex(0x151517));
+  lv_obj_set_style_bg_opa(card, LV_OPA_90, 0);
+  createImage(card, sky::kSpotifyIcon, 22, 14);
   lv_obj_t* brand = createLabel(
       card,
       "SPOTIFY",
       &lv_font_montserrat_16,
       lv_color_hex(0x1DB954));
-  lv_obj_align(brand, LV_ALIGN_TOP_LEFT, 42, 28);
+  lv_obj_align(brand, LV_ALIGN_TOP_LEFT, 105, 24);
   lv_obj_t* nowPlaying = createLabel(
       card,
       "REPRODUCIENDO AHORA",
       &lv_font_montserrat_12,
       lv_color_hex(0x8E8E93));
-  lv_obj_align(nowPlaying, LV_ALIGN_TOP_LEFT, 42, 51);
+  lv_obj_align(nowPlaying, LV_ALIGN_TOP_LEFT, 105, 47);
 
   lv_obj_t* trackLabel = createLabel(
       card,
@@ -1358,8 +1386,37 @@ void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
 
 void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
   lv_obj_t* root = cleanLvglScreen(screen.background);
+  const bool skyHome = strcmp(screen.screenId, "sky-home") == 0;
+  const bool flowerScreen =
+      strcmp(screen.screenId, "sky-clock") == 0 ||
+      strcmp(screen.screenId, "sky-voltage") == 0 ||
+      strcmp(screen.screenId, "sky-weather") == 0;
+  if (skyHome) {
+    createImage(root, sky::kHomeBackground, 0, 0, LV_OPA_COVER);
+    lv_obj_t* shade = createRoundPanel(
+        root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
+    lv_obj_set_style_bg_opa(shade, LV_OPA_30, 0);
+  } else if (flowerScreen) {
+    createImage(root, sky::kFlowerBackground, 0, 0, LV_OPA_COVER);
+    lv_obj_t* shade = createRoundPanel(
+        root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
+    lv_obj_set_style_bg_opa(shade, LV_OPA_20, 0);
+    if (strcmp(screen.screenId, "sky-clock") == 0) {
+      createImage(root, sky::kClockIcon, 193, 45);
+    } else if (strcmp(screen.screenId, "sky-voltage") == 0) {
+      createImage(root, sky::kBoltIcon, 193, 45);
+    } else {
+      createImage(root, sky::kWeatherIcon, 196, 45);
+    }
+  }
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
+    if (flowerScreen &&
+        (strcmp(component.id, "clock-icon") == 0 ||
+         strcmp(component.id, "voltage-symbol") == 0 ||
+         strcmp(component.id, "weather-title") == 0)) {
+      continue;
+    }
     if (component.type == ComponentType::kText) {
       lv_obj_t* label = createLabel(
           root,
@@ -1387,16 +1444,27 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
     } else if (component.type == ComponentType::kButton) {
       const bool spotifyAction =
           strcmp(screen.screenId, "spotify-actions") == 0;
+      const lv_image_dsc_t* imageSource =
+          skyHome ? skyButtonIcon(component.id) : nullptr;
       lv_obj_t* button = createRoundPanel(
           root,
           component.x,
           component.y,
           component.width,
           component.height,
-          component.height / 2,
-          spotifyAction ? lv_color_white() : lv_color_hex(0x2C2C2E));
+          skyHome ? LV_RADIUS_CIRCLE : component.height / 2,
+          spotifyAction ? lv_color_white() : lv_color_hex(0x141416));
+      if (skyHome) {
+        lv_obj_set_style_bg_opa(button, LV_OPA_80, 0);
+      }
       lv_obj_set_style_border_width(button, spotifyAction ? 0 : 2, 0);
       lv_obj_set_style_border_color(button, lvColor(component.color), 0);
+      if (imageSource != nullptr) {
+        lv_obj_t* icon = lv_image_create(button);
+        lv_image_set_src(icon, imageSource);
+        lv_obj_center(icon);
+        continue;
+      }
       const char* text = component.text;
       if (strcmp(component.icon, "play") == 0) text = LV_SYMBOL_PLAY;
       else if (strcmp(component.icon, "pause") == 0) text = LV_SYMBOL_PAUSE;

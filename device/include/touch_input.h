@@ -14,6 +14,7 @@ enum class TouchGesture : uint8_t {
   kTap,
   kDrag,
   kRelease,
+  kSwipeUp,
   kSwipeLeft,
   kSwipeRight,
 };
