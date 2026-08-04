@@ -172,6 +172,7 @@ def player_state(
     progress_ms = int(payload.get("progress_ms") or 0)
     progress = min(int((progress_ms * 100) / duration), 100)
     album = item.get("album") or {}
+    album_images = album.get("images") or []
     return {
         "available": bool(item),
         "is_playing": bool(payload.get("is_playing")),
@@ -179,6 +180,11 @@ def player_state(
         "artist": ", ".join(artist.get("name", "") for artist in artists if artist.get("name"))
         or "Abre Spotify en tu teléfono",
         "album": album.get("name") or "",
+        "album_art_url": (
+            str(album_images[0].get("url") or "")[:96]
+            if album_images and isinstance(album_images[0], dict)
+            else ""
+        ),
         "track_id": item.get("id") or "",
         "progress": progress,
         "progress_ms": progress_ms,
@@ -197,6 +203,7 @@ def spotify_document(revision: int, state: dict) -> dict:
     title = str(state.get("track") or "Sin reproducción")[:26]
     artist = str(state.get("artist") or "Abre Spotify en tu teléfono")[:38]
     album = str(state.get("album") or "Spotify Connect")[:38]
+    album_art_url = str(state.get("album_art_url") or "")[:96]
     playing = bool(state.get("is_playing"))
     owner_name = str(state.get("owner_name") or "Leopold")[:18].upper()
     bluetooth_name = str(state.get("bluetooth_name") or "Leopold")[:24]
@@ -267,63 +274,43 @@ def spotify_document(revision: int, state: dict) -> dict:
                 },
                 {
                     "type": "text",
-                    "id": "album",
-                    "text": album,
-                    "x": 233,
-                    "y": 141,
+                    "id": "album-art",
+                    "text": album_art_url or "none",
+                    "x": 183,
+                    "y": 105,
                     "align": "center",
                     "size": 1,
-                    "color": "#686868",
+                    "color": "#FFFFFF",
                 },
                 {
                     "type": "slider",
                     "id": "spotify-seek",
                     "value": int(state.get("progress") or 0),
-                    "x": 73,
-                    "y": 202,
-                    "width": 320,
-                    "height": 32,
+                    "x": 92,
+                    "y": 399,
+                    "width": 282,
+                    "height": 42,
                     "color": "#1DB954",
                 },
                 {
                     "type": "slider",
                     "id": "spotify-volume",
                     "value": int(state.get("volume_percent") or 0),
-                    "x": 391,
-                    "y": 72,
-                    "width": 44,
-                    "height": 176,
-                    "color": "#FFFFFF",
-                },
-                {
-                    "type": "text",
-                    "id": "elapsed",
-                    "text": format_millis(int(state.get("progress_ms") or 0)),
-                    "x": 73,
-                    "y": 231,
-                    "align": "left",
-                    "size": 1,
-                    "color": "#A7A7A7",
-                },
-                {
-                    "type": "text",
-                    "id": "duration",
-                    "text": format_millis(int(state.get("duration_ms") or 0)),
-                    "x": 393,
-                    "y": 231,
-                    "align": "right",
-                    "size": 1,
-                    "color": "#A7A7A7",
+                    "x": 64,
+                    "y": 22,
+                    "width": 338,
+                    "height": 54,
+                    "color": "#0A84FF",
                 },
                 {
                     "type": "button",
                     "id": "spotify-prev",
                     "label": "Anterior",
                     "icon": "previous",
-                    "x": 70,
-                    "y": 294,
-                    "width": 72,
-                    "height": 72,
+                    "x": 83,
+                    "y": 304,
+                    "width": 70,
+                    "height": 70,
                     "color": "#FFFFFF",
                 },
                 {
@@ -332,20 +319,38 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "label": "Pausa" if playing else "Reproducir",
                     "icon": "pause" if playing else "play",
                     "x": 191,
-                    "y": 288,
+                    "y": 297,
                     "width": 84,
                     "height": 84,
-                    "color": "#1DB954",
+                    "color": "#FFFFFF",
                 },
                 {
                     "type": "button",
                     "id": "spotify-next",
                     "label": "Siguiente",
                     "icon": "next",
-                    "x": 324,
-                    "y": 294,
-                    "width": 72,
-                    "height": 72,
+                    "x": 313,
+                    "y": 304,
+                    "width": 70,
+                    "height": 70,
+                    "color": "#FFFFFF",
+                },
+                {
+                    "type": "button", "id": "spotify-playlists",
+                    "label": "Playlists", "icon": "playlist",
+                    "x": 112, "y": 80, "width": 54, "height": 54,
+                    "color": "#FFFFFF",
+                },
+                {
+                    "type": "button", "id": "spotify-like",
+                    "label": "Me gusta", "icon": "heart",
+                    "x": 300, "y": 80, "width": 54, "height": 54,
+                    "color": "#FFFFFF",
+                },
+                {
+                    "type": "button", "id": "spotify-shuffle",
+                    "label": "Aleatorio", "icon": "shuffle",
+                    "x": 206, "y": 80, "width": 54, "height": 54,
                     "color": "#FFFFFF",
                 },
             ],

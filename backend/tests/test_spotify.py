@@ -19,6 +19,7 @@ def test_spotify_documents_follow_sdui_contract() -> None:
             "track": "A Song",
             "artist": "An Artist",
             "album": "An Album",
+            "album_art_url": "https://i.scdn.co/image/test-cover",
             "progress": 42,
             "progress_ms": 61000,
             "duration_ms": 180000,
@@ -34,13 +35,19 @@ def test_spotify_documents_follow_sdui_contract() -> None:
     ]
     UIDocument.model_validate(playing)
     spotify = playing["screens"][1]
-    assert len(spotify["components"]) == 10
+    assert len(spotify["components"]) == 11
     assert next(
         item for item in spotify["components"] if item["id"] == "spotify-volume"
-    )["height"] == 176
+    )["color"] == "#0A84FF"
     assert next(
         item for item in spotify["components"] if item["id"] == "spotify-seek"
     )["type"] == "slider"
+    assert next(
+        item for item in spotify["components"] if item["id"] == "album-art"
+    )["text"] == "https://i.scdn.co/image/test-cover"
+    assert {
+        "spotify-playlists", "spotify-like", "spotify-shuffle"
+    }.issubset({item["id"] for item in spotify["components"]})
     assert playing["screens"][0]["components"][0]["text"] == "HOLA, ABEL"
     assert next(
         item

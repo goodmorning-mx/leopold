@@ -1169,149 +1169,103 @@ void DisplayManager::showWifiConnecting(
 void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   const SduiComponent* track = nullptr;
   const SduiComponent* artist = nullptr;
-  const SduiComponent* album = nullptr;
   const SduiComponent* progress = nullptr;
-  const SduiComponent* elapsed = nullptr;
-  const SduiComponent* duration = nullptr;
   const SduiComponent* toggle = nullptr;
   const SduiComponent* volume = nullptr;
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (strcmp(component.id, "track") == 0) track = &component;
     else if (strcmp(component.id, "artist") == 0) artist = &component;
-    else if (strcmp(component.id, "album") == 0) album = &component;
     else if (strcmp(component.id, "progress") == 0 ||
              strcmp(component.id, "spotify-seek") == 0) progress = &component;
-    else if (strcmp(component.id, "elapsed") == 0) elapsed = &component;
-    else if (strcmp(component.id, "duration") == 0) duration = &component;
     else if (strcmp(component.id, "spotify-toggle") == 0) toggle = &component;
     else if (strcmp(component.id, "spotify-volume") == 0) volume = &component;
   }
 
   lv_obj_t* root = cleanLvglScreen();
-  createImage(root, sky::kFlowerBackground, 0, 0, LV_OPA_30);
-  lv_obj_t* back = createRoundPanel(
-      root, 18, 34, 58, 44, 22, lv_color_hex(0x1C1C1E));
-  lv_obj_t* backIcon = createLabel(
-      back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
-  lv_obj_center(backIcon);
-  lv_obj_t* card = createRoundPanel(
-      root, 38, 39, 390, 360, 48, lv_color_hex(0x151517));
-  lv_obj_set_style_bg_opa(card, LV_OPA_90, 0);
-  createImage(card, sky::kSpotifyIcon, 22, 14);
-  lv_obj_t* brand = createLabel(
-      card,
-      "SPOTIFY",
-      &lv_font_montserrat_16,
-      lv_color_hex(0x1DB954));
-  lv_obj_align(brand, LV_ALIGN_TOP_LEFT, 105, 24);
-  lv_obj_t* nowPlaying = createLabel(
-      card,
-      "REPRODUCIENDO AHORA",
-      &lv_font_montserrat_12,
-      lv_color_hex(0x8E8E93));
-  lv_obj_align(nowPlaying, LV_ALIGN_TOP_LEFT, 105, 47);
+  // AMOLED-first player: pure black pixels and no decorative background.
+  lv_obj_t* volumeArc = lv_arc_create(root);
+  lv_obj_set_pos(volumeArc, 18, 18);
+  lv_obj_set_size(volumeArc, 430, 430);
+  lv_arc_set_rotation(volumeArc, 135);
+  lv_arc_set_bg_angles(volumeArc, 0, 270);
+  lv_arc_set_range(volumeArc, 0, 100);
+  lv_arc_set_value(volumeArc, volume == nullptr ? 0 : volume->value);
+  lv_obj_remove_flag(volumeArc, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_arc_width(volumeArc, 11, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(volumeArc, lv_color_hex(0x20252A), LV_PART_MAIN);
+  lv_obj_set_style_arc_rounded(volumeArc, true, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(volumeArc, 11, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(volumeArc, lv_color_hex(0x0A84FF), LV_PART_INDICATOR);
+  lv_obj_set_style_arc_rounded(volumeArc, true, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(volumeArc, LV_OPA_COVER, LV_PART_KNOB);
+  lv_obj_set_style_bg_color(volumeArc, lv_color_white(), LV_PART_KNOB);
+  lv_obj_set_style_pad_all(volumeArc, 3, LV_PART_KNOB);
+
+  const char* actionSymbols[] = {LV_SYMBOL_LIST, LV_SYMBOL_SHUFFLE, LV_SYMBOL_OK};
+  const int16_t actionX[] = {132, 233, 334};
+  for (uint8_t index = 0; index < 3; ++index) {
+    lv_obj_t* action = createLabel(
+        root, actionSymbols[index], &lv_font_montserrat_24, lv_color_white());
+    lv_obj_align(action, LV_ALIGN_TOP_LEFT, actionX[index] - 12, 72);
+  }
+
+  // Until the cover cache has downloaded a new track, this is the intentional
+  // no-background fallback. The SDUI contract already carries album-art URL.
+  lv_obj_t* cover = createImage(root, sky::kSpotifyLargeIcon, 184, 119);
+  lv_obj_set_style_image_recolor(cover, lv_color_white(), 0);
+  lv_obj_set_style_image_recolor_opa(cover, LV_OPA_COVER, 0);
 
   lv_obj_t* trackLabel = createLabel(
-      card,
+      root,
       track == nullptr ? "Sin reproducción" : track->text,
       &lv_font_montserrat_22,
       lv_color_white());
-  lv_obj_set_width(trackLabel, 330);
+  lv_obj_set_width(trackLabel, 320);
   lv_label_set_long_mode(trackLabel, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_align(trackLabel, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(trackLabel, LV_ALIGN_TOP_MID, 0, 88);
+  lv_obj_align(trackLabel, LV_ALIGN_TOP_MID, 0, 235);
   lv_obj_t* artistLabel = createLabel(
-      card,
+      root,
       artist == nullptr ? "Abre Spotify" : artist->text,
       &lv_font_montserrat_14,
       lv_color_hex(0xD1D1D6));
-  lv_obj_align(artistLabel, LV_ALIGN_TOP_MID, 0, 121);
-  lv_obj_t* albumLabel = createLabel(
-      card,
-      album == nullptr ? "" : album->text,
-      &lv_font_montserrat_12,
-      lv_color_hex(0x636366));
-  lv_obj_align(albumLabel, LV_ALIGN_TOP_MID, 0, 144);
-
-  lv_obj_t* bar = lv_bar_create(card);
-  lv_obj_set_pos(bar, 34, 190);
-  lv_obj_set_size(bar, 322, 6);
-  lv_bar_set_range(bar, 0, progress == nullptr ? 100 : progress->maximum);
-  lv_bar_set_value(bar, progress == nullptr ? 0 : progress->value, LV_ANIM_ON);
-  lv_obj_set_style_radius(bar, 3, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(bar, lv_color_hex(0x3A3A3C), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_radius(bar, 3, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(bar, lv_color_white(), LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR);
-
-  lv_obj_t* elapsedLabel = createLabel(
-      card,
-      elapsed == nullptr ? "0:00" : elapsed->text,
-      &lv_font_montserrat_12,
-      lv_color_hex(0x8E8E93));
-  lv_obj_align_to(elapsedLabel, bar, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 8);
-  lv_obj_t* durationLabel = createLabel(
-      card,
-      duration == nullptr ? "0:00" : duration->text,
-      &lv_font_montserrat_12,
-      lv_color_hex(0x8E8E93));
-  lv_obj_align_to(durationLabel, bar, LV_ALIGN_OUT_BOTTOM_RIGHT, 0, 8);
-
-  if (volume != nullptr) {
-    lv_obj_t* volumeSlider = lv_slider_create(root);
-    lv_obj_set_pos(volumeSlider, volume->x, volume->y);
-    lv_obj_set_size(volumeSlider, volume->width, volume->height);
-    lv_slider_set_range(volumeSlider, 0, 100);
-    lv_slider_set_value(volumeSlider, volume->value, LV_ANIM_OFF);
-    lv_obj_remove_flag(volumeSlider, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_radius(volumeSlider, volume->width / 2, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(
-        volumeSlider, lv_color_hex(0x2C2C2E), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(volumeSlider, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_radius(
-        volumeSlider, volume->width / 2, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(
-        volumeSlider, lv_color_white(), LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(
-        volumeSlider, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(volumeSlider, LV_OPA_TRANSP, LV_PART_KNOB);
-    lv_obj_set_style_pad_all(volumeSlider, 0, LV_PART_KNOB);
-    lv_obj_t* volumeIcon = createLabel(
-        root, LV_SYMBOL_VOLUME_MAX, &lv_font_montserrat_14, lv_color_black());
-    lv_obj_align_to(volumeIcon, volumeSlider, LV_ALIGN_BOTTOM_MID, 0, -15);
-  }
+  lv_obj_align(artistLabel, LV_ALIGN_TOP_MID, 0, 269);
 
   struct MediaButton {
     int16_t x;
     int16_t size;
     const char* symbol;
-    uint32_t background;
-    uint32_t foreground;
   };
   const bool playing = toggle != nullptr && strcmp(toggle->icon, "pause") == 0;
   const MediaButton buttons[] = {
-      {70, 62, LV_SYMBOL_PREV, 0x2C2C2E, 0xFFFFFF},
-      {153, 84, playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY, 0xFFFFFF, 0x000000},
-      {278, 62, LV_SYMBOL_NEXT, 0x2C2C2E, 0xFFFFFF},
+      {83, 70, LV_SYMBOL_PREV},
+      {191, 84, playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY},
+      {313, 70, LV_SYMBOL_NEXT},
   };
   for (const MediaButton& item : buttons) {
-    lv_obj_t* button = createRoundPanel(
-        card,
-        item.x,
-        243,
-        item.size,
-        item.size,
-        LV_RADIUS_CIRCLE,
-        lv_color_hex(item.background));
     lv_obj_t* icon = createLabel(
-        button,
+        root,
         item.symbol,
         item.size > 70 ? &lv_font_montserrat_32 : &lv_font_montserrat_24,
-        lv_color_hex(item.foreground));
-    lv_obj_center(icon);
+        lv_color_white());
+    lv_obj_set_pos(icon, item.x + item.size / 2 - 16, 318);
   }
+
+  lv_obj_t* seekArc = lv_arc_create(root);
+  lv_obj_set_pos(seekArc, 83, 332);
+  lv_obj_set_size(seekArc, 300, 300);
+  lv_arc_set_bg_angles(seekArc, 225, 315);
+  lv_arc_set_range(seekArc, 0, progress == nullptr ? 100 : progress->maximum);
+  lv_arc_set_value(seekArc, progress == nullptr ? 0 : progress->value);
+  lv_obj_remove_flag(seekArc, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_arc_width(seekArc, 10, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(seekArc, lv_color_hex(0x343438), LV_PART_MAIN);
+  lv_obj_set_style_arc_rounded(seekArc, true, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(seekArc, 10, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(seekArc, lv_color_white(), LV_PART_INDICATOR);
+  lv_obj_set_style_arc_rounded(seekArc, true, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(seekArc, LV_OPA_TRANSP, LV_PART_KNOB);
 }
 
 void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
