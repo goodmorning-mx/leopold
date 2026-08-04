@@ -88,7 +88,12 @@ bool TouchInput::pollGesture(
   // A deliberate page swipe must travel far, finish quickly, and stay on a
   // clearly horizontal axis. This prevents normal slider/menu manipulation
   // from changing screens when a finger drifts before release.
-  if (horizontalDistance >= 96 &&
+  if (verticalDistance >= 104 &&
+      deltaY < 0 &&
+      verticalDistance * 10 >= horizontalDistance * 17 &&
+      gestureDuration <= 600) {
+    gesture = TouchGesture::kSwipeUp;
+  } else if (horizontalDistance >= 96 &&
       horizontalDistance * 10 >= verticalDistance * 17 &&
       gestureDuration <= 550) {
     gesture =

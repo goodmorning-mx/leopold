@@ -412,17 +412,17 @@ void syncControlCenterScreen() {
   currentUi.pollAfterMs = pollAfterMs == 0 ? 5000 : pollAfterMs;
 
   SduiScreen& home = appendScreen("sky-home");
-  addText(home, "home-title", "LEOPOLD", 233, 46, 3);
-  addText(home, "home-subtitle", "SKY EXPERIENCE", 233, 82, 1, "#8E8E93");
-  addButton(home, "open-clock", "CLOCK", 174, 112, 118, 52);
-  addButton(home, "open-voltage", "VOLT", 292, 168, 110, 52);
-  addButton(home, "open-whatsapp", "CHAT", 310, 245, 110, 52, "#30D158");
-  addButton(home, "open-spotify", "SPOTIFY", 248, 318, 132, 52, "#1DB954");
-  addButton(home, "open-settings", "SETTINGS", 87, 318, 132, 52);
-  addButton(home, "open-rgb", "RGB", 45, 245, 110, 52);
-  addButton(home, "open-weather", "WEATHER", 64, 168, 110, 52);
-  addButton(home, "open-aux", "AUX", 174, 242, 118, 52, "#FF9F0A");
-  addButton(home, "open-navigation", "NAV", 174, 386, 118, 52, "#0A84FF");
+  addText(home, "home-title", "HOME", 233, 208, 3);
+  addText(home, "home-subtitle", "LEOPOLD", 233, 244, 1, "#D1D1D6");
+  addButton(home, "open-clock", "CLOCK", 197, 34, 72, 72);
+  addButton(home, "open-navigation", "NAV", 96, 91, 72, 72, "#0A84FF");
+  addButton(home, "open-voltage", "VOLT", 298, 91, 72, 72);
+  addButton(home, "open-weather", "WEATHER", 43, 190, 72, 72);
+  addButton(home, "open-aux", "AUX", 351, 190, 72, 72, "#FF9F0A");
+  addButton(home, "open-rgb", "RGB", 96, 291, 72, 72);
+  addButton(home, "open-spotify", "SPOTIFY", 298, 291, 72, 72, "#1DB954");
+  addButton(home, "open-settings", "SET", 197, 354, 72, 72);
+  addButton(home, "open-whatsapp", "CHAT", 197, 122, 72, 72, "#30D158");
 
   SduiScreen& clock = appendScreen("sky-clock");
   addBack(clock);
@@ -766,7 +766,12 @@ void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
-  if (hasGesture && gesture == TouchGesture::kTap &&
+  if (hasGesture && gesture == TouchGesture::kSwipeUp &&
+      capturedSlider == nullptr && hasUi) {
+    localPanel = LocalPanel::kNone;
+    openLocalScreen("open-home");
+    Serial.println("Global swipe up: home");
+  } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kBluetoothDevices) {
     if (point.x <= 100 && point.y <= 92) {
       localPanel = LocalPanel::kBluetooth;
