@@ -62,7 +62,7 @@ CloudClient cloud;
 TouchInput touch;
 Telemetry telemetry;
 SduiStore uiStore;
-SduiDocument currentUi;
+EXT_RAM_BSS_ATTR SduiDocument currentUi;
 String cachedRawUi;
 
 AppState appState = AppState::kBooting;
@@ -326,28 +326,137 @@ bool parseConnectResponse(const CloudResponse& response) {
   return true;
 }
 
+EXT_RAM_BSS_ATTR SduiScreen preservedSpotify;
+EXT_RAM_BSS_ATTR SduiScreen preservedSpotifyActions;
+EXT_RAM_BSS_ATTR SduiScreen preservedYoutube;
+
+SduiScreen& appendScreen(const char* id, const char* background = "#000000") {
+  SduiScreen& target = currentUi.screens[currentUi.screenCount++];
+  memset(&target, 0, sizeof(target));
+  strlcpy(target.screenId, id, sizeof(target.screenId));
+  target.background = SduiParser::rgb565(background);
+  return target;
+}
+
+void addText(
+    SduiScreen& target,
+    const char* id,
+    const char* text,
+    int16_t x,
+    int16_t y,
+    uint8_t size = 2,
+    const char* color = "#FFFFFF",
+    TextAlign align = TextAlign::kCenter) {
+  if (target.componentCount >= kMaxSduiComponents) return;
+  SduiComponent& component = target.components[target.componentCount++];
+  component.type = ComponentType::kText;
+  strlcpy(component.id, id, sizeof(component.id));
+  strlcpy(component.text, text, sizeof(component.text));
+  component.x = x;
+  component.y = y;
+  component.size = size;
+  component.color = SduiParser::rgb565(color);
+  component.align = align;
+}
+
+void addButton(
+    SduiScreen& target,
+    const char* id,
+    const char* label,
+    int16_t x,
+    int16_t y,
+    int16_t width,
+    int16_t height,
+    const char* color = "#FFFFFF") {
+  if (target.componentCount >= kMaxSduiComponents) return;
+  SduiComponent& component = target.components[target.componentCount++];
+  component.type = ComponentType::kButton;
+  strlcpy(component.id, id, sizeof(component.id));
+  strlcpy(component.text, label, sizeof(component.text));
+  component.x = x;
+  component.y = y;
+  component.width = width;
+  component.height = height;
+  component.size = 1;
+  component.color = SduiParser::rgb565(color);
+}
+
+void addBack(SduiScreen& target) {
+  addButton(target, "open-home", "<", 24, 30, 66, 52, "#FFFFFF");
+}
+
 void syncControlCenterScreen() {
-  SduiScreen* settings = nullptr;
+  memset(&preservedSpotify, 0, sizeof(preservedSpotify));
+  memset(&preservedSpotifyActions, 0, sizeof(preservedSpotifyActions));
+  memset(&preservedYoutube, 0, sizeof(preservedYoutube));
+  bool hasSpotifyScreen = false;
+  bool hasSpotifyActions = false;
+  bool hasYoutubeScreen = false;
+  const uint32_t revision = currentUi.revision;
+  const uint32_t pollAfterMs = currentUi.pollAfterMs;
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
-    if (strcmp(currentUi.screens[index].screenId, "device-control-center") == 0 ||
-        strcmp(currentUi.screens[index].screenId, "display-settings") == 0) {
-      settings = &currentUi.screens[index];
-      break;
+    const SduiScreen& candidate = currentUi.screens[index];
+    if (strcmp(candidate.screenId, "spotify-player") == 0) {
+      preservedSpotify = candidate;
+      hasSpotifyScreen = true;
+    } else if (strcmp(candidate.screenId, "spotify-actions") == 0) {
+      preservedSpotifyActions = candidate;
+      hasSpotifyActions = true;
+    } else if (strcmp(candidate.screenId, "youtube-feed") == 0) {
+      preservedYoutube = candidate;
+      hasYoutubeScreen = true;
     }
   }
-  if (settings == nullptr && currentUi.screenCount < kMaxSduiScreens) {
-    settings = &currentUi.screens[currentUi.screenCount++];
-  }
-  if (settings == nullptr) {
-    return;
-  }
-  memset(settings, 0, sizeof(*settings));
-  strlcpy(
-      settings->screenId,
-      "device-control-center",
-      sizeof(settings->screenId));
-  settings->background = SduiParser::rgb565("#000000");
-  SduiComponent& slider = settings->components[settings->componentCount++];
+  memset(&currentUi, 0, sizeof(currentUi));
+  currentUi.revision = revision;
+  currentUi.pollAfterMs = pollAfterMs == 0 ? 5000 : pollAfterMs;
+
+  SduiScreen& home = appendScreen("sky-home");
+  addText(home, "home-title", "LEOPOLD", 233, 46, 3);
+  addText(home, "home-subtitle", "SKY EXPERIENCE", 233, 82, 1, "#8E8E93");
+  addButton(home, "open-clock", "CLOCK", 174, 112, 118, 52);
+  addButton(home, "open-voltage", "VOLT", 292, 168, 110, 52);
+  addButton(home, "open-whatsapp", "CHAT", 310, 245, 110, 52, "#30D158");
+  addButton(home, "open-spotify", "SPOTIFY", 248, 318, 132, 52, "#1DB954");
+  addButton(home, "open-settings", "SETTINGS", 87, 318, 132, 52);
+  addButton(home, "open-rgb", "RGB", 45, 245, 110, 52);
+  addButton(home, "open-weather", "WEATHER", 64, 168, 110, 52);
+  addButton(home, "open-aux", "AUX", 174, 242, 118, 52, "#FF9F0A");
+  addButton(home, "open-navigation", "NAV", 174, 386, 118, 52, "#0A84FF");
+
+  SduiScreen& clock = appendScreen("sky-clock");
+  addBack(clock);
+  addText(clock, "clock-icon", "CLOCK", 233, 74, 2, "#8E8E93");
+  addText(clock, "sky-time", "--:--", 233, 169, 4);
+  addText(clock, "clock-zone", "GOODMORNING TIME", 233, 242, 1, "#8E8E93");
+  addText(clock, "clock-date", "SYNCED BY WI-FI", 233, 304, 2, "#0A84FF");
+
+  SduiScreen& voltage = appendScreen("sky-voltage");
+  addBack(voltage);
+  addText(voltage, "voltage-symbol", "USB-C", 233, 77, 2, "#FFD60A");
+  addText(voltage, "sky-voltage-value", "-.-- V", 233, 172, 4);
+  addText(voltage, "voltage-caption", "INPUT VOLTAGE", 233, 246, 1, "#8E8E93");
+  addText(voltage, "voltage-note", "POWER + BATTERY MONITOR", 233, 316, 2, "#FFD60A");
+
+  SduiScreen& whatsapp = appendScreen("sky-whatsapp");
+  addBack(whatsapp);
+  addText(whatsapp, "whatsapp-title", "WHATSAPP", 233, 52, 3, "#30D158");
+  addText(whatsapp, "whatsapp-name", "Sky", 112, 132, 2, "#FFFFFF", TextAlign::kLeft);
+  addText(whatsapp, "whatsapp-message", "Ready for the ride?", 112, 166, 1, "#D1D1D6", TextAlign::kLeft);
+  addText(whatsapp, "whatsapp-name-2", "GoodMorning", 112, 237, 2, "#FFFFFF", TextAlign::kLeft);
+  addText(whatsapp, "whatsapp-message-2", "Leopold is online", 112, 271, 1, "#D1D1D6", TextAlign::kLeft);
+  addButton(whatsapp, "whatsapp-reply", "VOICE REPLY", 116, 344, 234, 62, "#30D158");
+
+  SduiScreen& aux = appendScreen("sky-aux");
+  addBack(aux);
+  addText(aux, "aux-title", "AUX RELAY", 233, 63, 3);
+  addText(aux, "aux-caption", "LOCAL OUTPUTS", 233, 101, 1, "#8E8E93");
+  addButton(aux, "aux-one", "AUX 1", 92, 154, 282, 58);
+  addButton(aux, "aux-two", "AUX 2", 92, 230, 282, 58);
+  addButton(aux, "aux-three", "AUX 3", 92, 306, 282, 58);
+
+  SduiScreen& settings = appendScreen("device-control-center");
+  SduiComponent& slider = settings.components[settings.componentCount++];
   slider.type = ComponentType::kSlider;
   strlcpy(slider.id, "display-brightness", sizeof(slider.id));
   slider.x = 326;
@@ -357,6 +466,50 @@ void syncControlCenterScreen() {
   slider.value = screen.brightnessPercent();
   slider.maximum = 100;
   slider.color = SduiParser::rgb565("#FFD60A");
+
+  SduiScreen& rgb = appendScreen("sky-rgb");
+  addBack(rgb);
+  addText(rgb, "rgb-title", "RGB", 233, 54, 3);
+  addText(rgb, "rgb-red", "RED", 233, 135, 3, "#FF453A");
+  addText(rgb, "rgb-green", "GREEN", 233, 206, 3, "#30D158");
+  addText(rgb, "rgb-blue", "BLUE", 233, 277, 3, "#0A84FF");
+  addButton(rgb, "rgb-toggle", "LIGHTS ON / OFF", 105, 350, 256, 58);
+
+  SduiScreen& weather = appendScreen("sky-weather");
+  addBack(weather);
+  addText(weather, "weather-title", "WEATHER", 233, 52, 3, "#0A84FF");
+  addText(weather, "weather-temp", "72 F", 233, 128, 4);
+  addText(weather, "weather-condition", "CURRENT CONDITIONS", 233, 190, 1, "#8E8E93");
+  addText(weather, "weather-humidity", "HUMIDITY 40%", 233, 246, 2);
+  addText(weather, "weather-location", "LOCATION BY IP", 233, 298, 1, "#8E8E93");
+  addButton(weather, "weather-units", "F / C", 153, 354, 160, 58, "#0A84FF");
+
+  SduiScreen& navigation = appendScreen("sky-navigation");
+  addBack(navigation);
+  addText(navigation, "nav-distance", "300 m", 233, 46, 2, "#0A84FF");
+  addText(navigation, "nav-arrow", ">", 233, 104, 4, "#FFFFFF");
+  addText(navigation, "nav-road", "Turn right on Reforma", 233, 207, 2);
+  addText(navigation, "nav-next", "THEN  KEEP LEFT", 233, 267, 1, "#8E8E93");
+  addText(navigation, "nav-altitude", "ALTITUDE  2240 m", 233, 327, 2, "#0A84FF");
+
+  if (hasSpotifyScreen) {
+    currentUi.screens[currentUi.screenCount++] = preservedSpotify;
+  } else {
+    SduiScreen& spotify = appendScreen("spotify-player");
+    addText(spotify, "track", "Connect Spotify", 233, 72, 2);
+    addText(spotify, "artist", "Open Leopold on your phone", 233, 113, 1, "#A7A7A7");
+    addText(spotify, "album", "Spotify Connect", 233, 141, 1, "#686868");
+    addButton(spotify, "spotify-prev", "PREV", 70, 294, 72, 72);
+    addButton(spotify, "spotify-toggle", "PLAY", 191, 288, 84, 84, "#1DB954");
+    addButton(spotify, "spotify-next", "NEXT", 324, 294, 72, 72);
+  }
+  if (hasSpotifyActions && currentUi.screenCount < kMaxSduiScreens) {
+    currentUi.screens[currentUi.screenCount++] = preservedSpotifyActions;
+  }
+  if (hasYoutubeScreen && currentUi.screenCount < kMaxSduiScreens) {
+    currentUi.screens[currentUi.screenCount++] = preservedYoutube;
+  }
+  Serial.printf("Sky shell ready: %u screens\n", currentUi.screenCount);
 }
 
 void acceptUi(const CloudResponse& response, uint32_t now) {
@@ -580,19 +733,33 @@ const SduiComponent* firstButton() {
   return nullptr;
 }
 
-const SduiComponent* onlyButton() {
-  const SduiComponent* match = nullptr;
-  const SduiScreen& active = currentUi.active();
-  for (uint8_t index = 0; index < active.componentCount; ++index) {
-    if (active.components[index].type != ComponentType::kButton) {
-      continue;
-    }
-    if (match != nullptr) {
-      return nullptr;
-    }
-    match = &active.components[index];
+bool openLocalScreen(const char* componentId) {
+  if (componentId == nullptr || strncmp(componentId, "open-", 5) != 0) {
+    return false;
   }
-  return match;
+  const char* requested = componentId + 5;
+  const char* screenId = nullptr;
+  if (strcmp(requested, "home") == 0) screenId = "sky-home";
+  else if (strcmp(requested, "clock") == 0) screenId = "sky-clock";
+  else if (strcmp(requested, "voltage") == 0) screenId = "sky-voltage";
+  else if (strcmp(requested, "whatsapp") == 0) screenId = "sky-whatsapp";
+  else if (strcmp(requested, "aux") == 0) screenId = "sky-aux";
+  else if (strcmp(requested, "settings") == 0) screenId = "device-control-center";
+  else if (strcmp(requested, "rgb") == 0) screenId = "sky-rgb";
+  else if (strcmp(requested, "weather") == 0) screenId = "sky-weather";
+  else if (strcmp(requested, "navigation") == 0) screenId = "sky-navigation";
+  else if (strcmp(requested, "spotify") == 0) screenId = "spotify-player";
+  if (screenId == nullptr) return false;
+  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+    if (strcmp(currentUi.screens[index].screenId, screenId) == 0) {
+      currentUi.activeScreen = index;
+      screen.renderSduiScreen(currentUi);
+      lastIndicatorAt = 0;
+      Serial.printf("Local screen opened: %s\n", screenId);
+      return true;
+    }
+  }
+  return false;
 }
 
 void processInput(uint32_t now) {
@@ -727,6 +894,12 @@ void processInput(uint32_t now) {
       showLocalConnectivityPanel(now);
     }
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
+             ((strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
+               point.x <= 100 && point.y <= 94) ||
+              (strcmp(currentUi.active().screenId, "spotify-player") == 0 &&
+               point.x <= 88 && point.y <= 94))) {
+    openLocalScreen("open-home");
+  } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
              strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
              ((point.x >= 72 && point.x <= 170 &&
                point.y >= 120 && point.y <= 218) ||
@@ -834,12 +1007,11 @@ void processInput(uint32_t now) {
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button =
         findButtonAt(currentUi.active(), point.x, point.y);
-    if (button == nullptr) {
-      button = onlyButton();
-    }
     if (button != nullptr) {
-      Serial.println("Touch matched SDUI button");
-      queueTap(button->id, currentUi.revision, now);
+      if (!openLocalScreen(button->id)) {
+        Serial.println("Touch matched SDUI button");
+        queueTap(button->id, currentUi.revision, now);
+      }
     } else {
       Serial.println("Touch did not match an SDUI button");
     }
@@ -1024,6 +1196,28 @@ void refreshIndicators(uint32_t now) {
   }
   char timeText[6] = {};
   telemetry.formattedTime(timeText);
+  const uint16_t millivolts = telemetry.batteryMillivolts();
+  const uint8_t batteryPercent = telemetry.batteryPercent();
+  char voltageText[16] = {};
+  snprintf(
+      voltageText,
+      sizeof(voltageText),
+      "%u.%02u V",
+      millivolts / 1000,
+      (millivolts % 1000) / 10);
+  for (uint8_t screenIndex = 0; screenIndex < currentUi.screenCount; ++screenIndex) {
+    SduiScreen& liveScreen = currentUi.screens[screenIndex];
+    for (uint8_t componentIndex = 0;
+         componentIndex < liveScreen.componentCount;
+         ++componentIndex) {
+      SduiComponent& component = liveScreen.components[componentIndex];
+      if (strcmp(component.id, "sky-time") == 0) {
+        strlcpy(component.text, timeText, sizeof(component.text));
+      } else if (strcmp(component.id, "sky-voltage-value") == 0) {
+        strlcpy(component.text, voltageText, sizeof(component.text));
+      }
+    }
+  }
   const bool wifiConnected = wifi.connected();
   const bool bluetoothEnabled = bluetooth.enabled();
   const bool bluetoothConnected = bluetooth.connected();
@@ -1049,17 +1243,21 @@ void refreshIndicators(uint32_t now) {
       cloudConnected,
       bluetoothEnabled,
       bluetoothConnected,
-      telemetry.batteryPercent(),
+      batteryPercent,
       timeText);
-  if (statusChanged && hasUi && currentUi.screenCount > 0 &&
-      strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+  const bool liveSkyScreen = hasUi && currentUi.screenCount > 0 &&
+      (strcmp(currentUi.active().screenId, "sky-clock") == 0 ||
+       strcmp(currentUi.active().screenId, "sky-voltage") == 0);
+  if ((statusChanged && hasUi && currentUi.screenCount > 0 &&
+       strcmp(currentUi.active().screenId, "device-control-center") == 0) ||
+      liveSkyScreen) {
     screen.renderSduiScreen(currentUi);
     screen.drawIndicators(
         wifiConnected,
         cloudConnected,
         bluetoothEnabled,
         bluetoothConnected,
-        telemetry.batteryPercent(),
+        batteryPercent,
         timeText);
   }
   indicatorsInitialized = true;

@@ -6,7 +6,7 @@ namespace leopold {
 
 constexpr size_t kMaxSduiBytes = 32768;
 constexpr size_t kMaxSduiComponents = 12;
-constexpr size_t kMaxSduiScreens = 8;
+constexpr size_t kMaxSduiScreens = 12;
 constexpr size_t kMaxComponentText = 96;
 constexpr size_t kMaxComponentId = 32;
 
