@@ -82,8 +82,8 @@ bool parseComponent(JsonObjectConst source, SduiComponent& component) {
     component.type = ComponentType::kSlider;
     component.value = constrain(source["value"] | 70, 0, 100);
     component.maximum = 100;
-    component.width = constrain(source["width"] | 300, 80, 420);
-    component.height = constrain(source["height"] | 32, 20, 64);
+    component.width = constrain(source["width"] | 300, 20, 420);
+    component.height = constrain(source["height"] | 32, 20, 420);
   } else if (strcmp(type, "icon") == 0) {
     component.type = ComponentType::kIcon;
     if (!copyBounded(component.icon, source["name"] | "")) {

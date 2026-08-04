@@ -35,6 +35,8 @@ enum class LocalPanel : uint8_t {
   kWifiNetworks,
   kWifiPassword,
   kWifiConnecting,
+  kBluetooth,
+  kBluetoothDevices,
 };
 
 constexpr uint8_t kVisibleWifiNetworks = 5;
@@ -76,6 +78,7 @@ bool eventPending = false;
 bool bootWasDown = false;
 bool bootLongPressHandled = false;
 bool wifiWasConnected = false;
+bool timeSyncStarted = false;
 bool fatalError = false;
 bool onboardingPending = false;
 bool welcomeActive = false;
@@ -110,6 +113,26 @@ int8_t wifiKeyGroup = -1;
 bool wifiUppercase = false;
 uint32_t wifiSelectionStartedAt = 0;
 bool wifiScanRunning = false;
+bool bluetoothScanWasRunning = false;
+SduiComponent* capturedSlider = nullptr;
+
+void renderBluetoothDevices(const char* message = nullptr) {
+  const BluetoothScanResult* results =
+      bluetooth.scanResultCount() > 0 ? &bluetooth.scanResult(0) : nullptr;
+  screen.showBluetoothDevices(
+      results,
+      bluetooth.scanResultCount(),
+      bluetooth.scanning(),
+      message);
+}
+
+void beginBluetoothScan() {
+  const bool started = bluetooth.startScan();
+  bluetoothScanWasRunning = started;
+  localPanel = LocalPanel::kBluetoothDevices;
+  renderBluetoothDevices(started ? nullptr : "No se pudo iniciar la busqueda");
+  Serial.println(started ? "BLE scan started" : "BLE scan could not start");
+}
 
 void renderWifiNetworks(const char* message = nullptr) {
   const char* names[kVisibleWifiNetworks] = {};
@@ -181,6 +204,11 @@ void showLocalConnectivityPanel(uint32_t now) {
         cloudConnected,
         connectPending || !cloudConnected,
         retryInSeconds);
+  } else if (localPanel == LocalPanel::kBluetooth) {
+    screen.showBluetoothDetails(
+        bluetooth.enabled(),
+        bluetooth.connected(),
+        bluetooth.connectedPeripheralName());
   }
 }
 
@@ -572,6 +600,23 @@ void processInput(uint32_t now) {
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
   if (hasGesture && gesture == TouchGesture::kTap &&
+      localPanel == LocalPanel::kBluetoothDevices) {
+    if (point.x <= 100 && point.y <= 92) {
+      localPanel = LocalPanel::kBluetooth;
+      showLocalConnectivityPanel(now);
+    } else if (point.y >= 400) {
+      beginBluetoothScan();
+    } else if (!bluetooth.scanning() && point.y >= 105 && point.y < 400) {
+      const uint8_t index = (point.y - 111) / 57;
+      if (index < bluetooth.scanResultCount()) {
+        renderBluetoothDevices("Conectando...");
+        const bool connected = bluetooth.connectTo(index);
+        localPanel = LocalPanel::kBluetooth;
+        showLocalConnectivityPanel(now);
+        Serial.println(connected ? "BLE peripheral connected" : "BLE connection failed");
+      }
+    }
+  } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kWifiNetworks) {
     if (point.x <= 100 && point.y <= 92) {
       localPanel = LocalPanel::kWifi;
@@ -671,11 +716,13 @@ void processInput(uint32_t now) {
         } else {
           beginWifiScan();
         }
-      } else if (wifi.connected()) {
+      } else if (localPanel == LocalPanel::kCloud && wifi.connected()) {
         cloudConnected = false;
         cloudFailures = 0;
         nextCloudAttemptAt = now;
         Serial.println("Manual cloud reconnect requested");
+      } else if (localPanel == LocalPanel::kBluetooth) {
+        beginBluetoothScan();
       }
       showLocalConnectivityPanel(now);
     }
@@ -683,19 +730,30 @@ void processInput(uint32_t now) {
              strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
              ((point.x >= 72 && point.x <= 170 &&
                point.y >= 120 && point.y <= 218) ||
+              (point.x >= 180 && point.x <= 278 &&
+               point.y >= 120 && point.y <= 218) ||
               (point.x >= 124 && point.x <= 222 &&
                point.y >= 224 && point.y <= 322))) {
-    localPanel = point.y < 224 ? LocalPanel::kWifi : LocalPanel::kCloud;
+    localPanel = point.y >= 224
+        ? LocalPanel::kCloud
+        : (point.x >= 180 ? LocalPanel::kBluetooth : LocalPanel::kWifi);
     showLocalConnectivityPanel(now);
     Serial.println(
         localPanel == LocalPanel::kWifi
             ? "Wi-Fi details opened"
-            : "Cloud details opened");
+            : (localPanel == LocalPanel::kBluetooth
+                   ? "Bluetooth details opened"
+                   : "Cloud details opened"));
   }
-  SduiComponent* slider =
-      hasGesture && hasUi
-          ? findSliderAt(currentUi.active(), point.x, point.y)
-          : nullptr;
+  SduiComponent* slider = nullptr;
+  if (hasGesture && hasUi && localPanel == LocalPanel::kNone) {
+    if (gesture == TouchGesture::kDrag && capturedSlider == nullptr) {
+      capturedSlider = findSliderAt(currentUi.active(), point.x, point.y);
+    }
+    slider = capturedSlider != nullptr
+        ? capturedSlider
+        : findSliderAt(currentUi.active(), point.x, point.y);
+  }
   if (localPanel != LocalPanel::kNone) {
     // Local connectivity screens consume touch before SDUI navigation.
   } else if (slider != nullptr) {
@@ -712,24 +770,37 @@ void processInput(uint32_t now) {
       slider->value = static_cast<uint32_t>(relativeX) * slider->maximum /
                       slider->width;
     }
-    screen.setBrightnessPercent(slider->value);
-    for (uint8_t index = 0;
-         index < currentUi.active().componentCount;
-         ++index) {
-      SduiComponent& component = currentUi.active().components[index];
-      if (component.type == ComponentType::kText &&
-          strcmp(component.id, "brightness-value") == 0) {
-        snprintf(
-            component.text,
-            sizeof(component.text),
-            "%u%%",
-            screen.brightnessPercent());
+    if (strcmp(slider->id, "display-brightness") == 0) {
+      screen.setBrightnessPercent(slider->value);
+      for (uint8_t index = 0;
+           index < currentUi.active().componentCount;
+           ++index) {
+        SduiComponent& component = currentUi.active().components[index];
+        if (component.type == ComponentType::kText &&
+            strcmp(component.id, "brightness-value") == 0) {
+          snprintf(
+              component.text,
+              sizeof(component.text),
+              "%u%%",
+              screen.brightnessPercent());
+        }
       }
-    }
-    if (strcmp(currentUi.active().screenId, "device-control-center") == 0) {
-      screen.updateControlCenterBrightness();
-    } else {
-      screen.renderSduiScreen(currentUi);
+      if (strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+        screen.updateControlCenterBrightness();
+      } else {
+        screen.renderSduiScreen(currentUi);
+      }
+    } else if (gesture != TouchGesture::kDrag &&
+               (strcmp(slider->id, "spotify-volume") == 0 ||
+                strcmp(slider->id, "spotify-seek") == 0)) {
+      char controlId[64] = {};
+      snprintf(
+          controlId,
+          sizeof(controlId),
+          "%s-%u",
+          slider->id,
+          min<uint16_t>(slider->value, 100));
+      queueTap(controlId, currentUi.revision, now);
     }
     lastIndicatorAt = 0;
   } else if (hasGesture && welcomeActive &&
@@ -774,6 +845,10 @@ void processInput(uint32_t now) {
     }
   }
 
+  if (hasGesture && gesture != TouchGesture::kDrag) {
+    capturedSlider = nullptr;
+  }
+
   const bool bootDown = digitalRead(board::kBootButton) == LOW;
   if (bootDown && !bootWasDown) {
     bootPressedAt = now;
@@ -816,6 +891,14 @@ void processEvents(uint32_t now) {
 
 void processNetwork(uint32_t now) {
   bluetooth.loop();
+  if (localPanel == LocalPanel::kBluetoothDevices) {
+    if (bluetoothScanWasRunning && !bluetooth.scanning()) {
+      bluetoothScanWasRunning = false;
+      renderBluetoothDevices(
+          bluetooth.scanResultCount() == 0 ? "No encontramos accesorios BLE" : nullptr);
+    }
+    return;
+  }
   if (localPanel == LocalPanel::kWifiNetworks) {
     const int16_t scanResult = WiFi.scanComplete();
     if (wifiScanRunning && scanResult >= 0) {
@@ -891,6 +974,14 @@ void processNetwork(uint32_t now) {
 
   if (!wifiWasConnected) {
     wifiWasConnected = true;
+    if (!timeSyncStarted) {
+      configTzTime(
+          "CST6",
+          "pool.ntp.org",
+          "time.google.com",
+          "time.cloudflare.com");
+      timeSyncStarted = true;
+    }
     screen.showState(
         AppState::kOnline,
         "WIFI CONECTADO",
@@ -1011,11 +1102,6 @@ void setup() {
   }
   wifi.begin(LEOPOLD_DEVICE_ID);
   bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
-  configTzTime(
-      "CST6",
-      "pool.ntp.org",
-      "time.google.com",
-      "time.cloudflare.com");
   setState(leopold::AppState::kWifiConnecting);
   memset(&currentUi, 0, sizeof(currentUi));
   syncControlCenterScreen();
