@@ -30,7 +30,6 @@ def test_spotify_documents_follow_sdui_contract() -> None:
         "home",
         "spotify-player",
         "bluetooth",
-        "display-settings",
     ]
     UIDocument.model_validate(playing)
     spotify = playing["screens"][1]
@@ -41,12 +40,6 @@ def test_spotify_documents_follow_sdui_contract() -> None:
         for item in spotify["components"]
         if item["id"] == "spotify-toggle"
     )["icon"] == "pause"
-    settings = playing["screens"][3]
-    assert next(
-        item
-        for item in settings["components"]
-        if item["id"] == "display-brightness"
-    )["type"] == "slider"
     assert welcome_document(5)["screens"][0]["id"] == "leopold-welcome"
 
 

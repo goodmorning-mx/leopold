@@ -154,6 +154,28 @@ La hora muestra `--:--` hasta que NTP sincroniza.
 
 ## Server-Driven UI
 
+Los ajustes esenciales del hardware no dependen de SDUI. El firmware agrega
+localmente `device-control-center` con brillo, Wi-Fi, Bluetooth y estado de
+nube, por lo que permanece disponible aunque el backend no publique una
+pantalla de ajustes. El brillo responde continuamente mientras el usuario
+desliza el dedo y se conserva en NVS.
+
+El centro de control permanece visible si se pierde Internet. Tocar Wi-Fi abre
+una vista local con la red, intensidad de señal, reintento y acceso al portal
+`Leopold-XXXX` para cambiar de red. Tocar Nube muestra el estado de GoodMorning
+Cloud, el siguiente intento automático y permite forzar una reconexión. Estas
+acciones no dependen de un documento SDUI remoto.
+
+`Cambiar red` completa también todo el flujo en la AMOLED: escanea redes,
+muestra señal y seguridad, permite elegir el SSID, capturar la contraseña con
+un teclado táctil y confirmar conexión o error. La contraseña se entrega
+directamente al stack Wi-Fi del ESP32; no se imprime ni se envía como evento
+SDUI.
+
+Por ergonomía en la pantalla circular, la contraseña se captura mediante grupos
+grandes de caracteres en lugar de un QWERTY reducido. Cada vista local conserva
+un control Atrás: carácter, teclado, redes, detalle Wi-Fi y centro de control.
+
 El renderer v1 acepta como máximo 12 componentes y 12 KiB de JSON:
 
 - `text`
@@ -188,7 +210,9 @@ segundos para no congelar display o touch.
 
 ## Limitaciones del MVP
 
-- No incluye audio, Spotify, LLM, OTA, BLE ni aplicación móvil.
+- Incluye renderers visuales nativos para Spotify y el feed de YouTube enviado
+  por Device Cloud. No reproduce video ni controla sesiones remotas de YouTube.
+- No incluye todavía audio, LLM, OTA ni aplicación móvil.
 - El porcentaje de batería es una estimación lineal calibrable entre 3.3 V y
   4.2 V con divisor nominal 2:1. No debe interpretarse como medición de precisión.
 - Los eventos offline se conservan solo en RAM y se descartan al reiniciar.

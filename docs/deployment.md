@@ -35,6 +35,9 @@ This repository is deployed by GoodMorning Factory as three independent Coolify 
   - `LEOPOLD_DEVICE_OFFLINE_AFTER_SECONDS`,
     `LEOPOLD_UI_POLL_INTERVAL_SECONDS`, and
     `LEOPOLD_HEARTBEAT_INTERVAL_SECONDS` as runtime configuration.
+  - `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and
+    `YOUTUBE_REDIRECT_URI` for the optional YouTube OAuth integration.
+  - `LEOPOLD_INTEGRATION_ENCRYPTION_KEY` to encrypt integration tokens at rest.
 
 The backend uses SQLAlchemy with psycopg 3. Therefore `DATABASE_URL` must use the `postgresql+psycopg://` scheme when the backend starts.
 

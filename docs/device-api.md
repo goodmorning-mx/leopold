@@ -257,5 +257,8 @@ reciben `422`.
 | `422` | JSON, tipos, límites o contrato inválidos. |
 | `503` | Aprovisionamiento deshabilitado o UI activa no disponible. |
 
-No existe en este MVP audio, LLM, Spotify, WebSocket, OTA, app móvil, Redis ni
-panel administrativo visual.
+Device Cloud puede componer experiencias conectadas como Spotify y YouTube en
+un mismo documento. YouTube usa OAuth de sólo lectura para mostrar actividad de
+suscripciones; YouTube Data API no ofrece controles de reproducción remota
+equivalentes a Spotify Connect. No existe aún audio, LLM, WebSocket, OTA, app
+móvil, Redis ni panel administrativo visual.
