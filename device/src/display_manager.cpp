@@ -644,6 +644,11 @@ void DisplayManager::drawSpotifyPlayer(const SduiScreen& screen) {
 
 void DisplayManager::buildLvglControlCenter() {
   lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 25, 34, 62, 46, 23, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
+  lv_obj_center(backIcon);
   lv_obj_t* title = createLabel(
       root,
       "Centro de control",
@@ -1159,6 +1164,11 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   }
 
   lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 18, 34, 58, 44, 22, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
+  lv_obj_center(backIcon);
   lv_obj_t* card = createRoundPanel(
       root, 38, 39, 390, 360, 48, lv_color_hex(0x151517));
   lv_obj_t* brand = createLabel(

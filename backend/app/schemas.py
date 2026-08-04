@@ -88,7 +88,7 @@ class UIDocument(BaseModel):
     schema_version: Literal[1]
     revision: int = Field(ge=1)
     poll_after_ms: int = Field(ge=1000, le=300000)
-    screens: list[Screen] = Field(min_length=1, max_length=8)
+    screens: list[Screen] = Field(min_length=1, max_length=12)
 
     @model_validator(mode="before")
     @classmethod
