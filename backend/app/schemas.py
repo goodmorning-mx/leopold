@@ -56,8 +56,8 @@ class ProgressComponent(ComponentBase):
 class SliderComponent(ComponentBase):
     type: Literal["slider"]
     value: int = Field(ge=0, le=100)
-    width: int = Field(ge=80, le=420)
-    height: int = Field(ge=20, le=64)
+    width: int = Field(ge=20, le=420)
+    height: int = Field(ge=20, le=420)
     color: Color
 
 

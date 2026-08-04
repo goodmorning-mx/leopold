@@ -29,11 +29,18 @@ def test_spotify_documents_follow_sdui_contract() -> None:
     assert [screen["id"] for screen in playing["screens"]] == [
         "home",
         "spotify-player",
+        "spotify-actions",
         "bluetooth",
     ]
     UIDocument.model_validate(playing)
     spotify = playing["screens"][1]
-    assert len(spotify["components"]) == 9
+    assert len(spotify["components"]) == 10
+    assert next(
+        item for item in spotify["components"] if item["id"] == "spotify-volume"
+    )["height"] == 176
+    assert next(
+        item for item in spotify["components"] if item["id"] == "spotify-seek"
+    )["type"] == "slider"
     assert playing["screens"][0]["components"][0]["text"] == "HOLA, ABEL"
     assert next(
         item

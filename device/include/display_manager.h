@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "app_state.h"
+#include "bluetooth_manager.h"
 #include "sdui.h"
 
 namespace leopold {
@@ -39,6 +40,15 @@ class DisplayManager {
       bool cloudConnected,
       bool retrying,
       uint32_t retryInSeconds);
+  void showBluetoothDetails(
+      bool enabled,
+      bool connected,
+      const char* peripheralName);
+  void showBluetoothDevices(
+      const BluetoothScanResult* devices,
+      uint8_t count,
+      bool scanning,
+      const char* message = nullptr);
   void showWifiNetworks(
       const char* const* names,
       const int32_t* signalStrengths,

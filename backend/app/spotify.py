@@ -18,6 +18,8 @@ SPOTIFY_SCOPES = " ".join(
         "user-read-playback-state",
         "user-read-currently-playing",
         "user-modify-playback-state",
+        "user-library-read",
+        "user-library-modify",
     )
 )
 
@@ -177,9 +179,12 @@ def player_state(
         "artist": ", ".join(artist.get("name", "") for artist in artists if artist.get("name"))
         or "Abre Spotify en tu teléfono",
         "album": album.get("name") or "",
+        "track_id": item.get("id") or "",
         "progress": progress,
         "progress_ms": progress_ms,
         "duration_ms": duration,
+        "volume_percent": int((payload.get("device") or {}).get("volume_percent") or 0),
+        "shuffle_state": bool(payload.get("shuffle_state")),
     }
 
 
@@ -271,13 +276,24 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "color": "#686868",
                 },
                 {
-                    "type": "progress",
-                    "id": "progress",
+                    "type": "slider",
+                    "id": "spotify-seek",
                     "value": int(state.get("progress") or 0),
                     "x": 73,
                     "y": 202,
                     "width": 320,
+                    "height": 32,
                     "color": "#1DB954",
+                },
+                {
+                    "type": "slider",
+                    "id": "spotify-volume",
+                    "value": int(state.get("volume_percent") or 0),
+                    "x": 391,
+                    "y": 72,
+                    "width": 44,
+                    "height": 176,
+                    "color": "#FFFFFF",
                 },
                 {
                     "type": "text",
@@ -331,6 +347,37 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "width": 72,
                     "height": 72,
                     "color": "#FFFFFF",
+                },
+            ],
+        },
+        {
+            "id": "spotify-actions",
+            "background": "#000000",
+            "components": [
+                {
+                    "type": "text", "id": "spotify-actions-title",
+                    "text": "SPOTIFY", "x": 233, "y": 52,
+                    "align": "center", "size": 3, "color": "#1DB954",
+                },
+                {
+                    "type": "button", "id": "spotify-like",
+                    "label": "ME GUSTA", "x": 82, "y": 116,
+                    "width": 302, "height": 62, "color": "#FFFFFF",
+                },
+                {
+                    "type": "button", "id": "spotify-shuffle",
+                    "label": "ALEATORIO", "x": 82, "y": 198,
+                    "width": 302, "height": 62, "color": "#FFFFFF",
+                },
+                {
+                    "type": "button", "id": "spotify-playlists",
+                    "label": "PLAYLISTS EN TELEFONO", "x": 82, "y": 280,
+                    "width": 302, "height": 62, "color": "#FFFFFF",
+                },
+                {
+                    "type": "text", "id": "spotify-jam-note",
+                    "text": "JAM SE INICIA DESDE SPOTIFY", "x": 233, "y": 377,
+                    "align": "center", "size": 1, "color": "#8E8E93",
                 },
             ],
         },
@@ -464,6 +511,33 @@ def handle_device_spotify_event(
             if state.get("is_playing")
             else ("/me/player/play", "PUT")
         )
+    elif component_id == "spotify-shuffle":
+        path, method = (
+            f"/me/player/shuffle?state={'false' if state.get('shuffle_state') else 'true'}",
+            "PUT",
+        )
+    elif component_id == "spotify-like":
+        track_id = str(state.get("track_id") or "")
+        if not track_id:
+            return False
+        path, method = f"/me/tracks?ids={track_id}", "PUT"
+    elif component_id.startswith("spotify-volume-"):
+        try:
+            volume = max(0, min(int(component_id.removeprefix("spotify-volume-")), 100))
+        except ValueError:
+            return False
+        path, method = f"/me/player/volume?volume_percent={volume}", "PUT"
+    elif component_id.startswith("spotify-seek-"):
+        try:
+            percent = max(0, min(int(component_id.removeprefix("spotify-seek-")), 100))
+        except ValueError:
+            return False
+        position = int(state.get("duration_ms") or 0) * percent // 100
+        path, method = f"/me/player/seek?position_ms={position}", "PUT"
+    elif component_id == "spotify-playlists":
+        # Playlist browsing belongs on the authenticated phone frontend; the
+        # device intentionally does not receive the user's library tokens.
+        return True
     else:
         return False
     response = spotify_request(db, connection, settings, method, path)

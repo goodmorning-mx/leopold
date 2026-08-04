@@ -571,7 +571,8 @@ void DisplayManager::drawSpotifyPlayer(const SduiScreen& screen) {
     if (strcmp(component.id, "track") == 0) track = &component;
     else if (strcmp(component.id, "artist") == 0) artist = &component;
     else if (strcmp(component.id, "album") == 0) album = &component;
-    else if (strcmp(component.id, "progress") == 0) progress = &component;
+    else if (strcmp(component.id, "progress") == 0 ||
+             strcmp(component.id, "spotify-seek") == 0) progress = &component;
     else if (strcmp(component.id, "elapsed") == 0) elapsed = &component;
     else if (strcmp(component.id, "duration") == 0) duration = &component;
     else if (strcmp(component.id, "spotify-toggle") == 0) toggle = &component;
@@ -849,6 +850,99 @@ void DisplayManager::showCloudDetails(
       false, cloudConnected, retrying, primary, secondary);
 }
 
+void DisplayManager::showBluetoothDetails(
+    bool enabled,
+    bool connected,
+    const char* peripheralName) {
+  lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 28, 43, 74, 48, 24, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_24, lv_color_white());
+  lv_obj_center(backIcon);
+  lv_obj_t* title = createLabel(
+      root, "Bluetooth", &lv_font_montserrat_24, lv_color_white());
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 51);
+  const uint32_t accent = connected ? 0x30D158 : 0x0A84FF;
+  lv_obj_t* status = createRoundPanel(
+      root, 149, 112, 168, 168, LV_RADIUS_CIRCLE, lv_color_hex(0x1C1C1E));
+  lv_obj_set_style_border_width(status, 5, 0);
+  lv_obj_set_style_border_color(status, lv_color_hex(accent), 0);
+  lv_obj_t* symbol = createLabel(
+      status, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_36, lv_color_hex(accent));
+  lv_obj_center(symbol);
+  lv_obj_t* state = createLabel(
+      root,
+      connected ? "Conectado" : (enabled ? "Listo para buscar" : "No disponible"),
+      &lv_font_montserrat_20,
+      lv_color_white());
+  lv_obj_align(state, LV_ALIGN_TOP_MID, 0, 306);
+  lv_obj_t* detail = createLabel(
+      root,
+      connected && peripheralName != nullptr && peripheralName[0] != '\0'
+          ? peripheralName
+          : "Accesorios Bluetooth Low Energy",
+      &lv_font_montserrat_14,
+      lv_color_hex(0x8E8E93));
+  lv_obj_set_width(detail, 380);
+  lv_obj_set_style_text_align(detail, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(detail, LV_ALIGN_TOP_MID, 0, 340);
+  lv_obj_t* scan = createRoundPanel(
+      root, 82, 385, 302, 58, 29, lv_color_hex(0x0A84FF));
+  lv_obj_t* scanLabel = createLabel(
+      scan, "Buscar dispositivos", &lv_font_montserrat_16, lv_color_white());
+  lv_obj_center(scanLabel);
+}
+
+void DisplayManager::showBluetoothDevices(
+    const BluetoothScanResult* devices,
+    uint8_t count,
+    bool scanning,
+    const char* message) {
+  lv_obj_t* root = cleanLvglScreen();
+  lv_obj_t* back = createRoundPanel(
+      root, 28, 35, 62, 46, 23, lv_color_hex(0x1C1C1E));
+  lv_obj_t* backIcon = createLabel(
+      back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
+  lv_obj_center(backIcon);
+  lv_obj_t* title = createLabel(
+      root, "Bluetooth", &lv_font_montserrat_24, lv_color_white());
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 43);
+  lv_obj_t* subtitle = createLabel(
+      root,
+      scanning ? "Buscando accesorios BLE..."
+               : (message != nullptr ? message : "Toca uno para conectar"),
+      &lv_font_montserrat_12,
+      lv_color_hex(scanning ? 0x0A84FF : 0x8E8E93));
+  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 80);
+  for (uint8_t index = 0; index < count && index < 5; ++index) {
+    const int16_t y = 111 + index * 57;
+    lv_obj_t* row = createRoundPanel(
+        root, 34, y, 398, 49, 17, lv_color_hex(0x1C1C1E));
+    lv_obj_t* icon = createLabel(
+        row, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, lv_color_hex(0x0A84FF));
+    lv_obj_align(icon, LV_ALIGN_LEFT_MID, 16, 0);
+    lv_obj_t* name = createLabel(
+        row, devices[index].name, &lv_font_montserrat_16, lv_color_white());
+    lv_obj_set_width(name, 255);
+    lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
+    lv_obj_align(name, LV_ALIGN_LEFT_MID, 54, 0);
+    char signal[12] = {};
+    snprintf(signal, sizeof(signal), "%ld", static_cast<long>(devices[index].rssi));
+    lv_obj_t* rssi = createLabel(
+        row, signal, &lv_font_montserrat_12, lv_color_hex(0x8E8E93));
+    lv_obj_align(rssi, LV_ALIGN_RIGHT_MID, -15, 0);
+  }
+  lv_obj_t* scan = createRoundPanel(
+      root, 111, 410, 244, 45, 23, lv_color_hex(0x2C2C2E));
+  lv_obj_t* scanLabel = createLabel(
+      scan,
+      scanning ? "Buscando..." : "Buscar otra vez",
+      &lv_font_montserrat_14,
+      lv_color_white());
+  lv_obj_center(scanLabel);
+}
+
 void DisplayManager::showWifiNetworks(
     const char* const* names,
     const int32_t* signalStrengths,
@@ -1050,15 +1144,18 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   const SduiComponent* elapsed = nullptr;
   const SduiComponent* duration = nullptr;
   const SduiComponent* toggle = nullptr;
+  const SduiComponent* volume = nullptr;
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (strcmp(component.id, "track") == 0) track = &component;
     else if (strcmp(component.id, "artist") == 0) artist = &component;
     else if (strcmp(component.id, "album") == 0) album = &component;
-    else if (strcmp(component.id, "progress") == 0) progress = &component;
+    else if (strcmp(component.id, "progress") == 0 ||
+             strcmp(component.id, "spotify-seek") == 0) progress = &component;
     else if (strcmp(component.id, "elapsed") == 0) elapsed = &component;
     else if (strcmp(component.id, "duration") == 0) duration = &component;
     else if (strcmp(component.id, "spotify-toggle") == 0) toggle = &component;
+    else if (strcmp(component.id, "spotify-volume") == 0) volume = &component;
   }
 
   lv_obj_t* root = cleanLvglScreen();
@@ -1123,6 +1220,30 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
       &lv_font_montserrat_12,
       lv_color_hex(0x8E8E93));
   lv_obj_align_to(durationLabel, bar, LV_ALIGN_OUT_BOTTOM_RIGHT, 0, 8);
+
+  if (volume != nullptr) {
+    lv_obj_t* volumeSlider = lv_slider_create(root);
+    lv_obj_set_pos(volumeSlider, volume->x, volume->y);
+    lv_obj_set_size(volumeSlider, volume->width, volume->height);
+    lv_slider_set_range(volumeSlider, 0, 100);
+    lv_slider_set_value(volumeSlider, volume->value, LV_ANIM_OFF);
+    lv_obj_remove_flag(volumeSlider, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(volumeSlider, volume->width / 2, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(
+        volumeSlider, lv_color_hex(0x2C2C2E), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(volumeSlider, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(
+        volumeSlider, volume->width / 2, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(
+        volumeSlider, lv_color_white(), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(
+        volumeSlider, LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(volumeSlider, LV_OPA_TRANSP, LV_PART_KNOB);
+    lv_obj_set_style_pad_all(volumeSlider, 0, LV_PART_KNOB);
+    lv_obj_t* volumeIcon = createLabel(
+        root, LV_SYMBOL_VOLUME_MAX, &lv_font_montserrat_14, lv_color_black());
+    lv_obj_align_to(volumeIcon, volumeSlider, LV_ALIGN_BOTTOM_MID, 0, -15);
+  }
 
   struct MediaButton {
     int16_t x;
@@ -1254,6 +1375,8 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
           root, component.text, &lv_font_montserrat_14, lvColor(component.color));
       lv_obj_set_pos(label, component.x + 7, component.y - 8);
     } else if (component.type == ComponentType::kButton) {
+      const bool spotifyAction =
+          strcmp(screen.screenId, "spotify-actions") == 0;
       lv_obj_t* button = createRoundPanel(
           root,
           component.x,
@@ -1261,8 +1384,8 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
           component.width,
           component.height,
           component.height / 2,
-          lv_color_hex(0x2C2C2E));
-      lv_obj_set_style_border_width(button, 2, 0);
+          spotifyAction ? lv_color_white() : lv_color_hex(0x2C2C2E));
+      lv_obj_set_style_border_width(button, spotifyAction ? 0 : 2, 0);
       lv_obj_set_style_border_color(button, lvColor(component.color), 0);
       const char* text = component.text;
       if (strcmp(component.icon, "play") == 0) text = LV_SYMBOL_PLAY;
@@ -1270,7 +1393,10 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
       else if (strcmp(component.icon, "previous") == 0) text = LV_SYMBOL_PREV;
       else if (strcmp(component.icon, "next") == 0) text = LV_SYMBOL_NEXT;
       lv_obj_t* label = createLabel(
-          button, text, &lv_font_montserrat_24, lvColor(component.color));
+          button,
+          text,
+          spotifyAction ? &lv_font_montserrat_16 : &lv_font_montserrat_24,
+          spotifyAction ? lv_color_black() : lvColor(component.color));
       lv_obj_center(label);
     } else if (component.type == ComponentType::kProgress) {
       lv_obj_t* bar = lv_bar_create(root);
