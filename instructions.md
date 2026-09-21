@@ -16,6 +16,7 @@ GoodMorning Factory administra este producto. El repositorio del producto es la 
 - Rama de desarrollo integrada: `dev`
 - DEV frontend: `dev.leopold.goodmorning.mx`
 - PROD esperado: `https://leopold.goodmorning.mx`
+- Perfil frontend: `react` (react por defecto; next/hybrid son explícitos)
 
 ### Cómo trabajar
 
