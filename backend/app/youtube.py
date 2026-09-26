@@ -209,8 +209,8 @@ def youtube_document(
                         "align": "center", "size": 1, "color": "#686868",
                     },
                     {
-                        "type": "button", "id": "open-computer", "label": "COMPUTER",
-                        "x": 113, "y": 265, "width": 240, "height": 58,
+                        "type": "button", "id": "open-usb", "label": "USB", "icon": "usb",
+                        "x": 40, "y": 265, "width": 72, "height": 72,
                         "color": "#3D7FFF",
                     },
                 ],

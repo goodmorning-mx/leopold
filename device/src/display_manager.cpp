@@ -163,6 +163,19 @@ const lv_image_dsc_t* skyButtonIcon(const char* id) {
   return nullptr;
 }
 
+void drawUsbSymbol(lv_obj_t* parent, lv_color_t color) {
+  lv_obj_t* stem = createRoundPanel(parent, 33, 14, 6, 34, 3, color);
+  lv_obj_t* branch = createRoundPanel(parent, 18, 28, 39, 6, 3, color);
+  lv_obj_t* left = createRoundPanel(parent, 11, 25, 12, 12, LV_RADIUS_CIRCLE, color);
+  lv_obj_t* right = createRoundPanel(parent, 51, 25, 12, 12, LV_RADIUS_CIRCLE, color);
+  lv_obj_t* plug = createRoundPanel(parent, 28, 43, 16, 11, 2, color);
+  LV_UNUSED(stem);
+  LV_UNUSED(branch);
+  LV_UNUSED(left);
+  LV_UNUSED(right);
+  LV_UNUSED(plug);
+}
+
 }  // namespace
 
 bool DisplayManager::begin() {
@@ -1417,6 +1430,10 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
         lv_obj_t* icon = lv_image_create(button);
         lv_image_set_src(icon, imageSource);
         lv_obj_center(icon);
+        continue;
+      }
+      if (strcmp(component.icon, "usb") == 0) {
+        drawUsbSymbol(button, lvColor(component.color));
         continue;
       }
       const char* text = component.text;
