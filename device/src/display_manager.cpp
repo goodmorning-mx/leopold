@@ -5,6 +5,7 @@
 #include <esp_heap_caps.h>
 #include <lvgl.h>
 #include <qrcode.h>
+#include <time.h>
 
 #include "board_config.h"
 #include "sky_assets.h"
@@ -158,7 +159,6 @@ const lv_image_dsc_t* skyButtonIcon(const char* id) {
   if (strcmp(id, "open-voltage") == 0) return &sky::kBoltIcon;
   if (strcmp(id, "open-weather") == 0) return &sky::kWeatherIcon;
   if (strcmp(id, "open-navigation") == 0) return &sky::kNavigationIcon;
-  if (strcmp(id, "open-rgb") == 0) return &sky::kColorIcon;
   if (strcmp(id, "open-spotify") == 0) return &sky::kSpotifyIcon;
   return nullptr;
 }
@@ -174,6 +174,16 @@ void drawUsbSymbol(lv_obj_t* parent, lv_color_t color) {
   LV_UNUSED(left);
   LV_UNUSED(right);
   LV_UNUSED(plug);
+}
+
+void drawWhatsappSymbol(lv_obj_t* parent, lv_color_t color) {
+  lv_obj_t* bubble = createRoundPanel(parent, 17, 17, 38, 34, 14, color);
+  lv_obj_t* tail = createRoundPanel(parent, 20, 43, 10, 8, 3, color);
+  lv_obj_t* cutout = createRoundPanel(
+      parent, 26, 24, 20, 14, 7, lv_color_hex(0x141416));
+  LV_UNUSED(bubble);
+  LV_UNUSED(tail);
+  LV_UNUSED(cutout);
 }
 
 }  // namespace
@@ -1053,7 +1063,7 @@ void DisplayManager::showWifiPassword(
       "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "1234567890"};
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 25, 25, 64, 48, 24, lv_color_hex(0x1C1C1E));
+      root, 25, 42, 64, 48, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);
@@ -1155,7 +1165,7 @@ void DisplayManager::showWifiConnecting(
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 25, 25, 64, 48, 24, lv_color_hex(0x1C1C1E));
+      root, 25, 42, 64, 48, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);
@@ -1198,8 +1208,8 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   lv_obj_t* root = cleanLvglScreen();
   // AMOLED-first player: pure black pixels and no decorative background.
   lv_obj_t* volumeArc = lv_arc_create(root);
-  lv_obj_set_pos(volumeArc, 18, 18);
-  lv_obj_set_size(volumeArc, 430, 430);
+  lv_obj_set_pos(volumeArc, 42, 42);
+  lv_obj_set_size(volumeArc, 382, 382);
   lv_arc_set_rotation(volumeArc, 135);
   lv_arc_set_bg_angles(volumeArc, 0, 270);
   lv_arc_set_range(volumeArc, 0, 100);
@@ -1220,12 +1230,12 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   for (uint8_t index = 0; index < 3; ++index) {
     lv_obj_t* action = createLabel(
         root, actionSymbols[index], &lv_font_montserrat_24, lv_color_white());
-    lv_obj_align(action, LV_ALIGN_TOP_LEFT, actionX[index] - 12, 72);
+    lv_obj_align(action, LV_ALIGN_TOP_LEFT, actionX[index] - 12, 94);
   }
 
   // Until the cover cache has downloaded a new track, this is the intentional
   // no-background fallback. The SDUI contract already carries album-art URL.
-  lv_obj_t* cover = createImage(root, sky::kSpotifyLargeIcon, 184, 119);
+  lv_obj_t* cover = createImage(root, sky::kSpotifyLargeIcon, 184, 137);
   lv_obj_set_style_image_recolor(cover, lv_color_white(), 0);
   lv_obj_set_style_image_recolor_opa(cover, LV_OPA_COVER, 0);
 
@@ -1237,13 +1247,13 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   lv_obj_set_width(trackLabel, 320);
   lv_label_set_long_mode(trackLabel, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_align(trackLabel, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(trackLabel, LV_ALIGN_TOP_MID, 0, 235);
+  lv_obj_align(trackLabel, LV_ALIGN_TOP_MID, 0, 252);
   lv_obj_t* artistLabel = createLabel(
       root,
       artist == nullptr ? "Abre Spotify" : artist->text,
       &lv_font_montserrat_14,
       lv_color_hex(0xD1D1D6));
-  lv_obj_align(artistLabel, LV_ALIGN_TOP_MID, 0, 269);
+  lv_obj_align(artistLabel, LV_ALIGN_TOP_MID, 0, 286);
 
   struct MediaButton {
     int16_t x;
@@ -1262,23 +1272,18 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
         item.symbol,
         item.size > 70 ? &lv_font_montserrat_32 : &lv_font_montserrat_24,
         lv_color_white());
-    lv_obj_set_pos(icon, item.x + item.size / 2 - 16, 318);
+    lv_obj_set_pos(icon, item.x + item.size / 2 - 16, 326);
   }
 
-  lv_obj_t* seekArc = lv_arc_create(root);
-  lv_obj_set_pos(seekArc, 83, 332);
-  lv_obj_set_size(seekArc, 300, 300);
-  lv_arc_set_bg_angles(seekArc, 225, 315);
-  lv_arc_set_range(seekArc, 0, progress == nullptr ? 100 : progress->maximum);
-  lv_arc_set_value(seekArc, progress == nullptr ? 0 : progress->value);
-  lv_obj_remove_flag(seekArc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_arc_width(seekArc, 10, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(seekArc, lv_color_hex(0x343438), LV_PART_MAIN);
-  lv_obj_set_style_arc_rounded(seekArc, true, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(seekArc, 10, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(seekArc, lv_color_white(), LV_PART_INDICATOR);
-  lv_obj_set_style_arc_rounded(seekArc, true, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(seekArc, LV_OPA_TRANSP, LV_PART_KNOB);
+  lv_obj_t* seekBar = lv_bar_create(root);
+  lv_obj_set_pos(seekBar, 83, 392);
+  lv_obj_set_size(seekBar, 300, 8);
+  lv_bar_set_range(seekBar, 0, progress == nullptr ? 100 : progress->maximum);
+  lv_bar_set_value(seekBar, progress == nullptr ? 0 : progress->value, LV_ANIM_OFF);
+  lv_obj_set_style_radius(seekBar, 4, LV_PART_MAIN);
+  lv_obj_set_style_radius(seekBar, 4, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(seekBar, lv_color_hex(0x343438), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(seekBar, lv_color_white(), LV_PART_INDICATOR);
 }
 
 void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
@@ -1436,6 +1441,22 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
         drawUsbSymbol(button, lvColor(component.color));
         continue;
       }
+      if (strcmp(component.icon, "whatsapp") == 0) {
+        drawWhatsappSymbol(button, lvColor(component.color));
+        continue;
+      }
+      if (strcmp(component.id, "open-clock") == 0) {
+        char timeText[6] = "--:--";
+        time_t now = time(nullptr);
+        struct tm localTime;
+        if (now > 0 && localtime_r(&now, &localTime) != nullptr) {
+          strftime(timeText, sizeof(timeText), "%H:%M", &localTime);
+        }
+        lv_obj_t* label = createLabel(
+            button, timeText, &lv_font_montserrat_14, lvColor(component.color));
+        lv_obj_center(label);
+        continue;
+      }
       const char* text = component.text;
       if (strcmp(component.icon, "play") == 0) text = LV_SYMBOL_PLAY;
       else if (strcmp(component.icon, "pause") == 0) text = LV_SYMBOL_PAUSE;
@@ -1471,49 +1492,13 @@ void DisplayManager::renderSduiScreen(const SduiDocument& document) {
   }
   if (strcmp(active.screenId, "spotify-player") == 0) {
     buildLvglSpotifyPlayer(active);
-    if (document.screenCount > 1) {
-      const int16_t gap = 18;
-      const int16_t start =
-          (kScreenWidth - (document.screenCount - 1) * gap) / 2;
-      for (uint8_t index = 0; index < document.screenCount; ++index) {
-        display->fillCircle(
-            start + index * gap,
-            423,
-            index == document.activeScreen ? 5 : 3,
-            index == document.activeScreen ? kWhite : kGray);
-      }
-    }
     return;
   }
   if (strcmp(active.screenId, "device-control-center") == 0) {
     buildLvglControlCenter();
-    if (document.screenCount > 1) {
-      const int16_t gap = 18;
-      const int16_t start =
-          (kScreenWidth - (document.screenCount - 1) * gap) / 2;
-      for (uint8_t index = 0; index < document.screenCount; ++index) {
-        display->fillCircle(
-            start + index * gap,
-            423,
-            index == document.activeScreen ? 5 : 3,
-            index == document.activeScreen ? kWhite : kGray);
-      }
-    }
     return;
   }
   buildLvglSduiScreen(active);
-  if (document.screenCount > 1) {
-    const int16_t gap = 18;
-    const int16_t start =
-        (kScreenWidth - (document.screenCount - 1) * gap) / 2;
-    for (uint8_t index = 0; index < document.screenCount; ++index) {
-      display->fillCircle(
-          start + index * gap,
-          423,
-          index == document.activeScreen ? 5 : 3,
-          index == document.activeScreen ? kWhite : kGray);
-    }
-  }
 }
 
 void DisplayManager::drawIndicators(

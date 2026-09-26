@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <time.h>
 
 #include "app_state.h"
@@ -12,6 +13,7 @@
 #include "display_manager.h"
 #include "sdui.h"
 #include "telemetry.h"
+#include "tls_roots.h"
 #include "touch_input.h"
 #include "wifi_portal.h"
 
@@ -375,6 +377,8 @@ void addButton(
   strlcpy(component.text, label, sizeof(component.text));
   if (strcmp(id, "open-usb") == 0) {
     strlcpy(component.icon, "usb", sizeof(component.icon));
+  } else if (strcmp(id, "open-whatsapp") == 0) {
+    strlcpy(component.icon, "whatsapp", sizeof(component.icon));
   }
   component.x = x;
   component.y = y;
@@ -385,7 +389,7 @@ void addButton(
 }
 
 void addBack(SduiScreen& target) {
-  addButton(target, "open-home", "<", 24, 30, 66, 52, "#FFFFFF");
+  addButton(target, "open-home", "<", 24, 42, 66, 52, "#FFFFFF");
 }
 
 void syncControlCenterScreen() {
@@ -422,10 +426,9 @@ void syncControlCenterScreen() {
   addButton(home, "open-voltage", "VOLT", 298, 91, 72, 72);
   addButton(home, "open-weather", "WEATHER", 43, 190, 72, 72);
   addButton(home, "open-usb", "USB", 351, 190, 72, 72, "#3D7FFF");
-  addButton(home, "open-rgb", "RGB", 96, 291, 72, 72);
+  addButton(home, "open-whatsapp", "CHAT", 96, 291, 72, 72, "#30D158");
   addButton(home, "open-spotify", "SPOTIFY", 298, 291, 72, 72, "#1DB954");
   addButton(home, "open-settings", "SET", 197, 354, 72, 72);
-  addButton(home, "open-whatsapp", "CHAT", 197, 122, 72, 72, "#30D158");
 
   SduiScreen& clock = appendScreen("sky-clock");
   addBack(clock);
@@ -471,20 +474,12 @@ void syncControlCenterScreen() {
   slider.maximum = 100;
   slider.color = SduiParser::rgb565("#FFD60A");
 
-  SduiScreen& rgb = appendScreen("sky-rgb");
-  addBack(rgb);
-  addText(rgb, "rgb-title", "RGB", 233, 54, 3);
-  addText(rgb, "rgb-red", "RED", 233, 135, 3, "#FF453A");
-  addText(rgb, "rgb-green", "GREEN", 233, 206, 3, "#30D158");
-  addText(rgb, "rgb-blue", "BLUE", 233, 277, 3, "#0A84FF");
-  addButton(rgb, "rgb-toggle", "LIGHTS ON / OFF", 105, 350, 256, 58);
-
   SduiScreen& weather = appendScreen("sky-weather");
   addBack(weather);
   addText(weather, "weather-title", "WEATHER", 233, 52, 3, "#0A84FF");
-  addText(weather, "weather-temp", "72 F", 233, 128, 4);
-  addText(weather, "weather-condition", "CURRENT CONDITIONS", 233, 190, 1, "#8E8E93");
-  addText(weather, "weather-humidity", "HUMIDITY 40%", 233, 246, 2);
+  addText(weather, "weather-temp", "-- F", 233, 128, 4);
+  addText(weather, "weather-condition", "LIVE WEATHER", 233, 190, 1, "#8E8E93");
+  addText(weather, "weather-humidity", "HUMIDITY --%", 233, 246, 2);
   addText(weather, "weather-location", "LOCATION BY IP", 233, 298, 1, "#8E8E93");
   addButton(weather, "weather-units", "F / C", 153, 354, 160, 58, "#0A84FF");
 
@@ -737,6 +732,8 @@ const SduiComponent* firstButton() {
   return nullptr;
 }
 
+void refreshLocalWeather();
+
 bool openLocalScreen(const char* componentId) {
   if (componentId == nullptr || strncmp(componentId, "open-", 5) != 0) {
     return false;
@@ -749,7 +746,6 @@ bool openLocalScreen(const char* componentId) {
   else if (strcmp(requested, "whatsapp") == 0) screenId = "sky-whatsapp";
   else if (strcmp(requested, "usb") == 0) screenId = "computer-controls";
   else if (strcmp(requested, "settings") == 0) screenId = "device-control-center";
-  else if (strcmp(requested, "rgb") == 0) screenId = "sky-rgb";
   else if (strcmp(requested, "weather") == 0) screenId = "sky-weather";
   else if (strcmp(requested, "navigation") == 0) screenId = "sky-navigation";
   else if (strcmp(requested, "spotify") == 0) screenId = "spotify-player";
@@ -758,12 +754,88 @@ bool openLocalScreen(const char* componentId) {
     if (strcmp(currentUi.screens[index].screenId, screenId) == 0) {
       currentUi.activeScreen = index;
       screen.renderSduiScreen(currentUi);
+      if (strcmp(screenId, "sky-weather") == 0) {
+        refreshLocalWeather();
+        screen.renderSduiScreen(currentUi);
+      }
       lastIndicatorAt = 0;
       Serial.printf("Local screen opened: %s\n", screenId);
       return true;
     }
   }
   return false;
+}
+
+const char* weatherDescription(int code) {
+  if (code == 0) return "CLEAR SKY";
+  if (code <= 3) return "PARTLY CLOUDY";
+  if (code <= 48) return "FOG";
+  if (code <= 67) return "RAIN";
+  if (code <= 77) return "SNOW";
+  if (code <= 82) return "SHOWERS";
+  return "STORM";
+}
+
+void refreshLocalWeather() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  WiFiClientSecure secure;
+  secure.setCACert(kLetsEncryptRootYrByX1);
+  secure.setHandshakeTimeout(5);
+  HTTPClient http;
+  http.setConnectTimeout(5000);
+  http.setTimeout(5000);
+  if (!http.begin(secure, "https://ipapi.co/json/")) return;
+  if (http.GET() != HTTP_CODE_OK) {
+    http.end();
+    return;
+  }
+  JsonDocument location;
+  if (deserializeJson(location, http.getString())) {
+    http.end();
+    return;
+  }
+  const double latitude = location["latitude"] | 0.0;
+  const double longitude = location["longitude"] | 0.0;
+  const char* city = location["city"] | "LOCATION BY IP";
+  http.end();
+
+  String weatherUrl =
+      String("https://api.open-meteo.com/v1/forecast?latitude=") +
+      String(latitude, 4) + "&longitude=" + String(longitude, 4) +
+      "&current=temperature_2m,relative_humidity_2m,weather_code&temperature_unit=fahrenheit";
+  if (!http.begin(secure, weatherUrl)) return;
+  if (http.GET() != HTTP_CODE_OK) {
+    http.end();
+    return;
+  }
+  JsonDocument forecast;
+  if (deserializeJson(forecast, http.getString())) {
+    http.end();
+    return;
+  }
+  const int temperature = static_cast<int>(forecast["current"]["temperature_2m"] | 0.0);
+  const int humidity = forecast["current"]["relative_humidity_2m"] | 0;
+  const int code = forecast["current"]["weather_code"] | 0;
+  http.end();
+  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+    SduiScreen& candidate = currentUi.screens[index];
+    if (strcmp(candidate.screenId, "sky-weather") != 0) continue;
+    for (uint8_t componentIndex = 0;
+         componentIndex < candidate.componentCount;
+         ++componentIndex) {
+      SduiComponent& component = candidate.components[componentIndex];
+      if (strcmp(component.id, "weather-temp") == 0) {
+        snprintf(component.text, sizeof(component.text), "%d F", temperature);
+      } else if (strcmp(component.id, "weather-condition") == 0) {
+        strlcpy(component.text, weatherDescription(code), sizeof(component.text));
+      } else if (strcmp(component.id, "weather-humidity") == 0) {
+        snprintf(component.text, sizeof(component.text), "HUMIDITY %d%%", humidity);
+      } else if (strcmp(component.id, "weather-location") == 0) {
+        strlcpy(component.text, city, sizeof(component.text));
+      }
+    }
+    return;
+  }
 }
 
 void processInput(uint32_t now) {
