@@ -421,6 +421,7 @@ void syncControlCenterScreen() {
   addButton(home, "open-aux", "AUX", 351, 190, 72, 72, "#FF9F0A");
   addButton(home, "open-rgb", "RGB", 96, 291, 72, 72);
   addButton(home, "open-spotify", "SPOTIFY", 298, 291, 72, 72, "#1DB954");
+  addButton(home, "open-computer", "COMPUTER", 40, 354, 130, 58, "#3D7FFF");
   addButton(home, "open-settings", "SET", 197, 354, 72, 72);
   addButton(home, "open-whatsapp", "CHAT", 197, 122, 72, 72, "#30D158");
 
@@ -749,6 +750,7 @@ bool openLocalScreen(const char* componentId) {
   else if (strcmp(requested, "weather") == 0) screenId = "sky-weather";
   else if (strcmp(requested, "navigation") == 0) screenId = "sky-navigation";
   else if (strcmp(requested, "spotify") == 0) screenId = "spotify-player";
+  else if (strcmp(requested, "computer") == 0) screenId = "computer-controls";
   if (screenId == nullptr) return false;
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     if (strcmp(currentUi.screens[index].screenId, screenId) == 0) {

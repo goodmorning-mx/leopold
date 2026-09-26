@@ -246,6 +246,16 @@ def spotify_document(revision: int, state: dict) -> dict:
                     "size": 1,
                     "color": "#686868",
                 },
+                {
+                    "type": "button",
+                    "id": "open-computer",
+                    "label": "COMPUTER",
+                    "x": 113,
+                    "y": 265,
+                    "width": 240,
+                    "height": 58,
+                    "color": "#3D7FFF",
+                },
             ],
         },
         {

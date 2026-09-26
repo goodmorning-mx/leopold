@@ -26,6 +26,10 @@ def test_youtube_document_follows_sdui_contract() -> None:
     assert [screen.id for screen in validated.screens] == ["home", "youtube-feed"]
     assert validated.screens[1].components[-1].id == "youtube-refresh"
     assert validated.screens[0].components[0].text == "HOLA, ABEL"
+    assert any(
+        component.id == "open-computer"
+        for component in validated.screens[0].components
+    )
 
 
 def test_youtube_status_and_connect_require_server_configuration() -> None:
