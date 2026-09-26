@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
+from app.computer_controls import CONTROL_COMPONENT_IDS, with_computer_controls
 from app.database import get_db
 from app.models import (
     Device,
@@ -23,6 +24,7 @@ from app.models import (
 from app.schemas import (
     ConnectRequest,
     ConnectResponse,
+    ComputerCommand,
     DeviceEventRequest,
     HeartbeatRequest,
     HeartbeatResponse,
@@ -361,7 +363,7 @@ def get_device_ui(
     if_none_match: Annotated[str | None, Header(alias="If-None-Match")] = None,
 ) -> Response:
     stored = active_ui(db, device)
-    etag = f'"{stored.revision}"'
+    etag = f'"controls-v1-{stored.revision}"'
     spotify_connection = (
         db.scalar(
             select(SpotifyConnection).where(
@@ -382,16 +384,6 @@ def get_device_ui(
         if device.owner_id
         else None
     )
-    screens = stored.document.get("screens") or []
-    legacy_screen = stored.document.get("screen") or {}
-    screen_id = screens[0].get("id") if screens else legacy_screen.get("id")
-    if (
-        device.owner_id is not None
-        and spotify_connection is None
-        and youtube_connection is None
-        and screen_id != "leopold-welcome"
-    ):
-        return Response(status_code=304, headers={"ETag": etag})
     if spotify_connection is not None or youtube_connection is not None:
         from app.spotify import player_state, spotify_document
         from app.youtube import youtube_document, youtube_screen
@@ -424,9 +416,7 @@ def get_device_ui(
                 youtube_connection.display_name,
                 owner_name,
             )
-        live_document = UIDocument.model_validate(
-            raw_document
-        )
+        live_document = UIDocument.model_validate(with_computer_controls(raw_document))
         services = "spotify-youtube" if spotify_connection and youtube_connection else (
             "spotify" if spotify_connection else "youtube"
         )
@@ -440,7 +430,7 @@ def get_device_ui(
         tag.strip() in {etag, f"W/{etag}"} for tag in if_none_match.split(",")
     ):
         return Response(status_code=304, headers={"ETag": etag})
-    document = UIDocument.model_validate(stored.document)
+    document = UIDocument.model_validate(with_computer_controls(stored.document))
     return Response(
         content=document.model_dump_json(),
         media_type="application/json",
@@ -483,6 +473,33 @@ def record_event(
         except IntegrityError:
             db.rollback()
     return {"accepted": True}
+
+
+@router.get("/device/computer-commands", response_model=list[ComputerCommand])
+def computer_commands(
+    after: datetime,
+    db: Db,
+    device: AuthenticatedDevice,
+) -> list[dict]:
+    """Return this device's recent allowlisted Mac commands for a local companion."""
+    events = db.scalars(
+            select(DeviceEvent)
+            .where(
+                DeviceEvent.device_id == device.id,
+                DeviceEvent.component_id.in_(CONTROL_COMPONENT_IDS),
+                DeviceEvent.received_at > after,
+            )
+            .order_by(DeviceEvent.received_at, DeviceEvent.id)
+            .limit(50)
+        ).all()
+    return [
+        {
+            "event_id": event.event_id,
+            "component_id": event.component_id,
+            "received_at": event.received_at,
+        }
+        for event in events
+    ]
 
 
 @router.post("/device/heartbeat", response_model=HeartbeatResponse)

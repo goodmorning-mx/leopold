@@ -210,6 +210,17 @@ class DeviceEventRequest(BaseModel):
         return value
 
 
+class ComputerCommand(BaseModel):
+    event_id: str
+    component_id: Literal[
+        "computer-volume-down",
+        "computer-volume-mute",
+        "computer-volume-up",
+        "computer-screenshot",
+    ]
+    received_at: datetime
+
+
 class HeartbeatRequest(BaseModel):
     firmware_version: str = Field(min_length=1, max_length=32)
     wifi_rssi: int = Field(ge=-127, le=0)
