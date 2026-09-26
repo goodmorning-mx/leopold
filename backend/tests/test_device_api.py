@@ -220,6 +220,12 @@ def test_ui_is_valid_and_supports_etag(client) -> None:
         "indicator",
         "button",
     }
+    usb_button = next(
+        component for component in document["screens"][0]["components"]
+        if component["id"] == "open-usb"
+    )
+    assert usb_button["icon"] == "usb"
+    assert usb_button["width"] == usb_button["height"] == 72
     unchanged = client.get(
         "/v1/device/ui",
         headers={**device_headers(credentials), "If-None-Match": '"controls-v1-1"'},

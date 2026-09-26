@@ -51,8 +51,8 @@ def test_spotify_documents_follow_sdui_contract() -> None:
     assert playing["screens"][0]["components"][0]["text"] == "HOLA, ABEL"
     assert next(
         item for item in playing["screens"][0]["components"]
-        if item["id"] == "open-computer"
-    )["label"] == "COMPUTER"
+        if item["id"] == "open-usb"
+    )["icon"] == "usb"
     assert next(
         item
         for item in spotify["components"]

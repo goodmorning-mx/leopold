@@ -27,7 +27,7 @@ def test_youtube_document_follows_sdui_contract() -> None:
     assert validated.screens[1].components[-1].id == "youtube-refresh"
     assert validated.screens[0].components[0].text == "HOLA, ABEL"
     assert any(
-        component.id == "open-computer"
+        component.id == "open-usb" and component.icon == "usb"
         for component in validated.screens[0].components
     )
 
