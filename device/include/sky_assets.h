@@ -10,7 +10,6 @@ extern const lv_image_dsc_t kClockIcon;
 extern const lv_image_dsc_t kBoltIcon;
 extern const lv_image_dsc_t kWeatherIcon;
 extern const lv_image_dsc_t kNavigationIcon;
-extern const lv_image_dsc_t kColorIcon;
 extern const lv_image_dsc_t kSpotifyIcon;
 extern const lv_image_dsc_t kSpotifyLargeIcon;
 
