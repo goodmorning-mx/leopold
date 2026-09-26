@@ -208,6 +208,11 @@ def youtube_document(
                         "text": "DESLIZA PARA YOUTUBE", "x": 233, "y": 330,
                         "align": "center", "size": 1, "color": "#686868",
                     },
+                    {
+                        "type": "button", "id": "open-computer", "label": "COMPUTER",
+                        "x": 113, "y": 265, "width": 240, "height": 58,
+                        "color": "#3D7FFF",
+                    },
                 ],
             },
             youtube_screen(feed, display_name),

@@ -166,6 +166,16 @@ def initial_document(revision: int, poll_seconds: int) -> dict:
                     "width": 200,
                     "height": 58,
                 },
+                {
+                    "type": "button",
+                    "id": "open-computer",
+                    "label": "COMPUTER",
+                    "x": 113,
+                    "y": 265,
+                    "width": 240,
+                    "height": 58,
+                    "color": "#3D7FFF",
+                },
             ],
         }],
     ).model_dump(mode="json")
