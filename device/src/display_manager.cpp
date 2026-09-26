@@ -164,11 +164,11 @@ const lv_image_dsc_t* skyButtonIcon(const char* id) {
 }
 
 void drawUsbSymbol(lv_obj_t* parent, lv_color_t color) {
-  lv_obj_t* stem = createRoundPanel(parent, 33, 14, 6, 34, 3, color);
-  lv_obj_t* branch = createRoundPanel(parent, 18, 28, 39, 6, 3, color);
-  lv_obj_t* left = createRoundPanel(parent, 11, 25, 12, 12, LV_RADIUS_CIRCLE, color);
-  lv_obj_t* right = createRoundPanel(parent, 51, 25, 12, 12, LV_RADIUS_CIRCLE, color);
-  lv_obj_t* plug = createRoundPanel(parent, 28, 43, 16, 11, 2, color);
+  lv_obj_t* stem = createRoundPanel(parent, 33, 16, 6, 25, 3, color);
+  lv_obj_t* branch = createRoundPanel(parent, 22, 28, 28, 5, 2, color);
+  lv_obj_t* left = createRoundPanel(parent, 16, 25, 10, 10, LV_RADIUS_CIRCLE, color);
+  lv_obj_t* right = createRoundPanel(parent, 46, 25, 10, 10, LV_RADIUS_CIRCLE, color);
+  lv_obj_t* plug = createRoundPanel(parent, 29, 41, 14, 9, 2, color);
   LV_UNUSED(stem);
   LV_UNUSED(branch);
   LV_UNUSED(left);

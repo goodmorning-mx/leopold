@@ -450,6 +450,15 @@ void syncControlCenterScreen() {
   addText(whatsapp, "whatsapp-message-2", "Leopold is online", 112, 271, 1, "#D1D1D6", TextAlign::kLeft);
   addButton(whatsapp, "whatsapp-reply", "VOICE REPLY", 116, 344, 234, 62, "#30D158");
 
+  SduiScreen& computer = appendScreen("computer-controls");
+  addBack(computer);
+  addText(computer, "computer-title", "COMPUTER", 233, 80, 3);
+  addText(computer, "computer-status", "MAC CONTROLS", 233, 126, 1, "#A7A7A7");
+  addButton(computer, "computer-volume-down", "VOL -", 64, 180, 96, 72);
+  addButton(computer, "computer-volume-mute", "MUTE", 185, 180, 96, 72, "#FD9D20");
+  addButton(computer, "computer-volume-up", "VOL +", 306, 180, 96, 72);
+  addButton(computer, "computer-screenshot", "CAPTURE", 113, 292, 240, 74, "#3D7FFF");
+
   SduiScreen& settings = appendScreen("device-control-center");
   SduiComponent& slider = settings.components[settings.componentCount++];
   slider.type = ComponentType::kSlider;
