@@ -202,10 +202,19 @@ def test_ui_is_valid_and_supports_etag(client) -> None:
     credentials = provision(client)
     response = client.get("/v1/device/ui", headers=device_headers(credentials))
     assert response.status_code == 200
-    assert response.headers["etag"] == '"1"'
+    assert response.headers["etag"] == '"controls-v1-1"'
     document = response.json()
     assert document["schema_version"] == 1
     assert document["revision"] == 1
+    controls = next(
+        screen for screen in document["screens"] if screen["id"] == "computer-controls"
+    )
+    assert {component["id"] for component in controls["components"] if component["type"] == "button"} == {
+        "computer-volume-down",
+        "computer-volume-mute",
+        "computer-volume-up",
+        "computer-screenshot",
+    }
     assert {component["type"] for component in document["screens"][0]["components"]} == {
         "text",
         "indicator",
@@ -213,11 +222,11 @@ def test_ui_is_valid_and_supports_etag(client) -> None:
     }
     unchanged = client.get(
         "/v1/device/ui",
-        headers={**device_headers(credentials), "If-None-Match": '"1"'},
+        headers={**device_headers(credentials), "If-None-Match": '"controls-v1-1"'},
     )
     assert unchanged.status_code == 304
     assert unchanged.content == b""
-    assert unchanged.headers["etag"] == '"1"'
+    assert unchanged.headers["etag"] == '"controls-v1-1"'
 
 
 def test_admin_publishes_revision_two_and_device_receives_it(
@@ -252,7 +261,7 @@ def test_admin_publishes_revision_two_and_device_receives_it(
     current = client.get("/v1/device/ui", headers=device_headers(credentials))
     assert current.status_code == 200
     assert current.json()["revision"] == 2
-    assert current.headers["etag"] == '"2"'
+    assert current.headers["etag"] == '"controls-v1-2"'
     stale_etag = client.get(
         "/v1/device/ui",
         headers={**device_headers(credentials), "If-None-Match": '"1"'},
@@ -390,6 +399,42 @@ def test_event_is_idempotent_and_payload_is_bounded(client, session_factory) -> 
         ).status_code
         == 422
     )
+
+
+def test_computer_command_feed_is_authenticated_filtered_and_device_scoped(client) -> None:
+    first = provision(client, "Mac controls")
+    second = provision(client, "Other device")
+
+    def send(credentials: dict, event_id: str, component_id: str) -> None:
+        response = client.post(
+            "/v1/device/events",
+            headers=device_headers(credentials),
+            json={
+                "event_id": event_id,
+                "revision": 1,
+                "type": "tap",
+                "component_id": component_id,
+                "payload": {},
+                "occurred_at": "2026-07-29T08:01:00Z",
+            },
+        )
+        assert response.status_code == 202
+
+    send(first, "evt-volume", "computer-volume-up")
+    send(first, "evt-unrelated", "continue")
+    send(second, "evt-other", "computer-screenshot")
+
+    path = "/v1/device/computer-commands?after=2020-01-01T00:00:00Z"
+    response = client.get(path, headers=device_headers(first))
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "event_id": "evt-volume",
+            "component_id": "computer-volume-up",
+            "received_at": response.json()[0]["received_at"],
+        }
+    ]
+    assert client.get(path).status_code == 401
 
 
 def test_heartbeat_updates_telemetry_without_returning_secret(
