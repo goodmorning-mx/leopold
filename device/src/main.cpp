@@ -1327,7 +1327,8 @@ void refreshIndicators(uint32_t now) {
       batteryPercent,
       timeText);
   const bool liveSkyScreen = hasUi && currentUi.screenCount > 0 &&
-      (strcmp(currentUi.active().screenId, "sky-clock") == 0 ||
+      (strcmp(currentUi.active().screenId, "sky-home") == 0 ||
+       strcmp(currentUi.active().screenId, "sky-clock") == 0 ||
        strcmp(currentUi.active().screenId, "sky-voltage") == 0);
   if ((statusChanged && hasUi && currentUi.screenCount > 0 &&
        strcmp(currentUi.active().screenId, "device-control-center") == 0) ||
