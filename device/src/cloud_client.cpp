@@ -163,8 +163,8 @@ CloudResponse CloudClient::perform(const Request& request) {
     return response;
   }
 
-  const char* responseHeaders[] = {"ETag"};
-  http.collectHeaders(responseHeaders, 1);
+  const char* headers[] = {"ETag", "Date"};
+  http.collectHeaders(headers, 2);
   http.addHeader("X-Leopold-Device-ID", LEOPOLD_DEVICE_ID);
   http.addHeader("Authorization", String("Bearer ") + LEOPOLD_DEVICE_SECRET);
   http.addHeader("Content-Type", "application/json");
@@ -198,6 +198,7 @@ CloudResponse CloudClient::perform(const Request& request) {
     }
   }
   strlcpy(response.etag, http.header("ETag").c_str(), sizeof(response.etag));
+  strlcpy(response.serverDate, http.header("Date").c_str(), sizeof(response.serverDate));
   http.end();
   return response;
 }

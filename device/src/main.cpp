@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "app_state.h"
 #include "board_config.h"
@@ -121,6 +122,8 @@ uint32_t wifiSelectionStartedAt = 0;
 bool wifiScanRunning = false;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
+
+time_t utcEpoch(const struct tm& value);
 
 void renderBluetoothDevices(const char* message = nullptr) {
   const BluetoothScanResult* results =
@@ -579,6 +582,18 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
 void handleCloudResponse(CloudResponse& response, uint32_t now) {
   const bool successful =
       response.httpCode >= 200 && response.httpCode < 300;
+  if (successful && !telemetry.timeSynchronized() && response.serverDate[0] != '\0') {
+    struct tm utc = {};
+    char* parsed = strptime(response.serverDate, "%a, %d %b %Y %H:%M:%S GMT", &utc);
+    if (parsed != nullptr && *parsed == '\0') {
+      const time_t serverTime = utcEpoch(utc);
+      if (serverTime > 1700000000) {
+        struct timeval current = {serverTime, 0};
+        settimeofday(&current, nullptr);
+        Serial.println("Clock synchronized from API time");
+      }
+    }
+  }
   switch (response.operation) {
     case CloudOperation::kConnect:
       connectPending = false;
@@ -689,6 +704,25 @@ void formatOccurredAt(char output[25]) {
   strftime(output, 25, "%Y-%m-%dT%H:%M:%SZ", &utc);
 }
 
+time_t utcEpoch(const struct tm& value) {
+  int64_t days = 0;
+  for (int year = 1970; year < value.tm_year + 1900; ++year) {
+    days += (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) ? 366 : 365;
+  }
+  static constexpr uint16_t daysBeforeMonth[] = {
+      0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+  days += daysBeforeMonth[value.tm_mon];
+  if (value.tm_mon >= 2 &&
+      ((value.tm_year + 1900) % 4 == 0 &&
+       ((value.tm_year + 1900) % 100 != 0 ||
+        (value.tm_year + 1900) % 400 == 0))) {
+    ++days;
+  }
+  days += value.tm_mday - 1;
+  return static_cast<time_t>(days * 86400LL + value.tm_hour * 3600L +
+                             value.tm_min * 60L + value.tm_sec);
+}
+
 void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
   uint8_t slot = kEventQueueSize;
   for (uint8_t index = 0; index < kEventQueueSize; ++index) {
@@ -789,8 +823,13 @@ void refreshLocalWeather() {
   HTTPClient http;
   http.setConnectTimeout(5000);
   http.setTimeout(5000);
-  if (!http.begin(secure, "https://ipapi.co/json/")) return;
-  if (http.GET() != HTTP_CODE_OK) {
+  if (!http.begin(secure, "https://ipinfo.io/json")) {
+    Serial.println("Weather geolocation request could not start");
+    return;
+  }
+  const int locationStatus = http.GET();
+  if (locationStatus != HTTP_CODE_OK) {
+    Serial.printf("Weather geolocation HTTP error: %d\n", locationStatus);
     http.end();
     return;
   }
@@ -799,8 +838,14 @@ void refreshLocalWeather() {
     http.end();
     return;
   }
-  const double latitude = location["latitude"] | 0.0;
-  const double longitude = location["longitude"] | 0.0;
+  const char* coordinates = location["loc"] | "";
+  double latitude = 0.0;
+  double longitude = 0.0;
+  if (sscanf(coordinates, "%lf,%lf", &latitude, &longitude) != 2) {
+    Serial.println("Weather geolocation response missing coordinates");
+    http.end();
+    return;
+  }
   const char* city = location["city"] | "LOCATION BY IP";
   http.end();
 
@@ -808,8 +853,13 @@ void refreshLocalWeather() {
       String("https://api.open-meteo.com/v1/forecast?latitude=") +
       String(latitude, 4) + "&longitude=" + String(longitude, 4) +
       "&current=temperature_2m,relative_humidity_2m,weather_code&temperature_unit=fahrenheit";
-  if (!http.begin(secure, weatherUrl)) return;
-  if (http.GET() != HTTP_CODE_OK) {
+  if (!http.begin(secure, weatherUrl)) {
+    Serial.println("Weather forecast request could not start");
+    return;
+  }
+  const int forecastStatus = http.GET();
+  if (forecastStatus != HTTP_CODE_OK) {
+    Serial.printf("Weather forecast HTTP error: %d\n", forecastStatus);
     http.end();
     return;
   }
@@ -839,6 +889,11 @@ void refreshLocalWeather() {
         strlcpy(component.text, city, sizeof(component.text));
       }
     }
+    Serial.printf(
+        "Weather updated: %d F, %d%%, %s\n",
+        temperature,
+        humidity,
+        city);
     return;
   }
 }

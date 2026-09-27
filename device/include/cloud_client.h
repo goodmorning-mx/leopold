@@ -18,6 +18,7 @@ struct CloudResponse {
   char* body = nullptr;
   size_t bodyLength = 0;
   char etag[64] = {};
+  char serverDate[40] = {};
 
   void release();
 };
