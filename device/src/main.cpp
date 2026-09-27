@@ -2,7 +2,6 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -14,8 +13,8 @@
 #include "display_manager.h"
 #include "sdui.h"
 #include "telemetry.h"
-#include "tls_roots.h"
 #include "touch_input.h"
+#include "weather_client.h"
 #include "wifi_portal.h"
 
 namespace {
@@ -67,6 +66,7 @@ CloudClient cloud;
 TouchInput touch;
 Telemetry telemetry;
 SduiStore uiStore;
+WeatherClient weather;
 EXT_RAM_BSS_ATTR SduiDocument currentUi;
 String cachedRawUi;
 
@@ -107,12 +107,6 @@ uint32_t nextWelcomeAt = 0;
 uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
 uint32_t lastIndicatorAt = 0;
 uint32_t lastWeatherRefreshAt = 0;
-int16_t weatherTemperatureF = 0;
-uint8_t weatherHumidity = 0;
-int weatherCode = 0;
-bool weatherHasData = false;
-bool weatherUsesCelsius = false;
-char weatherCity[33] = "LOCATION BY IP";
 uint32_t lastTimeSyncAttemptAt = 0;
 uint32_t eventSequence = 0;
 char onboardingUrl[256] = {};
@@ -130,7 +124,6 @@ bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
 
 time_t utcEpoch(const struct tm& value);
-bool synchronizeClockFromHttpDate(const String& value);
 
 void renderBluetoothDevices(const char* message = nullptr) {
   const BluetoothScanResult* results =
@@ -730,25 +723,6 @@ time_t utcEpoch(const struct tm& value) {
                              value.tm_min * 60L + value.tm_sec);
 }
 
-bool synchronizeClockFromHttpDate(const String& value) {
-  if (telemetry.timeSynchronized() || value.isEmpty()) {
-    return false;
-  }
-  struct tm utc = {};
-  char* parsed = strptime(value.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &utc);
-  if (parsed == nullptr || *parsed != '\0') {
-    return false;
-  }
-  const time_t serverTime = utcEpoch(utc);
-  if (serverTime <= 1700000000) {
-    return false;
-  }
-  struct timeval current = {serverTime, 0};
-  settimeofday(&current, nullptr);
-  Serial.println("Clock synchronized from weather API time");
-  return true;
-}
-
 void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
   uint8_t slot = kEventQueueSize;
   for (uint8_t index = 0; index < kEventQueueSize; ++index) {
@@ -796,27 +770,6 @@ const SduiComponent* firstButton() {
   return nullptr;
 }
 
-void refreshLocalWeather();
-void renderWeatherValues();
-
-void ensureNetworkTime() {
-  Serial.printf("Weather clock epoch: %lu\n", static_cast<unsigned long>(time(nullptr)));
-  if (telemetry.timeSynchronized() || WiFi.status() != WL_CONNECTED) {
-    return;
-  }
-  configTzTime(
-      "CST6",
-      "pool.ntp.org",
-      "time.google.com",
-      "time.cloudflare.com");
-  struct tm localTime = {};
-  if (getLocalTime(&localTime, 7000)) {
-    Serial.println("NTP time synchronized before weather request");
-  } else {
-    Serial.println("NTP time unavailable before weather request");
-  }
-}
-
 bool openLocalScreen(const char* componentId) {
   if (componentId == nullptr || strncmp(componentId, "open-", 5) != 0) {
     return false;
@@ -838,7 +791,7 @@ bool openLocalScreen(const char* componentId) {
       currentUi.activeScreen = index;
       screen.renderSduiScreen(currentUi);
       if (strcmp(screenId, "sky-weather") == 0) {
-        renderWeatherValues();
+        weather.render(currentUi);
         screen.renderSduiScreen(currentUi);
       }
       lastIndicatorAt = 0;
@@ -847,125 +800,6 @@ bool openLocalScreen(const char* componentId) {
     }
   }
   return false;
-}
-
-const char* weatherDescription(int code) {
-  if (code == 0) return "CLEAR SKY";
-  if (code <= 3) return "PARTLY CLOUDY";
-  if (code <= 48) return "FOG";
-  if (code <= 67) return "RAIN";
-  if (code <= 77) return "SNOW";
-  if (code <= 82) return "SHOWERS";
-  return "STORM";
-}
-
-void refreshLocalWeather() {
-  lastWeatherRefreshAt = millis();
-  if (WiFi.status() != WL_CONNECTED) return;
-  ensureNetworkTime();
-  WiFiClientSecure secure;
-  secure.setCACert(kLetsEncryptRootYrByX1);
-  secure.setHandshakeTimeout(5);
-  HTTPClient http;
-  http.setConnectTimeout(5000);
-  http.setTimeout(5000);
-  if (!http.begin(secure, "https://ipinfo.io/json")) {
-    Serial.println("Weather geolocation request could not start");
-    return;
-  }
-  const char* dateHeader[] = {"Date"};
-  http.collectHeaders(dateHeader, 1);
-  const int locationStatus = http.GET();
-  if (locationStatus != HTTP_CODE_OK) {
-    Serial.printf("Weather geolocation HTTP error: %d\n", locationStatus);
-    http.end();
-    return;
-  }
-  JsonDocument location;
-  if (deserializeJson(location, http.getString())) {
-    http.end();
-    return;
-  }
-  const char* coordinates = location["loc"] | "";
-  double latitude = 0.0;
-  double longitude = 0.0;
-  if (sscanf(coordinates, "%lf,%lf", &latitude, &longitude) != 2) {
-    Serial.println("Weather geolocation response missing coordinates");
-    http.end();
-    return;
-  }
-  const char* city = location["city"] | "LOCATION BY IP";
-  strlcpy(weatherCity, city, sizeof(weatherCity));
-  http.end();
-
-  String weatherUrl =
-      String("https://api.open-meteo.com/v1/forecast?latitude=") +
-      String(latitude, 4) + "&longitude=" + String(longitude, 4) +
-      "&current=temperature_2m,relative_humidity_2m,weather_code&temperature_unit=fahrenheit";
-  if (!http.begin(secure, weatherUrl)) {
-    Serial.println("Weather forecast request could not start");
-    return;
-  }
-  http.collectHeaders(dateHeader, 1);
-  const int forecastStatus = http.GET();
-  if (forecastStatus != HTTP_CODE_OK) {
-    Serial.printf("Weather forecast HTTP error: %d\n", forecastStatus);
-    http.end();
-    return;
-  }
-  JsonDocument forecast;
-  if (deserializeJson(forecast, http.getString())) {
-    http.end();
-    return;
-  }
-  weatherTemperatureF = static_cast<int16_t>(forecast["current"]["temperature_2m"] | 0.0);
-  weatherHumidity = forecast["current"]["relative_humidity_2m"] | 0;
-  weatherCode = forecast["current"]["weather_code"] | 0;
-  const String forecastDate = http.header("Date");
-  http.end();
-  synchronizeClockFromHttpDate(forecastDate);
-  weatherHasData = true;
-  renderWeatherValues();
-}
-
-void renderWeatherValues() {
-  if (!weatherHasData) return;
-  const int temperature = weatherUsesCelsius
-      ? static_cast<int>(round((weatherTemperatureF - 32) * 5.0 / 9.0))
-      : weatherTemperatureF;
-  const char* unit = weatherUsesCelsius ? "C" : "F";
-  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
-    SduiScreen& candidate = currentUi.screens[index];
-    if (strcmp(candidate.screenId, "sky-weather") != 0) continue;
-    for (uint8_t componentIndex = 0;
-         componentIndex < candidate.componentCount;
-         ++componentIndex) {
-      SduiComponent& component = candidate.components[componentIndex];
-      if (strcmp(component.id, "weather-temp") == 0) {
-        snprintf(component.text, sizeof(component.text), "%d %s", temperature, unit);
-      } else if (strcmp(component.id, "weather-condition") == 0) {
-        strlcpy(component.text, weatherDescription(weatherCode), sizeof(component.text));
-      } else if (strcmp(component.id, "weather-humidity") == 0) {
-        snprintf(component.text, sizeof(component.text), "HUMIDITY %d%%", weatherHumidity);
-      } else if (strcmp(component.id, "weather-location") == 0) {
-        strlcpy(component.text, weatherCity, sizeof(component.text));
-      }
-    }
-    Serial.printf(
-        "Weather updated: %d %s, %d%%, %s\n",
-        temperature,
-        unit,
-        weatherHumidity,
-        weatherCity);
-    return;
-  }
-}
-
-void toggleWeatherUnits() {
-  weatherUsesCelsius = !weatherUsesCelsius;
-  renderWeatherValues();
-  screen.renderSduiScreen(currentUi);
-  Serial.printf("Weather units: %s\n", weatherUsesCelsius ? "C" : "F");
 }
 
 void processInput(uint32_t now) {
@@ -1221,7 +1055,8 @@ void processInput(uint32_t now) {
     if (button != nullptr) {
       if (strcmp(button->id, "weather-units") == 0 &&
           strcmp(currentUi.active().screenId, "sky-weather") == 0) {
-        toggleWeatherUnits();
+        weather.toggleUnits(currentUi);
+        screen.renderSduiScreen(currentUi);
       } else if (!openLocalScreen(button->id)) {
         Serial.println("Touch matched SDUI button");
         queueTap(button->id, currentUi.revision, now);
@@ -1454,7 +1289,8 @@ bool weatherRefreshed = false;
       wifiConnected &&
       (lastWeatherRefreshAt == 0 ||
        now - lastWeatherRefreshAt >= kWeatherRefreshMs)) {
-    refreshLocalWeather();
+    lastWeatherRefreshAt = now;
+    weather.refresh(currentUi);
     weatherRefreshed = true;
   }
   const bool statusChanged =
