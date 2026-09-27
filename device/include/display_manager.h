@@ -26,6 +26,8 @@ class DisplayManager {
   void showReadyFace();
   void renderSdui(const SduiDocument& document);
   void renderSduiScreen(const SduiDocument& document);
+  bool setPressedButton(const char* id);
+  bool clearPressedButton();
   void setBrightnessPercent(uint8_t percent);
   uint8_t brightnessPercent() const;
   void updateControlCenterBrightness();
@@ -114,6 +116,7 @@ class DisplayManager {
   bool cloudConnected_ = false;
   bool bluetoothEnabled_ = false;
   bool bluetoothConnected_ = false;
+  char pressedButtonId_[kMaxComponentId + 1] = {};
 };
 
 }  // namespace leopold

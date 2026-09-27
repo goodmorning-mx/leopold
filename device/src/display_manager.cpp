@@ -679,11 +679,6 @@ void DisplayManager::drawSpotifyPlayer(const SduiScreen& screen) {
 
 void DisplayManager::buildLvglControlCenter() {
   lv_obj_t* root = cleanLvglScreen();
-  lv_obj_t* back = createRoundPanel(
-      root, 25, 34, 62, 46, 23, lv_color_hex(0x1C1C1E));
-  lv_obj_t* backIcon = createLabel(
-      back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
-  lv_obj_center(backIcon);
   lv_obj_t* title = createLabel(
       root,
       "Centro de control",
@@ -1412,7 +1407,13 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
           component.width,
           component.height,
           skyHome ? LV_RADIUS_CIRCLE : component.height / 2,
-          spotifyAction ? lv_color_white() : lv_color_hex(0x141416));
+          spotifyAction
+              ? (strcmp(pressedButtonId_, component.id) == 0
+                     ? lv_color_hex(0xD0D0D0)
+                     : lv_color_white())
+              : (strcmp(pressedButtonId_, component.id) == 0
+                     ? lv_color_hex(0x2C2C30)
+                     : lv_color_hex(0x141416)));
       if (skyHome) {
         lv_obj_set_style_bg_opa(button, LV_OPA_80, 0);
       }
@@ -1459,6 +1460,19 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
 
 void DisplayManager::renderSdui(const SduiDocument& document) {
   renderSduiScreen(document);
+}
+
+bool DisplayManager::setPressedButton(const char* id) {
+  const char* next = id == nullptr ? "" : id;
+  if (strcmp(pressedButtonId_, next) == 0) return false;
+  strlcpy(pressedButtonId_, next, sizeof(pressedButtonId_));
+  return true;
+}
+
+bool DisplayManager::clearPressedButton() {
+  if (pressedButtonId_[0] == '\0') return false;
+  pressedButtonId_[0] = '\0';
+  return true;
 }
 
 void DisplayManager::renderSduiScreen(const SduiDocument& document) {

@@ -438,14 +438,12 @@ void syncControlCenterScreen() {
   addButton(home, "open-settings", "SET", 197, 354, 72, 72);
 
   SduiScreen& clock = appendScreen("sky-clock");
-  addBack(clock);
   addText(clock, "clock-icon", "CLOCK", 233, 74, 2, "#8E8E93");
   addText(clock, "sky-time", "--:--", 233, 169, 4);
   addText(clock, "clock-zone", "GOODMORNING TIME", 233, 242, 1, "#8E8E93");
   addText(clock, "clock-date", "SYNCED BY WI-FI", 233, 304, 2, "#0A84FF");
 
   SduiScreen& voltage = appendScreen("sky-voltage");
-  addBack(voltage);
   addText(voltage, "voltage-symbol", "USB-C", 233, 77, 2, "#FFD60A");
   addText(voltage, "sky-voltage-value", "-.-- V", 233, 172, 4);
   addText(voltage, "voltage-caption", "INPUT VOLTAGE", 233, 246, 1, "#8E8E93");
@@ -482,7 +480,6 @@ void syncControlCenterScreen() {
   slider.color = SduiParser::rgb565("#FFD60A");
 
   SduiScreen& weather = appendScreen("sky-weather");
-  addBack(weather);
   addText(weather, "weather-title", "WEATHER", 233, 52, 3, "#0A84FF");
   addText(weather, "weather-temp", "-- F", 233, 128, 4);
   addText(weather, "weather-condition", "LIVE WEATHER", 233, 190, 1, "#8E8E93");
@@ -491,7 +488,6 @@ void syncControlCenterScreen() {
   addButton(weather, "weather-units", "F / C", 153, 354, 160, 58, "#0A84FF");
 
   SduiScreen& navigation = appendScreen("sky-navigation");
-  addBack(navigation);
   addText(navigation, "nav-distance", "300 m", 233, 46, 2, "#0A84FF");
   addText(navigation, "nav-arrow", ">", 233, 104, 4, "#FFFFFF");
   addText(navigation, "nav-road", "Turn right on Reforma", 233, 207, 2);
@@ -806,6 +802,19 @@ void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
+  if (hasGesture && gesture == TouchGesture::kDrag && hasUi &&
+      localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
+    const SduiComponent* pressed =
+        findButtonAt(currentUi.active(), point.x, point.y);
+    if (pressed != nullptr && screen.setPressedButton(pressed->id)) {
+      screen.renderSduiScreen(currentUi);
+    }
+  } else if (hasGesture && gesture != TouchGesture::kDrag &&
+             gesture != TouchGesture::kNone) {
+    if (screen.clearPressedButton() && hasUi && localPanel == LocalPanel::kNone) {
+      screen.renderSduiScreen(currentUi);
+    }
+  }
   if (hasGesture && gesture == TouchGesture::kSwipeUp &&
       capturedSlider == nullptr && hasUi) {
     localPanel = LocalPanel::kNone;
@@ -939,9 +948,7 @@ void processInput(uint32_t now) {
       showLocalConnectivityPanel(now);
     }
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             ((strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
-               point.x <= 100 && point.y <= 94) ||
-              (strcmp(currentUi.active().screenId, "spotify-player") == 0 &&
+             ((strcmp(currentUi.active().screenId, "spotify-player") == 0 &&
                point.x <= 88 && point.y <= 94))) {
     openLocalScreen("open-home");
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
