@@ -1418,18 +1418,6 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
       }
       lv_obj_set_style_border_width(button, spotifyAction ? 0 : 2, 0);
       lv_obj_set_style_border_color(button, lvColor(component.color), 0);
-      if (strcmp(component.id, "open-clock") == 0) {
-        char timeText[6] = "--:--";
-        time_t now = time(nullptr);
-        struct tm localTime;
-        if (now > 0 && localtime_r(&now, &localTime) != nullptr) {
-          strftime(timeText, sizeof(timeText), "%H:%M", &localTime);
-        }
-        lv_obj_t* label = createLabel(
-            button, timeText, &lv_font_montserrat_14, lvColor(component.color));
-        lv_obj_center(label);
-        continue;
-      }
       if (imageSource != nullptr) {
         lv_obj_t* icon = lv_image_create(button);
         lv_image_set_src(icon, imageSource);

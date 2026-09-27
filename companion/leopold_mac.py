@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 import subprocess
 import sys
 import time
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "device" / "include" / "leopold_config.h"
 SCREENSHOT_DIR = Path.home() / "Desktop" / "Leopold Screenshots"
 POLL_SECONDS = 1.0
+TLS_CA_FILE = "/etc/ssl/cert.pem"
 
 
 def read_define(source: str, name: str) -> str:
@@ -68,7 +70,8 @@ def fetch_commands(base_url: str, device_id: str, secret: str, after: datetime) 
             "Authorization": f"Bearer {secret}",
         },
     )
-    with urllib.request.urlopen(request, timeout=10) as response:
+    context = ssl.create_default_context(cafile=TLS_CA_FILE)
+    with urllib.request.urlopen(request, timeout=10, context=context) as response:
         return json.load(response)
 
 

@@ -23,6 +23,8 @@ using namespace leopold;
 
 constexpr uint32_t kBootResetHoldMs = 5000;
 constexpr uint32_t kIndicatorRefreshMs = 1000;
+constexpr uint32_t kWeatherRefreshMs = 60000;
+constexpr uint32_t kTimeSyncRetryMs = 10000;
 constexpr uint32_t kDefaultHeartbeatMs = 30000;
 constexpr uint32_t kDefaultUiPollMs = 5000;
 constexpr uint32_t kOnboardingPollMs = 5000;
@@ -103,6 +105,8 @@ uint32_t nextHeartbeatAt = 0;
 uint32_t nextWelcomeAt = 0;
 uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
 uint32_t lastIndicatorAt = 0;
+uint32_t lastWeatherRefreshAt = 0;
+uint32_t lastTimeSyncAttemptAt = 0;
 uint32_t eventSequence = 0;
 char onboardingUrl[256] = {};
 char ownerDisplayName[81] = {};
@@ -777,6 +781,7 @@ const char* weatherDescription(int code) {
 }
 
 void refreshLocalWeather() {
+  lastWeatherRefreshAt = millis();
   if (WiFi.status() != WL_CONNECTED) return;
   WiFiClientSecure secure;
   secure.setCACert(kLetsEncryptRootYrByX1);
@@ -1275,6 +1280,20 @@ void refreshIndicators(uint32_t now) {
   if (now - lastIndicatorAt < kIndicatorRefreshMs) {
     return;
   }
+  const bool wifiConnected = wifi.connected();
+  if (wifiConnected && !telemetry.timeSynchronized() &&
+      now - lastTimeSyncAttemptAt >= kTimeSyncRetryMs) {
+    configTzTime(
+        "CST6",
+        "pool.ntp.org",
+        "time.google.com",
+        "time.cloudflare.com");
+    lastTimeSyncAttemptAt = now;
+    struct tm localTime = {};
+    if (getLocalTime(&localTime, 1000)) {
+      Serial.println("NTP time synchronized");
+    }
+  }
   char timeText[6] = {};
   telemetry.formattedTime(timeText);
   const uint16_t millivolts = telemetry.batteryMillivolts();
@@ -1299,9 +1318,17 @@ void refreshIndicators(uint32_t now) {
       }
     }
   }
-  const bool wifiConnected = wifi.connected();
   const bool bluetoothEnabled = bluetooth.enabled();
   const bool bluetoothConnected = bluetooth.connected();
+  bool weatherRefreshed = false;
+  if (hasUi && currentUi.screenCount > 0 &&
+      strcmp(currentUi.active().screenId, "sky-weather") == 0 &&
+      wifiConnected &&
+      (lastWeatherRefreshAt == 0 ||
+       now - lastWeatherRefreshAt >= kWeatherRefreshMs)) {
+    refreshLocalWeather();
+    weatherRefreshed = true;
+  }
   const bool statusChanged =
       !indicatorsInitialized || wifiConnected != lastWifiIndicator ||
       cloudConnected != lastCloudIndicator ||
@@ -1329,10 +1356,11 @@ void refreshIndicators(uint32_t now) {
   const bool liveSkyScreen = hasUi && currentUi.screenCount > 0 &&
       (strcmp(currentUi.active().screenId, "sky-home") == 0 ||
        strcmp(currentUi.active().screenId, "sky-clock") == 0 ||
-       strcmp(currentUi.active().screenId, "sky-voltage") == 0);
+       strcmp(currentUi.active().screenId, "sky-voltage") == 0 ||
+       strcmp(currentUi.active().screenId, "sky-weather") == 0);
   if ((statusChanged && hasUi && currentUi.screenCount > 0 &&
        strcmp(currentUi.active().screenId, "device-control-center") == 0) ||
-      liveSkyScreen) {
+      liveSkyScreen || weatherRefreshed) {
     screen.renderSduiScreen(currentUi);
     screen.drawIndicators(
         wifiConnected,
