@@ -124,6 +124,7 @@ bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
 
 time_t utcEpoch(const struct tm& value);
+bool synchronizeClockFromHttpDate(const String& value);
 
 void renderBluetoothDevices(const char* message = nullptr) {
   const BluetoothScanResult* results =
@@ -723,6 +724,25 @@ time_t utcEpoch(const struct tm& value) {
                              value.tm_min * 60L + value.tm_sec);
 }
 
+bool synchronizeClockFromHttpDate(const String& value) {
+  if (telemetry.timeSynchronized() || value.isEmpty()) {
+    return false;
+  }
+  struct tm utc = {};
+  char* parsed = strptime(value.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &utc);
+  if (parsed == nullptr || *parsed != '\0') {
+    return false;
+  }
+  const time_t serverTime = utcEpoch(utc);
+  if (serverTime <= 1700000000) {
+    return false;
+  }
+  struct timeval current = {serverTime, 0};
+  settimeofday(&current, nullptr);
+  Serial.println("Clock synchronized from weather API time");
+  return true;
+}
+
 void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
   uint8_t slot = kEventQueueSize;
   for (uint8_t index = 0; index < kEventQueueSize; ++index) {
@@ -827,6 +847,8 @@ void refreshLocalWeather() {
     Serial.println("Weather geolocation request could not start");
     return;
   }
+  const char* dateHeader[] = {"Date"};
+  http.collectHeaders(dateHeader, 1);
   const int locationStatus = http.GET();
   if (locationStatus != HTTP_CODE_OK) {
     Serial.printf("Weather geolocation HTTP error: %d\n", locationStatus);
@@ -857,6 +879,7 @@ void refreshLocalWeather() {
     Serial.println("Weather forecast request could not start");
     return;
   }
+  http.collectHeaders(dateHeader, 1);
   const int forecastStatus = http.GET();
   if (forecastStatus != HTTP_CODE_OK) {
     Serial.printf("Weather forecast HTTP error: %d\n", forecastStatus);
@@ -871,7 +894,9 @@ void refreshLocalWeather() {
   const int temperature = static_cast<int>(forecast["current"]["temperature_2m"] | 0.0);
   const int humidity = forecast["current"]["relative_humidity_2m"] | 0;
   const int code = forecast["current"]["weather_code"] | 0;
+  const String forecastDate = http.header("Date");
   http.end();
+  synchronizeClockFromHttpDate(forecastDate);
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     SduiScreen& candidate = currentUi.screens[index];
     if (strcmp(candidate.screenId, "sky-weather") != 0) continue;
