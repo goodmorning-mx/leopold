@@ -163,19 +163,6 @@ const lv_image_dsc_t* skyButtonIcon(const char* id) {
   return nullptr;
 }
 
-void drawUsbSymbol(lv_obj_t* parent, lv_color_t color) {
-  lv_obj_t* stem = createRoundPanel(parent, 33, 16, 6, 25, 3, color);
-  lv_obj_t* branch = createRoundPanel(parent, 22, 28, 28, 5, 2, color);
-  lv_obj_t* left = createRoundPanel(parent, 16, 25, 10, 10, LV_RADIUS_CIRCLE, color);
-  lv_obj_t* right = createRoundPanel(parent, 46, 25, 10, 10, LV_RADIUS_CIRCLE, color);
-  lv_obj_t* plug = createRoundPanel(parent, 29, 41, 14, 9, 2, color);
-  LV_UNUSED(stem);
-  LV_UNUSED(branch);
-  LV_UNUSED(left);
-  LV_UNUSED(right);
-  LV_UNUSED(plug);
-}
-
 void drawWhatsappSymbol(lv_obj_t* parent, lv_color_t color) {
   lv_obj_t* bubble = createRoundPanel(parent, 17, 17, 38, 34, 14, color);
   lv_obj_t* tail = createRoundPanel(parent, 20, 43, 10, 8, 3, color);
@@ -1431,20 +1418,6 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
       }
       lv_obj_set_style_border_width(button, spotifyAction ? 0 : 2, 0);
       lv_obj_set_style_border_color(button, lvColor(component.color), 0);
-      if (imageSource != nullptr) {
-        lv_obj_t* icon = lv_image_create(button);
-        lv_image_set_src(icon, imageSource);
-        lv_obj_center(icon);
-        continue;
-      }
-      if (strcmp(component.icon, "usb") == 0) {
-        drawUsbSymbol(button, lvColor(component.color));
-        continue;
-      }
-      if (strcmp(component.icon, "whatsapp") == 0) {
-        drawWhatsappSymbol(button, lvColor(component.color));
-        continue;
-      }
       if (strcmp(component.id, "open-clock") == 0) {
         char timeText[6] = "--:--";
         time_t now = time(nullptr);
@@ -1455,6 +1428,22 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
         lv_obj_t* label = createLabel(
             button, timeText, &lv_font_montserrat_14, lvColor(component.color));
         lv_obj_center(label);
+        continue;
+      }
+      if (imageSource != nullptr) {
+        lv_obj_t* icon = lv_image_create(button);
+        lv_image_set_src(icon, imageSource);
+        lv_obj_center(icon);
+        continue;
+      }
+      if (strcmp(component.icon, "usb") == 0) {
+        lv_obj_t* icon = createLabel(
+            button, LV_SYMBOL_USB, &lv_font_montserrat_32, lvColor(component.color));
+        lv_obj_center(icon);
+        continue;
+      }
+      if (strcmp(component.icon, "whatsapp") == 0) {
+        drawWhatsappSymbol(button, lvColor(component.color));
         continue;
       }
       const char* text = component.text;
@@ -1541,30 +1530,30 @@ void DisplayManager::drawCloudIcon(int16_t x, int16_t y, bool connected) {
 }
 
 void DisplayManager::drawWifiGlyph(int16_t x, int16_t y, uint16_t color) {
-  for (int8_t offset = 0; offset < 3; ++offset) {
-    display->drawArc(x, y + 8, 19 - offset, 17 - offset, 220, 320, color);
-    display->drawArc(x, y + 8, 12 - offset, 10 - offset, 220, 320, color);
+  for (int8_t offset = 0; offset < 2; ++offset) {
+    display->drawArc(x, y + 4, 11 - offset, 10 - offset, 220, 320, color);
+    display->drawArc(x, y + 4, 7 - offset, 6 - offset, 220, 320, color);
   }
-  display->fillCircle(x, y + 9, 3, color);
+  display->fillCircle(x, y + 7, 2, color);
 }
 
 void DisplayManager::drawCloudGlyph(int16_t x, int16_t y, uint16_t color) {
-  display->fillCircle(x - 10, y + 3, 8, color);
-  display->fillCircle(x, y - 4, 12, color);
-  display->fillCircle(x + 12, y + 3, 8, color);
-  display->fillRoundRect(x - 18, y + 2, 38, 12, 6, color);
+  display->fillCircle(x - 7, y + 3, 5, color);
+  display->fillCircle(x, y - 1, 7, color);
+  display->fillCircle(x + 7, y + 3, 5, color);
+  display->fillRoundRect(x - 12, y + 2, 24, 8, 4, color);
 }
 
 void DisplayManager::drawBluetoothGlyph(
     int16_t x,
-    int16_t y,
-    uint16_t color) {
+  int16_t y,
+  uint16_t color) {
   for (int8_t offset = -1; offset <= 1; ++offset) {
-    display->drawLine(x + offset, y - 20, x + offset, y + 20, color);
-    display->drawLine(x + offset, y - 20, x + 12 + offset, y - 8, color);
-    display->drawLine(x + 12 + offset, y - 8, x - 10 + offset, y + 11, color);
-    display->drawLine(x - 10 + offset, y - 11, x + 12 + offset, y + 8, color);
-    display->drawLine(x + 12 + offset, y + 8, x + offset, y + 20, color);
+    display->drawLine(x + offset, y - 9, x + offset, y + 9, color);
+    display->drawLine(x + offset, y - 9, x + 6 + offset, y - 4, color);
+    display->drawLine(x + 6 + offset, y - 4, x - 5 + offset, y + 5, color);
+    display->drawLine(x - 5 + offset, y - 5, x + 6 + offset, y + 4, color);
+    display->drawLine(x + 6 + offset, y + 4, x + offset, y + 9, color);
   }
 }
 
