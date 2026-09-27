@@ -107,6 +107,12 @@ uint32_t nextWelcomeAt = 0;
 uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
 uint32_t lastIndicatorAt = 0;
 uint32_t lastWeatherRefreshAt = 0;
+int16_t weatherTemperatureF = 0;
+uint8_t weatherHumidity = 0;
+int weatherCode = 0;
+bool weatherHasData = false;
+bool weatherUsesCelsius = false;
+char weatherCity[33] = "LOCATION BY IP";
 uint32_t lastTimeSyncAttemptAt = 0;
 uint32_t eventSequence = 0;
 char onboardingUrl[256] = {};
@@ -791,6 +797,7 @@ const SduiComponent* firstButton() {
 }
 
 void refreshLocalWeather();
+void renderWeatherValues();
 
 bool openLocalScreen(const char* componentId) {
   if (componentId == nullptr || strncmp(componentId, "open-", 5) != 0) {
@@ -813,7 +820,7 @@ bool openLocalScreen(const char* componentId) {
       currentUi.activeScreen = index;
       screen.renderSduiScreen(currentUi);
       if (strcmp(screenId, "sky-weather") == 0) {
-        refreshLocalWeather();
+        renderWeatherValues();
         screen.renderSduiScreen(currentUi);
       }
       lastIndicatorAt = 0;
@@ -869,6 +876,7 @@ void refreshLocalWeather() {
     return;
   }
   const char* city = location["city"] | "LOCATION BY IP";
+  strlcpy(weatherCity, city, sizeof(weatherCity));
   http.end();
 
   String weatherUrl =
@@ -891,12 +899,22 @@ void refreshLocalWeather() {
     http.end();
     return;
   }
-  const int temperature = static_cast<int>(forecast["current"]["temperature_2m"] | 0.0);
-  const int humidity = forecast["current"]["relative_humidity_2m"] | 0;
-  const int code = forecast["current"]["weather_code"] | 0;
+  weatherTemperatureF = static_cast<int16_t>(forecast["current"]["temperature_2m"] | 0.0);
+  weatherHumidity = forecast["current"]["relative_humidity_2m"] | 0;
+  weatherCode = forecast["current"]["weather_code"] | 0;
   const String forecastDate = http.header("Date");
   http.end();
   synchronizeClockFromHttpDate(forecastDate);
+  weatherHasData = true;
+  renderWeatherValues();
+}
+
+void renderWeatherValues() {
+  if (!weatherHasData) return;
+  const int temperature = weatherUsesCelsius
+      ? static_cast<int>(round((weatherTemperatureF - 32) * 5.0 / 9.0))
+      : weatherTemperatureF;
+  const char* unit = weatherUsesCelsius ? "C" : "F";
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     SduiScreen& candidate = currentUi.screens[index];
     if (strcmp(candidate.screenId, "sky-weather") != 0) continue;
@@ -905,22 +923,30 @@ void refreshLocalWeather() {
          ++componentIndex) {
       SduiComponent& component = candidate.components[componentIndex];
       if (strcmp(component.id, "weather-temp") == 0) {
-        snprintf(component.text, sizeof(component.text), "%d F", temperature);
+        snprintf(component.text, sizeof(component.text), "%d %s", temperature, unit);
       } else if (strcmp(component.id, "weather-condition") == 0) {
-        strlcpy(component.text, weatherDescription(code), sizeof(component.text));
+        strlcpy(component.text, weatherDescription(weatherCode), sizeof(component.text));
       } else if (strcmp(component.id, "weather-humidity") == 0) {
-        snprintf(component.text, sizeof(component.text), "HUMIDITY %d%%", humidity);
+        snprintf(component.text, sizeof(component.text), "HUMIDITY %d%%", weatherHumidity);
       } else if (strcmp(component.id, "weather-location") == 0) {
-        strlcpy(component.text, city, sizeof(component.text));
+        strlcpy(component.text, weatherCity, sizeof(component.text));
       }
     }
     Serial.printf(
-        "Weather updated: %d F, %d%%, %s\n",
+        "Weather updated: %d %s, %d%%, %s\n",
         temperature,
-        humidity,
-        city);
+        unit,
+        weatherHumidity,
+        weatherCity);
     return;
   }
+}
+
+void toggleWeatherUnits() {
+  weatherUsesCelsius = !weatherUsesCelsius;
+  renderWeatherValues();
+  screen.renderSduiScreen(currentUi);
+  Serial.printf("Weather units: %s\n", weatherUsesCelsius ? "C" : "F");
 }
 
 void processInput(uint32_t now) {
@@ -1174,7 +1200,10 @@ void processInput(uint32_t now) {
     const SduiComponent* button =
         findButtonAt(currentUi.active(), point.x, point.y);
     if (button != nullptr) {
-      if (!openLocalScreen(button->id)) {
+      if (strcmp(button->id, "weather-units") == 0 &&
+          strcmp(currentUi.active().screenId, "sky-weather") == 0) {
+        toggleWeatherUnits();
+      } else if (!openLocalScreen(button->id)) {
         Serial.println("Touch matched SDUI button");
         queueTap(button->id, currentUi.revision, now);
       }
@@ -1400,7 +1429,7 @@ void refreshIndicators(uint32_t now) {
   }
   const bool bluetoothEnabled = bluetooth.enabled();
   const bool bluetoothConnected = bluetooth.connected();
-  bool weatherRefreshed = false;
+bool weatherRefreshed = false;
   if (hasUi && currentUi.screenCount > 0 &&
       strcmp(currentUi.active().screenId, "sky-weather") == 0 &&
       wifiConnected &&

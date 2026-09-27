@@ -2,11 +2,18 @@
 
 #include <ArduinoJson.h>
 #include <LittleFS.h>
+#include <esp_vfs_fat.h>
+#include <sdmmc_cmd.h>
+#include <driver/sdspi_host.h>
+#include <driver/spi_master.h>
+
+#include "board_config.h"
 
 namespace leopold {
 namespace {
 
 constexpr char kCachePath[] = "/last_ui.json";
+constexpr char kSdCachePath[] = "/sd/last_ui.json";
 constexpr uint32_t kMinimumPollMs = 2000;
 constexpr uint32_t kMaximumPollMs = 300000;
 
@@ -48,6 +55,44 @@ bool isSafeId(const char* value) {
     }
   }
   return true;
+}
+
+sdmmc_card_t* sdCard = nullptr;
+bool sdMounted = false;
+
+void mountSdCard() {
+  spi_bus_config_t busConfig = {};
+  busConfig.mosi_io_num = board::kSdMosi;
+  busConfig.miso_io_num = board::kSdMiso;
+  busConfig.sclk_io_num = board::kSdSclk;
+  busConfig.quadwp_io_num = -1;
+  busConfig.quadhd_io_num = -1;
+  busConfig.max_transfer_sz = 4000;
+  const esp_err_t busResult =
+      spi_bus_initialize(SPI3_HOST, &busConfig, SDSPI_DEFAULT_DMA);
+  if (busResult != ESP_OK && busResult != ESP_ERR_INVALID_STATE) {
+    Serial.printf("SD SPI initialization failed: %s\n", esp_err_to_name(busResult));
+    return;
+  }
+
+  sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+  host.slot = SPI3_HOST;
+  sdspi_device_config_t slotConfig = SDSPI_DEVICE_CONFIG_DEFAULT();
+  slotConfig.gpio_cs = static_cast<gpio_num_t>(board::kSdCs);
+  slotConfig.host_id = SPI3_HOST;
+  esp_vfs_fat_mount_config_t mountConfig = {};
+  mountConfig.format_if_mount_failed = true;
+  mountConfig.max_files = 4;
+  mountConfig.allocation_unit_size = 32 * 1024;
+  const esp_err_t result = esp_vfs_fat_sdspi_mount(
+      "/sd", &host, &slotConfig, &mountConfig, &sdCard);
+  if (result == ESP_OK) {
+    sdMounted = true;
+    Serial.printf("SD card mounted: %.2f GB\n",
+                  static_cast<double>(sdCard->csd.capacity) / 2048.0 / 1024.0);
+  } else {
+    Serial.printf("SD card unavailable: %s\n", esp_err_to_name(result));
+  }
 }
 
 bool parseComponent(JsonObjectConst source, SduiComponent& component) {
@@ -194,14 +239,37 @@ uint16_t SduiParser::rgb565(const char* color, uint16_t fallback) {
 }
 
 bool SduiStore::begin() {
-  return LittleFS.begin(true);
+  const bool littleFsReady = LittleFS.begin(true);
+  mountSdCard();
+  return littleFsReady;
 }
 
 bool SduiStore::load(SduiDocument& output, String& rawJson) {
-  File file = LittleFS.open(kCachePath, "r");
-  if (!file || file.size() == 0 || file.size() > kMaxSduiBytes) {
-    return false;
+  if (sdMounted) {
+    FILE* file = fopen(kSdCachePath, "rb");
+    if (file != nullptr) {
+      fseek(file, 0, SEEK_END);
+      const long size = ftell(file);
+      rewind(file);
+      if (size > 0 && size <= static_cast<long>(kMaxSduiBytes)) {
+        rawJson.reserve(static_cast<unsigned int>(size));
+        while (rawJson.length() < static_cast<unsigned int>(size)) {
+          char buffer[256];
+          const size_t read = fread(buffer, 1, sizeof(buffer), file);
+          if (read == 0) break;
+          rawJson.concat(buffer, read);
+        }
+      }
+      fclose(file);
+      if (SduiParser::parse(rawJson.c_str(), rawJson.length(), output) ==
+          SduiParseResult::kOk) {
+        return true;
+      }
+      rawJson = String();
+    }
   }
+  File file = LittleFS.open(kCachePath, "r");
+  if (!file || file.size() == 0 || file.size() > kMaxSduiBytes) return false;
   rawJson = file.readString();
   file.close();
   return SduiParser::parse(rawJson.c_str(), rawJson.length(), output) ==
@@ -212,10 +280,16 @@ bool SduiStore::save(const char* json, size_t length) {
   if (json == nullptr || length == 0 || length > kMaxSduiBytes) {
     return false;
   }
-  File file = LittleFS.open(kCachePath, "w");
-  if (!file) {
-    return false;
+  if (sdMounted) {
+    FILE* file = fopen(kSdCachePath, "wb");
+    if (file != nullptr) {
+      const size_t written = fwrite(json, 1, length, file);
+      fclose(file);
+      if (written == length) return true;
+    }
   }
+  File file = LittleFS.open(kCachePath, "w");
+  if (!file) return false;
   const size_t written = file.write(
       reinterpret_cast<const uint8_t*>(json),
       length);

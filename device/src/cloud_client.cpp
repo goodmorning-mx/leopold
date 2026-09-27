@@ -50,7 +50,7 @@ bool CloudClient::begin() {
   return xTaskCreatePinnedToCore(
              taskEntry,
              "leopold-cloud",
-             8192,
+             12288,
              this,
              1,
              &task_,

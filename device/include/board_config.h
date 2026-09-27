@@ -19,6 +19,10 @@ constexpr uint8_t kTouchAddress = 0x38;
 
 constexpr int kBootButton = 0;
 constexpr int kBatteryAdc = 4;
+constexpr int kSdCs = 38;
+constexpr int kSdMosi = 39;
+constexpr int kSdMiso = 40;
+constexpr int kSdSclk = 41;
 constexpr int kScreenWidth = 466;
 constexpr int kScreenHeight = 466;
 

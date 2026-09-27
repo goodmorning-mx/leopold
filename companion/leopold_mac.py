@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import re
 import ssl
 import subprocess
@@ -18,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "device" / "include" / "leopold_config.h"
 SCREENSHOT_DIR = Path.home() / "Desktop" / "Leopold Screenshots"
+LOCK_PATH = Path.home() / "Library" / "Application Support" / "Leopold" / "companion.lock"
 POLL_SECONDS = 1.0
 TLS_CA_FILE = "/etc/ssl/cert.pem"
 
@@ -79,6 +81,13 @@ def main() -> int:
     if sys.platform != "darwin":
         print("Leopold computer controls require macOS.", file=sys.stderr)
         return 2
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = LOCK_PATH.open("w")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("Leopold Mac companion is already running.", file=sys.stderr)
+        return 0
     base_url, device_id, secret = load_config()
     after = datetime.now(timezone.utc)
     seen: set[str] = set()
