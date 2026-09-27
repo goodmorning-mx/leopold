@@ -800,6 +800,7 @@ void refreshLocalWeather();
 void renderWeatherValues();
 
 void ensureNetworkTime() {
+  Serial.printf("Weather clock epoch: %lu\n", static_cast<unsigned long>(time(nullptr)));
   if (telemetry.timeSynchronized() || WiFi.status() != WL_CONNECTED) {
     return;
   }
