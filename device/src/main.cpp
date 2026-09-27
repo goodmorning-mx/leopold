@@ -799,6 +799,23 @@ const SduiComponent* firstButton() {
 void refreshLocalWeather();
 void renderWeatherValues();
 
+void ensureNetworkTime() {
+  if (telemetry.timeSynchronized() || WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+  configTzTime(
+      "CST6",
+      "pool.ntp.org",
+      "time.google.com",
+      "time.cloudflare.com");
+  struct tm localTime = {};
+  if (getLocalTime(&localTime, 7000)) {
+    Serial.println("NTP time synchronized before weather request");
+  } else {
+    Serial.println("NTP time unavailable before weather request");
+  }
+}
+
 bool openLocalScreen(const char* componentId) {
   if (componentId == nullptr || strncmp(componentId, "open-", 5) != 0) {
     return false;
@@ -844,6 +861,7 @@ const char* weatherDescription(int code) {
 void refreshLocalWeather() {
   lastWeatherRefreshAt = millis();
   if (WiFi.status() != WL_CONNECTED) return;
+  ensureNetworkTime();
   WiFiClientSecure secure;
   secure.setCACert(kLetsEncryptRootYrByX1);
   secure.setHandshakeTimeout(5);
