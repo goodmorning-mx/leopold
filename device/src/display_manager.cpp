@@ -184,6 +184,8 @@ bool DisplayManager::begin() {
   displayPreferences.begin("display", false);
   brightnessPercent_ =
       constrain(displayPreferences.getUChar("brightness", 70), 5, 100);
+  darkBackground_ = displayPreferences.getBool("dark_bg", false);
+  spanishLanguage_ = displayPreferences.getBool("spanish", false);
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   display->fillScreen(kBlack);
   lv_init();
@@ -527,6 +529,24 @@ uint8_t DisplayManager::brightnessPercent() const {
   return brightnessPercent_;
 }
 
+void DisplayManager::toggleBackground() {
+  darkBackground_ = !darkBackground_;
+  displayPreferences.putBool("dark_bg", darkBackground_);
+}
+
+void DisplayManager::toggleLanguage() {
+  spanishLanguage_ = !spanishLanguage_;
+  displayPreferences.putBool("spanish", spanishLanguage_);
+}
+
+bool DisplayManager::darkBackground() const {
+  return darkBackground_;
+}
+
+bool DisplayManager::spanishLanguage() const {
+  return spanishLanguage_;
+}
+
 void DisplayManager::drawControlIcon(
     const char* icon,
     int16_t centerX,
@@ -760,6 +780,12 @@ void DisplayManager::buildLvglControlCenter() {
       &lv_font_montserrat_12,
       lv_color_hex(0x8E8E93));
   lv_obj_align_to(caption, brightnessValue, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+
+  lv_obj_t* options = createRoundPanel(
+      root, 112, 369, 210, 55, 27, lv_color_hex(0x3D7FFF));
+  lv_obj_t* optionsLabel = createLabel(
+      options, "Additional options", &lv_font_montserrat_14, lv_color_white());
+  lv_obj_center(optionsLabel);
   updateControlCenterBrightness();
 }
 
@@ -1345,29 +1371,26 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
       strcmp(screen.screenId, "sky-clock") == 0 ||
       strcmp(screen.screenId, "sky-voltage") == 0 ||
       strcmp(screen.screenId, "sky-weather") == 0;
-  if (skyHome) {
+  if (skyHome && !darkBackground_) {
     createImage(root, sky::kHomeBackground, 0, 0, LV_OPA_COVER);
     lv_obj_t* shade = createRoundPanel(
         root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
     lv_obj_set_style_bg_opa(shade, LV_OPA_30, 0);
-  } else if (flowerScreen) {
+  } else if (flowerScreen && !darkBackground_) {
     createImage(root, sky::kFlowerBackground, 0, 0, LV_OPA_COVER);
     lv_obj_t* shade = createRoundPanel(
         root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
     lv_obj_set_style_bg_opa(shade, LV_OPA_20, 0);
-    if (strcmp(screen.screenId, "sky-clock") == 0) {
-      createImage(root, sky::kClockIcon, 193, 45);
-    } else if (strcmp(screen.screenId, "sky-voltage") == 0) {
+    if (strcmp(screen.screenId, "sky-voltage") == 0) {
       createImage(root, sky::kBoltIcon, 193, 45);
-    } else {
+    } else if (strcmp(screen.screenId, "sky-weather") == 0) {
       createImage(root, sky::kWeatherIcon, 196, 45);
     }
   }
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (flowerScreen &&
-        (strcmp(component.id, "clock-icon") == 0 ||
-         strcmp(component.id, "voltage-symbol") == 0 ||
+        (strcmp(component.id, "voltage-symbol") == 0 ||
          strcmp(component.id, "weather-title") == 0)) {
       continue;
     }
@@ -1377,8 +1400,15 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
           component.text,
           fontForSize(component.size),
           lvColor(component.color));
-      lv_obj_set_pos(label, component.x, component.y);
-      if (component.align == TextAlign::kCenter) {
+      if (strcmp(screen.screenId, "sky-clock") == 0 &&
+          strcmp(component.id, "sky-time") == 0) {
+        lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+      } else {
+        lv_obj_set_pos(label, component.x, component.y);
+      }
+      if (component.align == TextAlign::kCenter &&
+          !(strcmp(screen.screenId, "sky-clock") == 0 &&
+            strcmp(component.id, "sky-time") == 0)) {
         lv_obj_set_style_translate_x(label, -lv_obj_get_width(label) / 2, 0);
       }
     } else if (component.type == ComponentType::kIndicator) {
@@ -1422,6 +1452,9 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
       if (imageSource != nullptr) {
         lv_obj_t* icon = lv_image_create(button);
         lv_image_set_src(icon, imageSource);
+        if (strcmp(component.id, "open-spotify") == 0) {
+          lv_image_set_scale(icon, 700);
+        }
         lv_obj_center(icon);
         continue;
       }

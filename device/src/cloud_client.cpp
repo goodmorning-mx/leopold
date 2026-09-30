@@ -3,10 +3,12 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <esp_heap_caps.h>
+#include <time.h>
 
 #include "config_guard.h"
 #include "sdui.h"
-#include "tls_roots.h"
+#include "tls_bundle.h"
 
 namespace leopold {
 namespace {
@@ -50,7 +52,7 @@ bool CloudClient::begin() {
   return xTaskCreatePinnedToCore(
              taskEntry,
              "leopold-cloud",
-             12288,
+             6144,
              this,
              1,
              &task_,
@@ -151,8 +153,15 @@ CloudResponse CloudClient::perform(const Request& request) {
   }
 
   WiFiClientSecure secure;
-  secure.setCACert(kLetsEncryptRootYrByX1);
+  secure.setCACert(kLetsEncryptTrustBundle);
   secure.setHandshakeTimeout(5);
+  Serial.printf(
+      "Cloud request %u: epoch=%lu heap=%u largest=%u\n",
+      static_cast<unsigned>(request.operation),
+      static_cast<unsigned long>(time(nullptr)),
+      static_cast<unsigned>(ESP.getFreeHeap()),
+      static_cast<unsigned>(heap_caps_get_largest_free_block(
+          MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
 
   HTTPClient http;
   http.setConnectTimeout(kHttpTimeoutMs);
@@ -175,6 +184,21 @@ CloudResponse CloudClient::perform(const Request& request) {
   response.httpCode = request.operation == CloudOperation::kFetchUi
                           ? http.GET()
                           : http.POST(String(request.payload));
+  if (response.httpCode < 0) {
+    char tlsError[128] = {};
+    const int tlsCode = secure.lastError(tlsError, sizeof(tlsError));
+    Serial.printf(
+        "Cloud request %u failed: http=%d tls=%d %s\n",
+        static_cast<unsigned>(request.operation),
+        response.httpCode,
+        tlsCode,
+        tlsError);
+  } else {
+    Serial.printf(
+        "Cloud request %u response: http=%d\n",
+        static_cast<unsigned>(request.operation),
+        response.httpCode);
+  }
   const bool expectsBody = request.operation == CloudOperation::kConnect ||
                            request.operation == CloudOperation::kOnboardingStatus ||
                            request.operation == CloudOperation::kFetchUi;

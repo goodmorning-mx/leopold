@@ -41,7 +41,7 @@ const lv_image_dsc_t kWeatherIcon = {
 const lv_image_dsc_t kNavigationIcon = {
     .header = header(80, 80), .data_size = 19200, .data = iconNavStart};
 const lv_image_dsc_t kSpotifyIcon = {
-    .header = header(77, 80), .data_size = 18480, .data = iconSpotifyStart};
+    .header = header(84, 84), .data_size = 21168, .data = iconSpotifyStart};
 const lv_image_dsc_t kSpotifyLargeIcon = {
     .header = header(97, 100), .data_size = 29100, .data = iconSpotifyLargeStart};
 

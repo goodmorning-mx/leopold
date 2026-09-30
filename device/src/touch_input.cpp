@@ -98,6 +98,9 @@ bool TouchInput::pollGesture(
       gestureDuration <= 550) {
     gesture =
         deltaX < 0 ? TouchGesture::kSwipeLeft : TouchGesture::kSwipeRight;
+  } else if (gestureDuration >= 700 &&
+             horizontalDistance < 40 && verticalDistance < 40) {
+    gesture = TouchGesture::kLongPress;
   } else if (gestureDuration <= 650 &&
              horizontalDistance < 24 && verticalDistance < 24) {
     gesture = TouchGesture::kTap;

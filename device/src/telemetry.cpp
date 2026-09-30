@@ -1,5 +1,6 @@
 #include "telemetry.h"
 
+#include <Preferences.h>
 #include <time.h>
 
 #include "board_config.h"
@@ -9,6 +10,11 @@ namespace leopold {
 void Telemetry::begin() {
   analogReadResolution(12);
   pinMode(board::kBatteryAdc, INPUT);
+  Preferences preferences;
+  if (preferences.begin("leopold-time", true)) {
+    twentyFourHour_ = preferences.getBool("24h", true);
+    preferences.end();
+  }
 }
 
 uint16_t Telemetry::batteryMillivolts() {
@@ -39,7 +45,7 @@ bool Telemetry::timeSynchronized() const {
   return time(nullptr) > 1700000000;
 }
 
-void Telemetry::formattedTime(char output[6]) const {
+void Telemetry::formattedTime(char output[9]) const {
   if (!timeSynchronized()) {
     memcpy(output, "--:--", 6);
     return;
@@ -47,7 +53,16 @@ void Telemetry::formattedTime(char output[6]) const {
   time_t now = time(nullptr);
   struct tm local = {};
   localtime_r(&now, &local);
-  strftime(output, 6, "%H:%M", &local);
+  strftime(output, 9, twentyFourHour_ ? "%H:%M" : "%I:%M %p", &local);
+}
+
+void Telemetry::toggleTimeFormat() {
+  twentyFourHour_ = !twentyFourHour_;
+  Preferences preferences;
+  if (preferences.begin("leopold-time", false)) {
+    preferences.putBool("24h", twentyFourHour_);
+    preferences.end();
+  }
 }
 
 }  // namespace leopold

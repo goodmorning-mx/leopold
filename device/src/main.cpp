@@ -399,6 +399,42 @@ void addBack(SduiScreen& target) {
   addButton(target, "open-home", "<", 24, 42, 66, 52, "#FFFFFF");
 }
 
+void updateAdditionalOptionsLabels() {
+  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+    SduiScreen& options = currentUi.screens[index];
+    if (strcmp(options.screenId, "device-additional-options") != 0) continue;
+    for (uint8_t componentIndex = 0;
+         componentIndex < options.componentCount;
+         ++componentIndex) {
+      SduiComponent& component = options.components[componentIndex];
+      if (strcmp(component.id, "options-title") == 0) {
+        strlcpy(
+            component.text,
+            screen.spanishLanguage() ? "OPCIONES" : "ADDITIONAL OPTIONS",
+            sizeof(component.text));
+      } else if (strcmp(component.id, "background-toggle") == 0) {
+        strlcpy(
+            component.text,
+            screen.spanishLanguage()
+                ? (screen.darkBackground() ? "FONDO OSCURO" : "FONDO COLOR")
+                : (screen.darkBackground() ? "DARK BACKGROUND" : "COLOR BACKGROUND"),
+            sizeof(component.text));
+      } else if (strcmp(component.id, "language-toggle") == 0) {
+        strlcpy(
+            component.text,
+            screen.spanishLanguage() ? "IDIOMA: ESPANOL" : "LANGUAGE: ENGLISH",
+            sizeof(component.text));
+      } else if (strcmp(component.id, "open-settings") == 0) {
+        strlcpy(
+            component.text,
+            screen.spanishLanguage() ? "ATRAS" : "BACK",
+            sizeof(component.text));
+      }
+    }
+    return;
+  }
+}
+
 void syncControlCenterScreen() {
   memset(&preservedSpotify, 0, sizeof(preservedSpotify));
   memset(&preservedSpotifyActions, 0, sizeof(preservedSpotifyActions));
@@ -426,8 +462,6 @@ void syncControlCenterScreen() {
   currentUi.pollAfterMs = pollAfterMs == 0 ? 5000 : pollAfterMs;
 
   SduiScreen& home = appendScreen("sky-home");
-  addText(home, "home-title", "HOME", 233, 208, 3);
-  addText(home, "home-subtitle", "LEOPOLD", 233, 244, 1, "#D1D1D6");
   addButton(home, "open-clock", "CLOCK", 197, 34, 72, 72);
   addButton(home, "open-navigation", "NAV", 96, 91, 72, 72, "#0A84FF");
   addButton(home, "open-voltage", "VOLT", 298, 91, 72, 72);
@@ -438,10 +472,7 @@ void syncControlCenterScreen() {
   addButton(home, "open-settings", "SET", 197, 354, 72, 72);
 
   SduiScreen& clock = appendScreen("sky-clock");
-  addText(clock, "clock-icon", "CLOCK", 233, 74, 2, "#8E8E93");
   addText(clock, "sky-time", "--:--", 233, 169, 4);
-  addText(clock, "clock-zone", "GOODMORNING TIME", 233, 242, 1, "#8E8E93");
-  addText(clock, "clock-date", "SYNCED BY WI-FI", 233, 304, 2, "#0A84FF");
 
   SduiScreen& voltage = appendScreen("sky-voltage");
   addText(voltage, "voltage-symbol", "USB-C", 233, 77, 2, "#FFD60A");
@@ -459,7 +490,6 @@ void syncControlCenterScreen() {
   addButton(whatsapp, "whatsapp-reply", "VOICE REPLY", 116, 344, 234, 62, "#30D158");
 
   SduiScreen& computer = appendScreen("computer-controls");
-  addBack(computer);
   addText(computer, "computer-title", "COMPUTER", 233, 80, 3);
   addText(computer, "computer-status", "MAC CONTROLS", 233, 126, 1, "#A7A7A7");
   addButton(computer, "computer-volume-down", "VOL -", 64, 180, 96, 72);
@@ -478,6 +508,45 @@ void syncControlCenterScreen() {
   slider.value = screen.brightnessPercent();
   slider.maximum = 100;
   slider.color = SduiParser::rgb565("#FFD60A");
+  addButton(
+      settings,
+      "open-additional-options",
+      "MORE",
+      112,
+      360,
+      210,
+      58,
+      "#3D7FFF");
+
+  SduiScreen& options = appendScreen("device-additional-options");
+  addText(options, "options-title", "ADDITIONAL OPTIONS", 233, 54, 2);
+  addButton(
+      options,
+      "background-toggle",
+      "BACKGROUND",
+      96,
+      128,
+      274,
+      62,
+      "#3D7FFF");
+  addButton(
+      options,
+      "language-toggle",
+      "LANGUAGE",
+      96,
+      210,
+      274,
+      62,
+      "#30D158");
+  addButton(
+      options,
+      "open-settings",
+      "BACK",
+      126,
+      336,
+      214,
+      58,
+      "#8E8E93");
 
   SduiScreen& weather = appendScreen("sky-weather");
   addText(weather, "weather-title", "WEATHER", 233, 52, 3, "#0A84FF");
@@ -511,6 +580,7 @@ void syncControlCenterScreen() {
   if (hasYoutubeScreen && currentUi.screenCount < kMaxSduiScreens) {
     currentUi.screens[currentUi.screenCount++] = preservedYoutube;
   }
+  updateAdditionalOptionsLabels();
   Serial.printf("Sky shell ready: %u screens\n", currentUi.screenCount);
 }
 
@@ -602,6 +672,12 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
       } else if (successful && parseConnectResponse(response)) {
         cloudConnected = true;
         cloudFailures = 0;
+        if (weather.begin()) {
+          weather.requestRefresh(currentUi);
+        }
+        if (!bluetooth.enabled()) {
+          bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
+        }
         setState(AppState::kOnline);
         nextHeartbeatAt = now + heartbeatIntervalMs;
         if (onboardingPending && onboardingUrl[0] != '\0') {
@@ -756,6 +832,18 @@ void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
   events[slot].occupied = true;
 }
 
+bool isComputerControl(const char* componentId) {
+  return strcmp(componentId, "computer-volume-down") == 0 ||
+      strcmp(componentId, "computer-volume-mute") == 0 ||
+      strcmp(componentId, "computer-volume-up") == 0 ||
+      strcmp(componentId, "computer-screenshot") == 0;
+}
+
+void sendComputerControlOverUsb(const char* componentId) {
+  if (!isComputerControl(componentId)) return;
+  Serial.printf("LEOPOLD_CMD:%s\n", componentId);
+}
+
 const SduiComponent* firstButton() {
   const SduiScreen& active = currentUi.active();
   for (uint8_t index = 0; index < active.componentCount; ++index) {
@@ -778,6 +866,9 @@ bool openLocalScreen(const char* componentId) {
   else if (strcmp(requested, "whatsapp") == 0) screenId = "sky-whatsapp";
   else if (strcmp(requested, "usb") == 0) screenId = "computer-controls";
   else if (strcmp(requested, "settings") == 0) screenId = "device-control-center";
+  else if (strcmp(requested, "additional-options") == 0) {
+    screenId = "device-additional-options";
+  }
   else if (strcmp(requested, "weather") == 0) screenId = "sky-weather";
   else if (strcmp(requested, "navigation") == 0) screenId = "sky-navigation";
   else if (strcmp(requested, "spotify") == 0) screenId = "spotify-player";
@@ -820,6 +911,13 @@ void processInput(uint32_t now) {
     localPanel = LocalPanel::kNone;
     openLocalScreen("open-home");
     Serial.println("Global swipe up: home");
+  } else if (hasGesture && gesture == TouchGesture::kLongPress && hasUi &&
+             localPanel == LocalPanel::kNone &&
+             strcmp(currentUi.active().screenId, "sky-clock") == 0) {
+    telemetry.toggleTimeFormat();
+    lastIndicatorAt = 0;
+    screen.renderSduiScreen(currentUi);
+    Serial.println("Clock format toggled");
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kBluetoothDevices) {
     if (point.x <= 100 && point.y <= 92) {
@@ -969,6 +1067,24 @@ void processInput(uint32_t now) {
             : (localPanel == LocalPanel::kBluetooth
                    ? "Bluetooth details opened"
                    : "Cloud details opened"));
+  } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
+             strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
+    const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);
+    if (button != nullptr) {
+      if (strcmp(button->id, "open-settings") == 0) {
+        openLocalScreen("open-settings");
+      } else if (strcmp(button->id, "background-toggle") == 0) {
+        screen.toggleBackground();
+        updateAdditionalOptionsLabels();
+        screen.renderSduiScreen(currentUi);
+        Serial.println("Background preference toggled");
+      } else if (strcmp(button->id, "language-toggle") == 0) {
+        screen.toggleLanguage();
+        updateAdditionalOptionsLabels();
+        screen.renderSduiScreen(currentUi);
+        Serial.println("Language preference toggled");
+      }
+    }
   }
   SduiComponent* slider = nullptr;
   if (hasGesture && hasUi && localPanel == LocalPanel::kNone) {
@@ -1066,7 +1182,11 @@ void processInput(uint32_t now) {
         screen.renderSduiScreen(currentUi);
       } else if (!openLocalScreen(button->id)) {
         Serial.println("Touch matched SDUI button");
-        queueTap(button->id, currentUi.revision, now);
+        if (isComputerControl(button->id)) {
+          sendComputerControlOverUsb(button->id);
+        } else {
+          queueTap(button->id, currentUi.revision, now);
+        }
       }
     } else {
       Serial.println("Touch did not match an SDUI button");
@@ -1220,6 +1340,10 @@ void processNetwork(uint32_t now) {
   }
 
   if (!cloudConnected && !connectPending && now >= nextCloudAttemptAt) {
+    if (!telemetry.timeSynchronized()) {
+      nextCloudAttemptAt = now + 1000;
+      return;
+    }
     setState(AppState::kCloudConnecting);
     connectPending = cloud.requestConnect(wifi.setupToken());
     if (!connectPending) {
@@ -1264,7 +1388,7 @@ void refreshIndicators(uint32_t now) {
       Serial.println("NTP time synchronized");
     }
   }
-  char timeText[6] = {};
+  char timeText[9] = {};
   telemetry.formattedTime(timeText);
   const uint16_t millivolts = telemetry.batteryMillivolts();
   const uint8_t batteryPercent = telemetry.batteryPercent();
@@ -1290,15 +1414,14 @@ void refreshIndicators(uint32_t now) {
   }
   const bool bluetoothEnabled = bluetooth.enabled();
   const bool bluetoothConnected = bluetooth.connected();
-bool weatherRefreshed = false;
+  bool weatherRefreshed = weather.takeRefreshResult();
   if (hasUi && currentUi.screenCount > 0 &&
       strcmp(currentUi.active().screenId, "sky-weather") == 0 &&
       wifiConnected &&
       (lastWeatherRefreshAt == 0 ||
        now - lastWeatherRefreshAt >= kWeatherRefreshMs)) {
     lastWeatherRefreshAt = now;
-    weather.refresh(currentUi);
-    weatherRefreshed = true;
+    weather.requestRefresh(currentUi);
   }
   const bool statusChanged =
       !indicatorsInitialized || wifiConnected != lastWifiIndicator ||
@@ -1380,7 +1503,6 @@ void setup() {
     return;
   }
   wifi.begin(LEOPOLD_DEVICE_ID);
-  bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
   setState(leopold::AppState::kWifiConnecting);
   memset(&currentUi, 0, sizeof(currentUi));
   syncControlCenterScreen();

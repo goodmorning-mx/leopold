@@ -7,7 +7,8 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "tls_roots.h"
+#include "config_guard.h"
+#include "tls_bundle.h"
 
 namespace leopold {
 namespace {
@@ -58,6 +59,46 @@ bool setClockFromDate(const String& header) {
 
 }  // namespace
 
+bool WeatherClient::begin() {
+  if (task_ != nullptr) return true;
+  return xTaskCreatePinnedToCore(
+             taskEntry, "leopold-weather", 2048, this, 1, &task_, 0) ==
+         pdPASS;
+}
+
+bool WeatherClient::requestRefresh(SduiDocument& document) {
+  if (task_ == nullptr || refreshRequested_ || refreshRunning_) return false;
+  document_ = &document;
+  refreshComplete_ = false;
+  refreshRequested_ = true;
+  return true;
+}
+
+bool WeatherClient::takeRefreshResult() {
+  if (!refreshComplete_) return false;
+  refreshComplete_ = false;
+  return true;
+}
+
+void WeatherClient::taskEntry(void* context) {
+  static_cast<WeatherClient*>(context)->taskLoop();
+}
+
+void WeatherClient::taskLoop() {
+  while (true) {
+    if (!refreshRequested_) {
+      vTaskDelay(pdMS_TO_TICKS(25));
+      continue;
+    }
+    refreshRequested_ = false;
+    refreshRunning_ = true;
+    SduiDocument* document = document_;
+    if (document != nullptr) refresh(*document);
+    refreshRunning_ = false;
+    refreshComplete_ = true;
+  }
+}
+
 bool WeatherClient::synchronizeClock() {
   if (time(nullptr) > 1700000000) return true;
   configTzTime(
@@ -81,7 +122,7 @@ bool WeatherClient::refresh(SduiDocument& document) {
   if (WiFi.status() != WL_CONNECTED || !synchronizeClock()) return false;
 
   WiFiClientSecure secure;
-  secure.setCACert(kLetsEncryptRootYrByX1);
+  secure.setCACert(kLetsEncryptTrustBundle);
   secure.setHandshakeTimeout(8);
   HTTPClient http;
   http.setConnectTimeout(8000);

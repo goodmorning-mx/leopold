@@ -30,6 +30,10 @@ class DisplayManager {
   bool clearPressedButton();
   void setBrightnessPercent(uint8_t percent);
   uint8_t brightnessPercent() const;
+  void toggleBackground();
+  void toggleLanguage();
+  bool darkBackground() const;
+  bool spanishLanguage() const;
   void updateControlCenterBrightness();
   void showWifiDetails(
       bool connected,
@@ -111,6 +115,8 @@ class DisplayManager {
 
   uint8_t localExpression_ = 0;
   uint8_t brightnessPercent_ = 70;
+  bool darkBackground_ = false;
+  bool spanishLanguage_ = false;
   uint32_t lastFaceFrameAt_ = 0;
   bool wifiConnected_ = false;
   bool cloudConnected_ = false;

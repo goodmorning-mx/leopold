@@ -9,8 +9,12 @@ class Telemetry {
   void begin();
   uint16_t batteryMillivolts();
   uint8_t batteryPercent();
-  void formattedTime(char output[6]) const;
+  void formattedTime(char output[9]) const;
+  void toggleTimeFormat();
   bool timeSynchronized() const;
+
+ private:
+  bool twentyFourHour_ = true;
 };
 
 }  // namespace leopold
