@@ -1,0 +1,119 @@
+name: Build firmware release
+
+on:
+  push:
+    tags:
+      - 'firmware-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  firmware:
+    name: Build ESP32 firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PlatformIO
+        run: python -m pip install --upgrade platformio
+
+      - name: Build firmware
+        working-directory: device
+        run: pio run
+
+      - name: Package flash images
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          build_dir="device/.pio/build/leopold"
+          package_dir="firmware-release"
+          mkdir -p "$package_dir"
+
+          for image in bootloader.bin partitions.bin firmware.bin; do
+            test -f "$build_dir/$image"
+            cp "$build_dir/$image" "$package_dir/$image"
+          done
+
+          if test -f "$build_dir/boot_app0.bin"; then
+            cp "$build_dir/boot_app0.bin" "$package_dir/boot_app0.bin"
+          fi
+
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          package = Path("firmware-release")
+          files = {}
+          offsets = {
+              "bootloader.bin": "0x0000",
+              "partitions.bin": "0x8000",
+              "boot_app0.bin": "0xe000",
+              "firmware.bin": "0x10000",
+          }
+          for path in sorted(package.glob("*.bin")):
+              files[path.name] = {
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "bytes": path.stat().st_size,
+                  "flash_offset": offsets.get(path.name),
+              }
+
+          manifest = {
+              "product": "Leopold",
+              "board": "esp32-s3-devkitc-1",
+              "platformio_environment": "leopold",
+              "commit": os.environ["COMMIT_SHA"],
+              "release_tag": os.environ["RELEASE_TAG"],
+              "flash_images": files,
+              "flash_command": (
+                  "esptool.py --chip esp32s3 write_flash "
+                  "0x0000 bootloader.bin 0x8000 partitions.bin "
+                  "0x10000 firmware.bin"
+              ),
+          }
+          (package / "manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+          )
+          (package / "SHA256SUMS.txt").write_text(
+              "".join(
+                  f"{item['sha256']}  {name}\n"
+                  for name, item in files.items()
+              ),
+              encoding="utf-8",
+          )
+          PY
+
+          tar -czf "leopold-${RELEASE_TAG}-${COMMIT_SHA:0:12}.tar.gz" -C "$package_dir" .
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: leopold-firmware-${{ github.sha }}
+          path: |
+            firmware-release/
+            leopold-*.tar.gz
+
+      - name: Publish GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/firmware-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            firmware-release/*.bin \
+            firmware-release/manifest.json \
+            firmware-release/SHA256SUMS.txt \
+            leopold-*.tar.gz \
+            --title "Leopold $GITHUB_REF_NAME" \
+            --generate-notes
