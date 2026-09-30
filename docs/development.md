@@ -20,3 +20,9 @@ cd frontend && npm install && npm run typecheck && npm run build
 cd backend && pip install -r requirements.txt && python -m pytest
 docker compose config
 ```
+
+## Browser simulator
+
+See [`docs/simulator.md`](simulator.md). Run `cd frontend && npm run dev` and
+open `/simulator` to exercise the shared SDUI document and device gestures with
+mocked Cloud, weather, Spotify, and USB state.

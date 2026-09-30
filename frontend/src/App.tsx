@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import QrScanner from 'qr-scanner';
+import Simulator from './simulator/Simulator';
 
 type User = { email: string; display_name: string };
 type Device = {
@@ -571,6 +572,7 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
 }
 
 function App() {
+  if (window.location.pathname === '/simulator') return <Simulator />;
   const token = useMemo(currentSetupToken, []);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(!token);

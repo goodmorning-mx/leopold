@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "firmware_release": "firmware-v0.8.1",
+  "screens": [
+    {"id":"sky-home","background":"#000000","components":[
+      {"type":"button","id":"open-clock","label":"CLOCK","x":197,"y":34,"width":72,"height":72},
+      {"type":"button","id":"open-navigation","label":"NAV","x":96,"y":91,"width":72,"height":72,"color":"#0A84FF"},
+      {"type":"button","id":"open-voltage","label":"VOLT","x":298,"y":91,"width":72,"height":72},
+      {"type":"button","id":"open-weather","label":"WEATHER","x":43,"y":190,"width":72,"height":72},
+      {"type":"button","id":"open-usb","label":"USB","icon":"usb","x":351,"y":190,"width":72,"height":72,"color":"#3D7FFF"},
+      {"type":"button","id":"open-whatsapp","label":"CHAT","icon":"whatsapp","x":96,"y":291,"width":72,"height":72,"color":"#30D158"},
+      {"type":"button","id":"open-spotify","label":"SPOTIFY","x":298,"y":291,"width":72,"height":72,"color":"#1DB954"},
+      {"type":"button","id":"open-settings","label":"SET","x":197,"y":354,"width":72,"height":72}
+    ]},
+    {"id":"sky-clock","background":"#000000","components":[{"type":"text","id":"sky-time","text":"--:--","x":233,"y":169,"size":4,"color":"#FFFFFF","align":"center"}]},
+    {"id":"sky-voltage","background":"#000000","components":[
+      {"type":"text","id":"voltage-symbol","text":"USB-C","x":233,"y":77,"size":2,"color":"#FFD60A","align":"center"},
+      {"type":"text","id":"sky-voltage-value","text":"-.-- V","x":233,"y":172,"size":4,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"voltage-caption","text":"INPUT VOLTAGE","x":233,"y":246,"size":1,"color":"#8E8E93","align":"center"},
+      {"type":"text","id":"voltage-note","text":"POWER + BATTERY MONITOR","x":233,"y":316,"size":2,"color":"#FFD60A","align":"center"}
+    ]},
+    {"id":"sky-whatsapp","background":"#000000","components":[
+      {"type":"button","id":"open-home","label":"<","x":24,"y":42,"width":66,"height":52},
+      {"type":"text","id":"whatsapp-title","text":"WHATSAPP","x":233,"y":52,"size":3,"color":"#30D158","align":"center"},
+      {"type":"text","id":"whatsapp-name","text":"Sky","x":112,"y":132,"size":2,"color":"#FFFFFF","align":"left"},
+      {"type":"text","id":"whatsapp-message","text":"Ready for the ride?","x":112,"y":166,"size":1,"color":"#D1D1D6","align":"left"},
+      {"type":"text","id":"whatsapp-name-2","text":"GoodMorning","x":112,"y":237,"size":2,"color":"#FFFFFF","align":"left"},
+      {"type":"text","id":"whatsapp-message-2","text":"Leopold is online","x":112,"y":271,"size":1,"color":"#D1D1D6","align":"left"},
+      {"type":"button","id":"whatsapp-reply","label":"VOICE REPLY","x":116,"y":344,"width":234,"height":62,"color":"#30D158"}
+    ]},
+    {"id":"computer-controls","background":"#000000","components":[
+      {"type":"text","id":"computer-title","text":"COMPUTER","x":233,"y":80,"size":3,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"computer-status","text":"MAC CONTROLS","x":233,"y":126,"size":1,"color":"#A7A7A7","align":"center"},
+      {"type":"button","id":"computer-volume-down","label":"VOL -","x":64,"y":180,"width":96,"height":72},
+      {"type":"button","id":"computer-volume-mute","label":"MUTE","x":185,"y":180,"width":96,"height":72,"color":"#FD9D20"},
+      {"type":"button","id":"computer-volume-up","label":"VOL +","x":306,"y":180,"width":96,"height":72},
+      {"type":"button","id":"computer-screenshot","label":"CAPTURE","x":113,"y":292,"width":240,"height":74,"color":"#3D7FFF"}
+    ]},
+    {"id":"device-control-center","background":"#000000","components":[{"type":"slider","id":"display-brightness","x":326,"y":116,"width":78,"height":232,"value":72,"color":"#FFFFFF"},{"type":"button","id":"open-additional-options","label":"Additional options","x":112,"y":369,"width":210,"height":55,"color":"#3D7FFF"}]},
+    {"id":"device-additional-options","background":"#000000","components":[
+      {"type":"text","id":"options-title","text":"ADDITIONAL OPTIONS","x":233,"y":54,"size":2,"color":"#FFFFFF","align":"center"},
+      {"type":"button","id":"background-toggle","label":"BACKGROUND","x":96,"y":128,"width":274,"height":62,"color":"#3D7FFF"},
+      {"type":"button","id":"language-toggle","label":"LANGUAGE","x":96,"y":210,"width":274,"height":62,"color":"#30D158"},
+      {"type":"button","id":"open-settings","label":"BACK","x":126,"y":336,"width":214,"height":58,"color":"#8E8E93"}
+    ]},
+    {"id":"sky-weather","background":"#000000","components":[
+      {"type":"text","id":"weather-title","text":"WEATHER","x":233,"y":52,"size":3,"color":"#0A84FF","align":"center"},
+      {"type":"text","id":"weather-temp","text":"-- F","x":233,"y":128,"size":4,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"weather-condition","text":"LIVE WEATHER","x":233,"y":190,"size":1,"color":"#8E8E93","align":"center"},
+      {"type":"text","id":"weather-humidity","text":"HUMIDITY --%","x":233,"y":246,"size":2,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"weather-location","text":"LOCATION BY IP","x":233,"y":298,"size":1,"color":"#8E8E93","align":"center"},
+      {"type":"button","id":"weather-units","label":"F / C","x":153,"y":354,"width":160,"height":58,"color":"#0A84FF"}
+    ]},
+    {"id":"sky-navigation","background":"#000000","components":[
+      {"type":"text","id":"nav-distance","text":"300 m","x":233,"y":46,"size":2,"color":"#0A84FF","align":"center"},
+      {"type":"text","id":"nav-arrow","text":">","x":233,"y":104,"size":4,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"nav-road","text":"Turn right on Reforma","x":233,"y":207,"size":2,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"nav-next","text":"THEN  KEEP LEFT","x":233,"y":267,"size":1,"color":"#8E8E93","align":"center"},
+      {"type":"text","id":"nav-altitude","text":"ALTITUDE  2240 m","x":233,"y":327,"size":2,"color":"#0A84FF","align":"center"}
+    ]},
+    {"id":"spotify-player","background":"#000000","components":[
+      {"type":"button","id":"open-home","label":"<","x":24,"y":42,"width":66,"height":52},
+      {"type":"text","id":"track","text":"Connect Spotify","x":233,"y":72,"size":2,"color":"#FFFFFF","align":"center"},
+      {"type":"text","id":"artist","text":"Open Leopold on your phone","x":233,"y":113,"size":1,"color":"#A7A7A7","align":"center"},
+      {"type":"text","id":"album","text":"Spotify Connect","x":233,"y":141,"size":1,"color":"#686868","align":"center"},
+      {"type":"slider","id":"spotify-volume","x":64,"y":22,"width":338,"height":54,"value":0,"color":"#0A84FF"},
+      {"type":"slider","id":"spotify-seek","x":92,"y":399,"width":282,"height":42,"value":0,"color":"#1DB954"},
+      {"type":"button","id":"spotify-prev","label":"PREV","x":70,"y":294,"width":72,"height":72},
+      {"type":"button","id":"spotify-toggle","label":"PLAY","x":191,"y":288,"width":84,"height":84,"color":"#1DB954"},
+      {"type":"button","id":"spotify-next","label":"NEXT","x":324,"y":294,"width":72,"height":72}
+    ]},
+    {"id":"spotify-actions","background":"#000000","components":[
+      {"type":"text","id":"spotify-actions-title","text":"SPOTIFY","x":233,"y":52,"size":3,"color":"#1DB954","align":"center"},
+      {"type":"button","id":"spotify-like","label":"ME GUSTA","x":82,"y":116,"width":302,"height":62},
+      {"type":"button","id":"spotify-shuffle","label":"ALEATORIO","x":82,"y":198,"width":302,"height":62},
+      {"type":"button","id":"spotify-playlists","label":"PLAYLISTS EN TELEFONO","x":82,"y":280,"width":302,"height":62},
+      {"type":"text","id":"spotify-jam-note","text":"JAM SE INICIA DESDE SPOTIFY","x":233,"y":377,"size":1,"color":"#8E8E93","align":"center"}
+    ]},
+    {"id":"youtube-feed","background":"#000000","components":[
+      {"type":"text","id":"youtube-brand","text":"YOUTUBE","x":233,"y":58,"size":2,"color":"#FF453A","align":"center"},
+      {"type":"text","id":"youtube-account","text":"Tu cuenta","x":233,"y":92,"size":1,"color":"#A7A7A7","align":"center"},
+      {"type":"text","id":"youtube-title-0","text":"Abre YouTube para descubrir videos","x":78,"y":140,"size":1,"color":"#FFFFFF","align":"left"},
+      {"type":"text","id":"youtube-channel-0","text":"Sin actividad reciente","x":78,"y":167,"size":1,"color":"#8E8E93","align":"left"},
+      {"type":"text","id":"youtube-title-1","text":"Sincroniza tu cuenta desde el telefono","x":78,"y":216,"size":1,"color":"#FFFFFF","align":"left"},
+      {"type":"text","id":"youtube-channel-1","text":"YouTube","x":78,"y":243,"size":1,"color":"#8E8E93","align":"left"},
+      {"type":"button","id":"youtube-refresh","label":"Actualizar","x":133,"y":378,"width":200,"height":58,"color":"#FF453A"}
+    ]}
+  ]
+}

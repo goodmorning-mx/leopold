@@ -126,7 +126,9 @@ Reglas de compatibilidad:
   mayores que no entienda.
 - El lienzo es `466 × 466`; `x` e `y` están entre `0` y `465`.
 - Colores con forma `#RRGGBB`.
-- Tipos permitidos: `text`, `indicator`, `button` y `progress`.
+- Tipos permitidos: `text`, `indicator`, `button`, `progress`, `slider` e
+  `icon`. El firmware ignora tipos desconocidos para permitir extensiones
+  compatibles.
 - Todo componente contiene `type`, `id`, `x` e `y`.
 - El cliente debe ignorar campos desconocidos para admitir extensiones
   compatibles.

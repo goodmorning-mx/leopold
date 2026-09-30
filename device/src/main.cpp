@@ -15,6 +15,7 @@
 #include "telemetry.h"
 #include "touch_input.h"
 #include "weather_client.h"
+#include "generated_firmware_ui.h"
 #include "wifi_portal.h"
 
 namespace {
@@ -461,123 +462,29 @@ void syncControlCenterScreen() {
   currentUi.revision = revision;
   currentUi.pollAfterMs = pollAfterMs == 0 ? 5000 : pollAfterMs;
 
-  SduiScreen& home = appendScreen("sky-home");
-  addButton(home, "open-clock", "CLOCK", 197, 34, 72, 72);
-  addButton(home, "open-navigation", "NAV", 96, 91, 72, 72, "#0A84FF");
-  addButton(home, "open-voltage", "VOLT", 298, 91, 72, 72);
-  addButton(home, "open-weather", "WEATHER", 43, 190, 72, 72);
-  addButton(home, "open-usb", "USB", 351, 190, 72, 72, "#3D7FFF");
-  addButton(home, "open-whatsapp", "CHAT", 96, 291, 72, 72, "#30D158");
-  addButton(home, "open-spotify", "SPOTIFY", 298, 291, 72, 72, "#1DB954");
-  addButton(home, "open-settings", "SET", 197, 354, 72, 72);
-
-  SduiScreen& clock = appendScreen("sky-clock");
-  addText(clock, "sky-time", "--:--", 233, 169, 4);
-
-  SduiScreen& voltage = appendScreen("sky-voltage");
-  addText(voltage, "voltage-symbol", "USB-C", 233, 77, 2, "#FFD60A");
-  addText(voltage, "sky-voltage-value", "-.-- V", 233, 172, 4);
-  addText(voltage, "voltage-caption", "INPUT VOLTAGE", 233, 246, 1, "#8E8E93");
-  addText(voltage, "voltage-note", "POWER + BATTERY MONITOR", 233, 316, 2, "#FFD60A");
-
-  SduiScreen& whatsapp = appendScreen("sky-whatsapp");
-  addBack(whatsapp);
-  addText(whatsapp, "whatsapp-title", "WHATSAPP", 233, 52, 3, "#30D158");
-  addText(whatsapp, "whatsapp-name", "Sky", 112, 132, 2, "#FFFFFF", TextAlign::kLeft);
-  addText(whatsapp, "whatsapp-message", "Ready for the ride?", 112, 166, 1, "#D1D1D6", TextAlign::kLeft);
-  addText(whatsapp, "whatsapp-name-2", "GoodMorning", 112, 237, 2, "#FFFFFF", TextAlign::kLeft);
-  addText(whatsapp, "whatsapp-message-2", "Leopold is online", 112, 271, 1, "#D1D1D6", TextAlign::kLeft);
-  addButton(whatsapp, "whatsapp-reply", "VOICE REPLY", 116, 344, 234, 62, "#30D158");
-
-  SduiScreen& computer = appendScreen("computer-controls");
-  addText(computer, "computer-title", "COMPUTER", 233, 80, 3);
-  addText(computer, "computer-status", "MAC CONTROLS", 233, 126, 1, "#A7A7A7");
-  addButton(computer, "computer-volume-down", "VOL -", 64, 180, 96, 72);
-  addButton(computer, "computer-volume-mute", "MUTE", 185, 180, 96, 72, "#FD9D20");
-  addButton(computer, "computer-volume-up", "VOL +", 306, 180, 96, 72);
-  addButton(computer, "computer-screenshot", "CAPTURE", 113, 292, 240, 74, "#3D7FFF");
-
-  SduiScreen& settings = appendScreen("device-control-center");
-  SduiComponent& slider = settings.components[settings.componentCount++];
-  slider.type = ComponentType::kSlider;
-  strlcpy(slider.id, "display-brightness", sizeof(slider.id));
-  slider.x = 326;
-  slider.y = 120;
-  slider.width = 76;
-  slider.height = 224;
-  slider.value = screen.brightnessPercent();
-  slider.maximum = 100;
-  slider.color = SduiParser::rgb565("#FFD60A");
-  addButton(
-      settings,
-      "open-additional-options",
-      "MORE",
-      112,
-      360,
-      210,
-      58,
-      "#3D7FFF");
-
-  SduiScreen& options = appendScreen("device-additional-options");
-  addText(options, "options-title", "ADDITIONAL OPTIONS", 233, 54, 2);
-  addButton(
-      options,
-      "background-toggle",
-      "BACKGROUND",
-      96,
-      128,
-      274,
-      62,
-      "#3D7FFF");
-  addButton(
-      options,
-      "language-toggle",
-      "LANGUAGE",
-      96,
-      210,
-      274,
-      62,
-      "#30D158");
-  addButton(
-      options,
-      "open-settings",
-      "BACK",
-      126,
-      336,
-      214,
-      58,
-      "#8E8E93");
-
-  SduiScreen& weather = appendScreen("sky-weather");
-  addText(weather, "weather-title", "WEATHER", 233, 52, 3, "#0A84FF");
-  addText(weather, "weather-temp", "-- F", 233, 128, 4);
-  addText(weather, "weather-condition", "LIVE WEATHER", 233, 190, 1, "#8E8E93");
-  addText(weather, "weather-humidity", "HUMIDITY --%", 233, 246, 2);
-  addText(weather, "weather-location", "LOCATION BY IP", 233, 298, 1, "#8E8E93");
-  addButton(weather, "weather-units", "F / C", 153, 354, 160, 58, "#0A84FF");
-
-  SduiScreen& navigation = appendScreen("sky-navigation");
-  addText(navigation, "nav-distance", "300 m", 233, 46, 2, "#0A84FF");
-  addText(navigation, "nav-arrow", ">", 233, 104, 4, "#FFFFFF");
-  addText(navigation, "nav-road", "Turn right on Reforma", 233, 207, 2);
-  addText(navigation, "nav-next", "THEN  KEEP LEFT", 233, 267, 1, "#8E8E93");
-  addText(navigation, "nav-altitude", "ALTITUDE  2240 m", 233, 327, 2, "#0A84FF");
-
-  if (hasSpotifyScreen) {
-    currentUi.screens[currentUi.screenCount++] = preservedSpotify;
-  } else {
-    SduiScreen& spotify = appendScreen("spotify-player");
-    addText(spotify, "track", "Connect Spotify", 233, 72, 2);
-    addText(spotify, "artist", "Open Leopold on your phone", 233, 113, 1, "#A7A7A7");
-    addText(spotify, "album", "Spotify Connect", 233, 141, 1, "#686868");
-    addButton(spotify, "spotify-prev", "PREV", 70, 294, 72, 72);
-    addButton(spotify, "spotify-toggle", "PLAY", 191, 288, 84, 84, "#1DB954");
-    addButton(spotify, "spotify-next", "NEXT", 324, 294, 72, 72);
+  generated_ui::appendFallbackScreens(
+      currentUi, hasSpotifyScreen ? &preservedSpotify : nullptr);
+  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+    if (strcmp(currentUi.screens[index].screenId, "device-control-center") != 0) continue;
+    for (uint8_t componentIndex = 0;
+         componentIndex < currentUi.screens[index].componentCount;
+         ++componentIndex) {
+      SduiComponent& component = currentUi.screens[index].components[componentIndex];
+      if (strcmp(component.id, "display-brightness") == 0) {
+        component.value = screen.brightnessPercent();
+      }
+    }
   }
-  if (hasSpotifyActions && currentUi.screenCount < kMaxSduiScreens) {
+  auto hasScreen = [](const char* id) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, id) == 0) return true;
+    }
+    return false;
+  };
+  if (hasSpotifyActions && !hasScreen("spotify-actions") && currentUi.screenCount < kMaxSduiScreens) {
     currentUi.screens[currentUi.screenCount++] = preservedSpotifyActions;
   }
-  if (hasYoutubeScreen && currentUi.screenCount < kMaxSduiScreens) {
+  if (hasYoutubeScreen && !hasScreen("youtube-feed") && currentUi.screenCount < kMaxSduiScreens) {
     currentUi.screens[currentUi.screenCount++] = preservedYoutube;
   }
   updateAdditionalOptionsLabels();
