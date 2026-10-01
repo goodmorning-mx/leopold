@@ -1,6 +1,12 @@
 #pragma once
 
+#ifdef LEOPOLD_WASM
+#include <stddef.h>
+#include <stdint.h>
+class String;
+#else
 #include <Arduino.h>
+#endif
 
 namespace leopold {
 

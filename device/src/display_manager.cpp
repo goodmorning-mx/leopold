@@ -10,6 +10,7 @@
 #include "board_config.h"
 #include "sky_assets.h"
 #include "generated_firmware_ui.h"
+#include "lvgl_renderer.h"
 
 namespace leopold {
 namespace {
@@ -161,6 +162,18 @@ const lv_image_dsc_t* skyButtonIcon(const char* id) {
   if (strcmp(id, "open-weather") == 0) return &sky::kWeatherIcon;
   if (strcmp(id, "open-navigation") == 0) return &sky::kNavigationIcon;
   if (strcmp(id, "open-spotify") == 0) return &sky::kSpotifyIcon;
+  return nullptr;
+}
+
+const lv_image_dsc_t* sharedImageResolver(const char* id) {
+  if (strcmp(id, "home") == 0) return &sky::kHomeBackground;
+  if (strcmp(id, "flower") == 0) return &sky::kFlowerBackground;
+  if (strcmp(id, "open-clock") == 0) return &sky::kClockIcon;
+  if (strcmp(id, "open-voltage") == 0) return &sky::kBoltIcon;
+  if (strcmp(id, "open-weather") == 0) return &sky::kWeatherIcon;
+  if (strcmp(id, "open-navigation") == 0) return &sky::kNavigationIcon;
+  if (strcmp(id, "open-spotify") == 0) return &sky::kSpotifyIcon;
+  if (strcmp(id, "spotify-large") == 0) return &sky::kSpotifyLargeIcon;
   return nullptr;
 }
 
@@ -1219,6 +1232,8 @@ void DisplayManager::showWifiConnecting(
 }
 
 void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
+  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_);
+  return;
   const SduiComponent* track = nullptr;
   const SduiComponent* artist = nullptr;
   const SduiComponent* progress = nullptr;
@@ -1316,6 +1331,8 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
 }
 
 void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
+  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_);
+  return;
   const SduiComponent* account = nullptr;
   const SduiComponent* titles[3] = {};
   const SduiComponent* channels[3] = {};
@@ -1386,6 +1403,8 @@ void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
 }
 
 void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
+  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_);
+  return;
   lv_obj_t* root = cleanLvglScreen(screen.background);
   const bool skyHome = strcmp(screen.screenId, "sky-home") == 0;
   const bool flowerScreen =
