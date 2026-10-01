@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { SduiComponent, SduiScreen, SduiText } from './contract';
-import typography from '../../../shared/typography.json';
+import typography from '../shared/typography.json';
 
 export type FirmwareImages = Record<string, string>;
 

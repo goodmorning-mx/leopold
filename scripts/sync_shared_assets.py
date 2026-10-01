@@ -6,6 +6,7 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "shared" / "assets"
 DESTINATIONS = (ROOT / "device" / "assets", ROOT / "frontend" / "public" / "firmware-assets")
+CONTRACTS = ("firmware-ui.json", "interaction.json", "typography.json", "persistence.json", "asset-manifest.json")
 
 
 def sync() -> None:
@@ -13,6 +14,10 @@ def sync() -> None:
         destination.mkdir(parents=True, exist_ok=True)
         for source in SOURCE.glob("*.bin"):
             shutil.copyfile(source, destination / source.name)
+    contract_destination = ROOT / "frontend" / "src" / "shared"
+    contract_destination.mkdir(parents=True, exist_ok=True)
+    for name in CONTRACTS:
+        shutil.copyfile(ROOT / "shared" / name, contract_destination / name)
 
 
 if __name__ == "__main__":

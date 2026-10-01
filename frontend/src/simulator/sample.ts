@@ -1,5 +1,5 @@
 import { SduiDocument } from './contract';
-import sharedFirmwareUi from '../../../shared/firmware-ui.json';
+import sharedFirmwareUi from '../shared/firmware-ui.json';
 
 export const sampleDocument = {
   ...sharedFirmwareUi,

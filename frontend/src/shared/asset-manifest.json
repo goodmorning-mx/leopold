@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "directory": "shared/assets",
+  "assets": {
+    "home": {"file": "sky_home.bin", "width": 466, "height": 466, "format": "rgb565a8"},
+    "flower": {"file": "sky_flower.bin", "width": 466, "height": 466, "format": "rgb565a8"},
+    "open-clock": {"file": "icon_clock.bin", "width": 80, "height": 80, "format": "rgb565a8"},
+    "open-voltage": {"file": "icon_bolt.bin", "width": 80, "height": 80, "format": "rgb565a8"},
+    "open-weather": {"file": "icon_weather.bin", "width": 75, "height": 75, "format": "rgb565a8"},
+    "open-navigation": {"file": "icon_nav.bin", "width": 80, "height": 80, "format": "rgb565a8"},
+    "open-spotify": {"file": "icon_spotify.bin", "width": 84, "height": 84, "format": "rgb565a8"},
+    "spotify-large": {"file": "icon_spotify_large.bin", "width": 97, "height": 100, "format": "rgb565a8"}
+  }
+}

@@ -15,7 +15,7 @@ jobs:
       - run: python3 scripts/validate_shared_ui.py
       - run: python3 scripts/sync_shared_assets.py
       - run: python3 scripts/verify_shared_outputs.py
-      - run: git diff --exit-code -- device/assets frontend/public/firmware-assets
+      - run: git diff --exit-code -- device/assets frontend/public/firmware-assets frontend/src/shared
 
   frontend:
     name: Frontend checks

@@ -3,9 +3,9 @@ import { SduiButton, SduiDocument, SduiSlider, validateSdui } from './contract';
 import FirmwareCanvas, { FirmwareImages } from './FirmwareCanvas';
 import { classifyGesture, containsPoint, sliderValue } from './interaction';
 import { sampleDocument } from './sample';
-import interaction from '../../../shared/interaction.json';
-import persistence from '../../../shared/persistence.json';
-import assetManifest from '../../../shared/asset-manifest.json';
+import interaction from '../shared/interaction.json';
+import persistence from '../shared/persistence.json';
+import assetManifest from '../shared/asset-manifest.json';
 
 type EventLog = { at: string; kind: string; detail: string; payload?: string };
 const firmwareReference = 'firmware-v0.8.2';

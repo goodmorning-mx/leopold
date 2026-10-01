@@ -1,6 +1,6 @@
 export type SimulatorGesture = 'tap' | 'swipe-left' | 'swipe-right' | 'swipe-up' | 'long-press' | 'release';
 
-import interaction from '../../../shared/interaction.json';
+import interaction from '../shared/interaction.json';
 
 const touch = interaction.touch;
 
