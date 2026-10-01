@@ -6,7 +6,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "shared" / "assets"
-DESTINATIONS = (ROOT / "device" / "assets", ROOT / "frontend" / "public" / "firmware-assets")
+DESTINATIONS = (
+    ROOT / "backend" / "assets",
+    ROOT / "device" / "assets",
+    ROOT / "frontend" / "public" / "firmware-assets",
+)
 CONTRACT_SOURCE = ROOT / "shared"
 CONTRACT_DESTINATION = ROOT / "frontend" / "src" / "shared"
 CONTRACTS = ("firmware-ui.json", "interaction.json", "typography.json", "persistence.json", "asset-manifest.json", "rendering.json")
@@ -28,6 +32,9 @@ for name in CONTRACTS:
     candidate = CONTRACT_DESTINATION / name
     if not candidate.is_file() or digest(source) != digest(candidate):
         errors.append(f"{candidate} does not match {source}")
+backend_manifest = ROOT / "backend" / "assets" / "asset-manifest.json"
+if not backend_manifest.is_file() or digest(CONTRACT_SOURCE / "asset-manifest.json") != digest(backend_manifest):
+    errors.append(f"{backend_manifest} does not match {CONTRACT_SOURCE / 'asset-manifest.json'}")
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)

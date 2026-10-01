@@ -44,9 +44,9 @@ Db = Annotated[Session, Depends(get_db)]
 Config = Annotated[Settings, Depends(get_settings)]
 _DUMMY_HASH = hashlib.sha256(b"invalid-device-secret").hexdigest()
 CLAIM_MINUTES = 15
-ASSET_DIR = Path(__file__).resolve().parents[2] / "shared" / "assets"
+ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
 ASSET_MANIFEST = json.loads(
-    (ASSET_DIR.parent / "asset-manifest.json").read_text(encoding="utf-8")
+    (ASSET_DIR / "asset-manifest.json").read_text(encoding="utf-8")
 )
 ASSET_FILES = {
     item["file"]: item

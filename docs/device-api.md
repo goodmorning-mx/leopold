@@ -149,7 +149,9 @@ Si sigue activa la revisión 1, devuelve `304 Not Modified` sin documento.
 
 El directorio raíz `shared/` es la única fuente de verdad para la interfaz del
 simulador y del firmware. El manifiesto `shared/asset-manifest.json` enumera
-los archivos permitidos y `shared/assets/` contiene sus bytes originales.
+los archivos permitidos y `shared/assets/` contiene sus bytes originales. El
+script `scripts/sync_shared_assets.py` genera las copias de consumo, incluida
+`backend/assets/`, que se empaqueta en la imagen Docker del API.
 
 Cuando un asset no cabe de forma fiable en la memoria persistente del
 dispositivo, el firmware lo descarga desde el backend autenticado:
