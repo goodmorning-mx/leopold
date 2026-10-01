@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { SduiComponent, SduiScreen, SduiText } from './contract';
 import typography from '../shared/typography.json';
+import rendering from '../shared/rendering.json';
 
 export type FirmwareImages = Record<string, string>;
 
@@ -97,16 +98,32 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, connecte
 }
 
 function drawStatus(ctx: CanvasRenderingContext2D, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, 31);
-  drawBluetooth(ctx, 24, 15, bluetoothEnabled); drawWifi(ctx, 58, 15, wifiConnected); drawCloud(ctx, 420, 15, cloudConnected);
-  text(ctx, `${batteryPercent}%`, 338, 8, 14, '#7BEF7B');
-  centered(ctx, timeText || (clock24 ? '20:42' : '8:42'), 233, 8, 14, '#7BEF7B');
+  const status = rendering.status_bar;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, status.height);
+  drawBluetooth(ctx, status.bluetooth.x, status.bluetooth.y, bluetoothEnabled);
+  drawWifi(ctx, status.wifi.x, status.wifi.y, wifiConnected);
+  drawCloud(ctx, status.cloud.x, status.cloud.y, cloudConnected);
+  text(ctx, `${batteryPercent}%`, status.battery.x, status.battery.y, fonts[status.battery.size], status.text_color);
+  text(ctx, timeText || (clock24 ? '20:42' : '8:42'), status.time.x, status.time.y, fonts[status.time.size], status.text_color);
 }
 
 function drawWhatsapp(ctx: CanvasRenderingContext2D, x: number, y: number) {
   rounded(ctx, x + 17, y + 17, 38, 34, 14, '#30D158');
   rounded(ctx, x + 20, y + 43, 10, 8, 3, '#30D158');
   rounded(ctx, x + 26, y + 24, 20, 14, 7, '#141416');
+}
+
+function drawUsb(ctx: CanvasRenderingContext2D, x: number, y: number, stroke: string) {
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = rendering.home.usb_icon.stroke;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  rendering.home.usb_icon.segments.forEach(([x1, y1, x2, y2]) => {
+    ctx.beginPath();
+    ctx.moveTo(x + x1, y + y1);
+    ctx.lineTo(x + x2, y + y2);
+    ctx.stroke();
+  });
 }
 
 function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, pressed: string | null) {
@@ -122,7 +139,7 @@ function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: Fir
     const [assetWidth, assetHeight] = dimensions[asset] || [80, 80];
     if (images[asset]) drawAsset(ctx, images, asset, component.x + (component.width - assetWidth) / 2, component.y + (component.height - assetHeight) / 2, assetWidth, assetHeight);
     else if (component.icon === 'whatsapp') drawWhatsapp(ctx, component.x, component.y);
-    else if (component.icon === 'usb') centered(ctx, '↯', component.x + component.width / 2, component.y + 18, 34, color(component.color));
+    else if (component.icon === 'usb') drawUsb(ctx, component.x, component.y, color(component.color));
     else if (component.label) centered(ctx, component.label, component.x + component.width / 2, component.y + component.height / 2 - 12, 24, color(component.color));
   });
 }
@@ -143,7 +160,7 @@ function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: 
     } else if (component.type === 'button') {
       rounded(ctx, component.x, component.y, component.width, component.height, component.height / 2, pressed === component.id ? '#2C2C30' : '#141416', color(component.color), 2);
       if (component.icon === 'whatsapp') drawWhatsapp(ctx, component.x, component.y);
-      else if (component.icon === 'usb') centered(ctx, '↯', component.x + component.width / 2, component.y + 14, 32, color(component.color));
+      else if (component.icon === 'usb') drawUsb(ctx, component.x, component.y, color(component.color));
       else if (component.label) centered(ctx, component.label, component.x + component.width / 2, component.y + component.height / 2 - 9, 18, color(component.color));
     } else if (component.type === 'progress') {
       rounded(ctx, component.x, component.y, component.width, component.height || 8, 4, '#3A3A3C');
@@ -199,21 +216,32 @@ function drawNetworkList(ctx: CanvasRenderingContext2D, bluetooth: boolean) {
 
 function drawSpotify(ctx: CanvasRenderingContext2D, images: FirmwareImages, screen: SduiScreen, playing: boolean) {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const arc = rendering.spotify.arc;
+  const center = arc.x + arc.size / 2;
+  const radius = arc.size / 2;
+  const startAngle = Math.PI * (arc.rotation + arc.background_start) / 180;
+  const endAngle = Math.PI * (arc.rotation + arc.background_end) / 180;
   const volumeComponent = screen.components.find((c) => c.id === 'spotify-volume' && (c.type === 'slider' || c.type === 'progress'));
   const volume = volumeComponent && (volumeComponent.type === 'slider' || volumeComponent.type === 'progress') ? volumeComponent.value : 0;
-  ctx.beginPath(); ctx.arc(233, 233, 191, Math.PI * .75, Math.PI * 2.25); ctx.strokeStyle = '#20252A'; ctx.lineWidth = 11; ctx.lineCap = 'round'; ctx.stroke();
-  ctx.beginPath(); ctx.arc(233, 233, 191, Math.PI * .75, Math.PI * (.75 + 1.5 * volume / 100)); ctx.strokeStyle = '#0A84FF'; ctx.stroke();
-  const knobAngle = Math.PI * (.75 + 1.5 * volume / 100); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(233 + 191 * Math.cos(knobAngle), 233 + 191 * Math.sin(knobAngle), 7, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(center, center, radius, startAngle, endAngle); ctx.strokeStyle = arc.background; ctx.lineWidth = arc.width; ctx.lineCap = 'round'; ctx.stroke();
+  const valueAngle = startAngle + (endAngle - startAngle) * volume / 100;
+  ctx.beginPath(); ctx.arc(center, center, radius, startAngle, valueAngle); ctx.strokeStyle = arc.active; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(center + radius * Math.cos(valueAngle), center + radius * Math.sin(valueAngle), 7, 0, Math.PI * 2); ctx.fill();
   // These controls follow the LVGL Spotify renderer's fixed positions.
   centered(ctx, '☷', 132, 94, 24); centered(ctx, '⌘', 233, 94, 24); centered(ctx, '✓', 334, 94, 24);
-  drawWhiteAsset(ctx, images, 'spotify-large', 184, 137, 97, 100);
+  drawWhiteAsset(ctx, images, 'spotify-large', rendering.spotify.cover.x, rendering.spotify.cover.y, rendering.spotify.cover.width, rendering.spotify.cover.height);
   const track = (screen.components.find((c): c is SduiText => c.id === 'track' && c.type === 'text')?.text) || 'Sin reproducción';
   const artist = (screen.components.find((c): c is SduiText => c.id === 'artist' && c.type === 'text')?.text) || 'Abre Spotify';
   centered(ctx, track, 233, 252, 22); centered(ctx, artist, 233, 286, 14, '#D1D1D6');
-  centered(ctx, '◀', 118, 326, 24); centered(ctx, playing ? 'Ⅱ' : '▶', 233, 326, 32); centered(ctx, '▶', 348, 326, 24);
+  const controls = rendering.spotify.controls;
+  centered(ctx, '◀', controls[0].x + controls[0].size / 2, controls[0].y, controls[0].font_size);
+  centered(ctx, playing ? 'Ⅱ' : '▶', controls[1].x + controls[1].size / 2, controls[1].y, controls[1].font_size);
+  centered(ctx, '▶', controls[2].x + controls[2].size / 2, controls[2].y, controls[2].font_size);
   const progressComponent = screen.components.find((c) => c.id === 'spotify-seek' && (c.type === 'slider' || c.type === 'progress'));
   const progress = progressComponent && (progressComponent.type === 'slider' || progressComponent.type === 'progress') ? progressComponent.value : 0;
-  rounded(ctx, 83, 392, 300, 8, 4, '#343438'); rounded(ctx, 83, 392, 300 * progress / 100, 8, 4, '#fff');
+  const seek = rendering.spotify.seek;
+  rounded(ctx, seek.x, seek.y, seek.width, seek.height, seek.radius, seek.background);
+  rounded(ctx, seek.x, seek.y, seek.width * progress / 100, seek.height, seek.radius, seek.active);
 }
 
 function drawYoutube(ctx: CanvasRenderingContext2D, screen: SduiScreen) {
@@ -243,7 +271,9 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
       else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);
-      drawStatus(ctx, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+      if (localPanel === 'none' && rendering.status_bar.visible_screens.includes(screen.id)) {
+        drawStatus(ctx, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+      }
     };
     render();
     const redrawAfterAssets = window.setTimeout(render, 120);

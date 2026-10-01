@@ -1355,10 +1355,7 @@ void refreshIndicators(uint32_t now) {
       batteryPercent,
       timeText);
   const bool liveSkyScreen = hasUi && currentUi.screenCount > 0 &&
-      (strcmp(currentUi.active().screenId, "sky-home") == 0 ||
-       strcmp(currentUi.active().screenId, "sky-clock") == 0 ||
-       strcmp(currentUi.active().screenId, "sky-voltage") == 0 ||
-       strcmp(currentUi.active().screenId, "sky-weather") == 0);
+      generated_ui::statusBarVisible(currentUi.active().screenId);
   if ((statusChanged && hasUi && currentUi.screenCount > 0 &&
        strcmp(currentUi.active().screenId, "device-control-center") == 0) ||
       liveSkyScreen || weatherRefreshed) {

@@ -74,6 +74,24 @@ def validate() -> None:
         expected = asset["width"] * asset["height"] * 3
         if path.stat().st_size != expected:
             fail(f"asset {name} has {path.stat().st_size} bytes; expected {expected}")
+    rendering = json.loads((SHARED / "rendering.json").read_text(encoding="utf-8"))
+    if rendering.get("schema_version") != 1:
+        fail("rendering.json must use schema_version 1")
+    canvas = rendering.get("canvas", {})
+    if canvas != {"width": 466, "height": 466}:
+        fail("rendering.json canvas must be 466x466")
+    if not COLOR_RE.fullmatch(rendering.get("status_bar", {}).get("text_color", "")):
+        fail("rendering.json status text color is invalid")
+    visible_screens = rendering.get("status_bar", {}).get("visible_screens")
+    if not isinstance(visible_screens, list) or not visible_screens or not all(item in screen_ids for item in visible_screens):
+        fail("rendering.json status visible_screens must reference known screens")
+    usb = rendering.get("home", {}).get("usb_icon", {})
+    if not isinstance(usb.get("segments"), list) or not usb["segments"]:
+        fail("rendering.json USB icon must contain segments")
+    spotify = rendering.get("spotify", {})
+    for key in ("arc", "cover", "controls", "seek"):
+        if key not in spotify:
+            fail(f"rendering.json Spotify definition is missing {key}")
     print(f"Shared UI valid: {len(screens)} screens, {len(component_ids)} components, {len(manifest['assets'])} assets")
 
 

@@ -174,6 +174,23 @@ void drawWhatsappSymbol(lv_obj_t* parent, lv_color_t color) {
   LV_UNUSED(cutout);
 }
 
+void drawSharedUsbSymbol(lv_obj_t* parent, lv_color_t color) {
+  static lv_point_precise_t points[generated_ui::kUsbIconSegmentCount][2];
+  for (uint8_t index = 0; index < generated_ui::kUsbIconSegmentCount; ++index) {
+    points[index][0].x = generated_ui::kUsbIconSegments[index][0];
+    points[index][0].y = generated_ui::kUsbIconSegments[index][1];
+    points[index][1].x = generated_ui::kUsbIconSegments[index][2];
+    points[index][1].y = generated_ui::kUsbIconSegments[index][3];
+    lv_obj_t* line = lv_line_create(parent);
+    lv_line_set_points(line, points[index], 2);
+    lv_obj_set_size(line, generated_ui::kUsbIconWidth, generated_ui::kUsbIconHeight);
+    lv_obj_set_pos(line, 0, 0);
+    lv_obj_set_style_line_color(line, color, 0);
+    lv_obj_set_style_line_width(line, generated_ui::kUsbIconStroke, 0);
+    lv_obj_set_style_line_rounded(line, true, 0);
+  }
+}
+
 }  // namespace
 
 bool DisplayManager::begin() {
@@ -1220,34 +1237,34 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   lv_obj_t* root = cleanLvglScreen();
   // AMOLED-first player: pure black pixels and no decorative background.
   lv_obj_t* volumeArc = lv_arc_create(root);
-  lv_obj_set_pos(volumeArc, 42, 42);
-  lv_obj_set_size(volumeArc, 382, 382);
-  lv_arc_set_rotation(volumeArc, 135);
-  lv_arc_set_bg_angles(volumeArc, 0, 270);
+  lv_obj_set_pos(volumeArc, generated_ui::kSpotifyArcX, generated_ui::kSpotifyArcY);
+  lv_obj_set_size(volumeArc, generated_ui::kSpotifyArcSize, generated_ui::kSpotifyArcSize);
+  lv_arc_set_rotation(volumeArc, generated_ui::kSpotifyArcRotation);
+  lv_arc_set_bg_angles(volumeArc, generated_ui::kSpotifyArcBackgroundStart, generated_ui::kSpotifyArcBackgroundEnd);
   lv_arc_set_range(volumeArc, 0, 100);
   lv_arc_set_value(volumeArc, volume == nullptr ? 0 : volume->value);
   lv_obj_remove_flag(volumeArc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_arc_width(volumeArc, 11, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(volumeArc, lv_color_hex(0x20252A), LV_PART_MAIN);
+  lv_obj_set_style_arc_width(volumeArc, generated_ui::kSpotifyArcWidth, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(volumeArc, lvColor(generated_ui::kSpotifyArcBackground), LV_PART_MAIN);
   lv_obj_set_style_arc_rounded(volumeArc, true, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(volumeArc, 11, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(volumeArc, lv_color_hex(0x0A84FF), LV_PART_INDICATOR);
+  lv_obj_set_style_arc_width(volumeArc, generated_ui::kSpotifyArcWidth, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(volumeArc, lvColor(generated_ui::kSpotifyArcActive), LV_PART_INDICATOR);
   lv_obj_set_style_arc_rounded(volumeArc, true, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(volumeArc, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_bg_color(volumeArc, lv_color_white(), LV_PART_KNOB);
   lv_obj_set_style_pad_all(volumeArc, 3, LV_PART_KNOB);
 
   const char* actionSymbols[] = {LV_SYMBOL_LIST, LV_SYMBOL_SHUFFLE, LV_SYMBOL_OK};
-  const int16_t actionX[] = {132, 233, 334};
   for (uint8_t index = 0; index < 3; ++index) {
     lv_obj_t* action = createLabel(
         root, actionSymbols[index], &lv_font_montserrat_24, lv_color_white());
-    lv_obj_align(action, LV_ALIGN_TOP_LEFT, actionX[index] - 12, 94);
+    lv_obj_align(action, LV_ALIGN_TOP_LEFT, generated_ui::kSpotifyActionX[index] - 12, generated_ui::kSpotifyActionY[index]);
   }
 
   // Until the cover cache has downloaded a new track, this is the intentional
   // no-background fallback. The SDUI contract already carries album-art URL.
-  lv_obj_t* cover = createImage(root, sky::kSpotifyLargeIcon, 184, 137);
+  lv_obj_t* cover = createImage(root, sky::kSpotifyLargeIcon, generated_ui::kSpotifyCoverX, generated_ui::kSpotifyCoverY);
+  lv_obj_set_size(cover, generated_ui::kSpotifyCoverWidth, generated_ui::kSpotifyCoverHeight);
   lv_obj_set_style_image_recolor(cover, lv_color_white(), 0);
   lv_obj_set_style_image_recolor_opa(cover, LV_OPA_COVER, 0);
 
@@ -1274,9 +1291,9 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
   };
   const bool playing = toggle != nullptr && strcmp(toggle->icon, "pause") == 0;
   const MediaButton buttons[] = {
-      {83, 70, LV_SYMBOL_PREV},
-      {191, 84, playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY},
-      {313, 70, LV_SYMBOL_NEXT},
+      {generated_ui::kSpotifyControlX[0], generated_ui::kSpotifyControlSize[0], LV_SYMBOL_PREV},
+      {generated_ui::kSpotifyControlX[1], generated_ui::kSpotifyControlSize[1], playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY},
+      {generated_ui::kSpotifyControlX[2], generated_ui::kSpotifyControlSize[2], LV_SYMBOL_NEXT},
   };
   for (const MediaButton& item : buttons) {
     lv_obj_t* icon = createLabel(
@@ -1284,18 +1301,18 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
         item.symbol,
         item.size > 70 ? &lv_font_montserrat_32 : &lv_font_montserrat_24,
         lv_color_white());
-    lv_obj_set_pos(icon, item.x + item.size / 2 - 16, 326);
+    lv_obj_set_pos(icon, item.x + item.size / 2 - 16, generated_ui::kSpotifyControlY[&item - buttons]);
   }
 
   lv_obj_t* seekBar = lv_bar_create(root);
-  lv_obj_set_pos(seekBar, 83, 392);
-  lv_obj_set_size(seekBar, 300, 8);
+  lv_obj_set_pos(seekBar, generated_ui::kSpotifySeekX, generated_ui::kSpotifySeekY);
+  lv_obj_set_size(seekBar, generated_ui::kSpotifySeekWidth, generated_ui::kSpotifySeekHeight);
   lv_bar_set_range(seekBar, 0, progress == nullptr ? 100 : progress->maximum);
   lv_bar_set_value(seekBar, progress == nullptr ? 0 : progress->value, LV_ANIM_OFF);
-  lv_obj_set_style_radius(seekBar, 4, LV_PART_MAIN);
-  lv_obj_set_style_radius(seekBar, 4, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(seekBar, lv_color_hex(0x343438), LV_PART_MAIN);
-  lv_obj_set_style_bg_color(seekBar, lv_color_white(), LV_PART_INDICATOR);
+  lv_obj_set_style_radius(seekBar, generated_ui::kSpotifySeekRadius, LV_PART_MAIN);
+  lv_obj_set_style_radius(seekBar, generated_ui::kSpotifySeekRadius, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(seekBar, lvColor(generated_ui::kSpotifySeekBackground), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(seekBar, lvColor(generated_ui::kSpotifySeekActive), LV_PART_INDICATOR);
 }
 
 void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
@@ -1457,15 +1474,13 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
         lv_obj_t* icon = lv_image_create(button);
         lv_image_set_src(icon, imageSource);
         if (strcmp(component.id, "open-spotify") == 0) {
-          lv_image_set_scale(icon, 700);
+          lv_image_set_scale(icon, generated_ui::kHomeSpotifyAssetScale);
         }
         lv_obj_center(icon);
         continue;
       }
       if (strcmp(component.icon, "usb") == 0) {
-        lv_obj_t* icon = createLabel(
-            button, LV_SYMBOL_USB, &lv_font_montserrat_32, lvColor(component.color));
-        lv_obj_center(icon);
+        drawSharedUsbSymbol(button, lvColor(component.color));
         continue;
       }
       if (strcmp(component.icon, "whatsapp") == 0) {
@@ -1542,13 +1557,13 @@ void DisplayManager::drawIndicators(
   bluetoothConnected_ = bluetoothConnected;
   display->fillRect(0, 0, kScreenWidth, 31, kBlack);
   display->setTextSize(1);
-  drawBluetoothIcon(24, 15, bluetoothEnabled);
-  drawWifiIcon(58, 15, wifiConnected);
-  drawCloudIcon(420, 15, cloudConnected);
-  display->setTextColor(kGray);
-  display->setCursor(338, 11);
+  drawBluetoothIcon(generated_ui::kStatusBluetoothX, generated_ui::kStatusBluetoothY, bluetoothEnabled);
+  drawWifiIcon(generated_ui::kStatusWifiX, generated_ui::kStatusWifiY, wifiConnected);
+  drawCloudIcon(generated_ui::kStatusCloudX, generated_ui::kStatusCloudY, cloudConnected);
+  display->setTextColor(generated_ui::kStatusTextColor);
+  display->setCursor(generated_ui::kStatusBatteryX, generated_ui::kStatusBatteryY);
   display->printf("%u%%", batteryPercent);
-  display->setCursor(210, 11);
+  display->setCursor(generated_ui::kStatusTimeX, generated_ui::kStatusTimeY);
   display->print(timeText);
 }
 

@@ -19,10 +19,29 @@ document = json.loads(source.read_text(encoding="utf-8"))
 interaction = json.loads((root / "shared" / "interaction.json").read_text(encoding="utf-8"))
 persistence = json.loads((root / "shared" / "persistence.json").read_text(encoding="utf-8"))
 typography = json.loads((root / "shared" / "typography.json").read_text(encoding="utf-8"))
+rendering = json.loads((root / "shared" / "rendering.json").read_text(encoding="utf-8"))
 
 
 def q(value: object) -> str:
     return json.dumps(str(value))
+
+
+def rgb565(value: str) -> str:
+    red = int(value[1:3], 16)
+    green = int(value[3:5], 16)
+    blue = int(value[5:7], 16)
+    packed = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
+    return f"0x{packed:04X}"
+
+
+status = rendering["status_bar"]
+spotify_rendering = rendering["spotify"]
+arc = spotify_rendering["arc"]
+cover = spotify_rendering["cover"]
+seek = spotify_rendering["seek"]
+controls = spotify_rendering["controls"]
+actions = spotify_rendering["actions"]
+usb = rendering["home"]["usb_icon"]
 
 
 lines = [
@@ -49,6 +68,54 @@ lines = [
     f"constexpr uint8_t kFontSize2 = {typography['sizes']['2']['lvgl']};",
     f"constexpr uint8_t kFontSize3 = {typography['sizes']['3']['lvgl']};",
     f"constexpr uint8_t kFontSize4 = {typography['sizes']['4']['lvgl']};",
+    f"constexpr uint16_t kStatusTextColor = {rgb565(status['text_color'])};",
+    f"constexpr int16_t kStatusTimeX = {status['time']['x']};",
+    f"constexpr int16_t kStatusTimeY = {status['time']['y']};",
+    f"constexpr int16_t kStatusBatteryX = {status['battery']['x']};",
+    f"constexpr int16_t kStatusBatteryY = {status['battery']['y']};",
+    f"constexpr int16_t kStatusBluetoothX = {status['bluetooth']['x']};",
+    f"constexpr int16_t kStatusBluetoothY = {status['bluetooth']['y']};",
+    f"constexpr int16_t kStatusWifiX = {status['wifi']['x']};",
+    f"constexpr int16_t kStatusWifiY = {status['wifi']['y']};",
+    f"constexpr int16_t kStatusCloudX = {status['cloud']['x']};",
+    f"constexpr int16_t kStatusCloudY = {status['cloud']['y']};",
+    "inline bool statusBarVisible(const char* screenId) {",
+    "  return " + " || ".join(f'strcmp(screenId, {q(screen_id)}) == 0' for screen_id in status["visible_screens"]) + ";",
+    "}",
+    f"constexpr uint16_t kHomeSpotifyAssetScale = {rendering['home']['spotify_asset_scale']};",
+    f"constexpr int16_t kHomeSpotifyAssetWidth = {rendering['home']['spotify_asset_width']};",
+    f"constexpr int16_t kHomeSpotifyAssetHeight = {rendering['home']['spotify_asset_height']};",
+    f"constexpr int16_t kUsbIconWidth = {usb['width']};",
+    f"constexpr int16_t kUsbIconHeight = {usb['height']};",
+    f"constexpr int16_t kUsbIconStroke = {usb['stroke']};",
+    f"constexpr int16_t kUsbIconSegments[][4] = {{{', '.join('{' + ', '.join(str(item) for item in segment) + '}' for segment in usb['segments'])}}};",
+    f"constexpr uint8_t kUsbIconSegmentCount = {len(usb['segments'])};",
+    f"constexpr int16_t kSpotifyArcX = {arc['x']};",
+    f"constexpr int16_t kSpotifyArcY = {arc['y']};",
+    f"constexpr int16_t kSpotifyArcSize = {arc['size']};",
+    f"constexpr int16_t kSpotifyArcRotation = {arc['rotation']};",
+    f"constexpr int16_t kSpotifyArcBackgroundStart = {arc['background_start']};",
+    f"constexpr int16_t kSpotifyArcBackgroundEnd = {arc['background_end']};",
+    f"constexpr int16_t kSpotifyArcWidth = {arc['width']};",
+    f"constexpr uint16_t kSpotifyArcBackground = {rgb565(arc['background'])};",
+    f"constexpr uint16_t kSpotifyArcActive = {rgb565(arc['active'])};",
+    f"constexpr int16_t kSpotifyCoverX = {cover['x']};",
+    f"constexpr int16_t kSpotifyCoverY = {cover['y']};",
+    f"constexpr int16_t kSpotifyCoverWidth = {cover['width']};",
+    f"constexpr int16_t kSpotifyCoverHeight = {cover['height']};",
+    f"constexpr int16_t kSpotifySeekX = {seek['x']};",
+    f"constexpr int16_t kSpotifySeekY = {seek['y']};",
+    f"constexpr int16_t kSpotifySeekWidth = {seek['width']};",
+    f"constexpr int16_t kSpotifySeekHeight = {seek['height']};",
+    f"constexpr int16_t kSpotifySeekRadius = {seek['radius']};",
+    f"constexpr uint16_t kSpotifySeekBackground = {rgb565(seek['background'])};",
+    f"constexpr uint16_t kSpotifySeekActive = {rgb565(seek['active'])};",
+    f"constexpr int16_t kSpotifyActionX[] = {{{', '.join(str(item['x']) for item in actions)}}};",
+    f"constexpr int16_t kSpotifyActionY[] = {{{', '.join(str(item['y']) for item in actions)}}};",
+    f"constexpr int16_t kSpotifyControlX[] = {{{', '.join(str(item['x']) for item in controls)}}};",
+    f"constexpr int16_t kSpotifyControlSize[] = {{{', '.join(str(item['size']) for item in controls)}}};",
+    f"constexpr int16_t kSpotifyControlY[] = {{{', '.join(str(item['y']) for item in controls)}}};",
+    f"constexpr uint8_t kSpotifyControlCount = {len(controls)};",
     "inline SduiScreen& append(SduiDocument& document, const char* id, const char* background) {",
     "  SduiScreen& screen = document.screens[document.screenCount++];",
     "  memset(&screen, 0, sizeof(screen));",

@@ -1,8 +1,10 @@
 # Simulator parity workflow
 
-The browser simulator is a pre-firmware validation tool. Its definitions come
-from `shared/firmware-ui.json`; its interaction constants, persistence defaults,
-typography mapping, and asset manifest come from the other files in `shared/`.
+The browser simulator is a pre-firmware validation tool. Its screen definitions
+come from `shared/firmware-ui.json`; its rendering geometry and visibility rules
+come from `shared/rendering.json`; its interaction constants, persistence
+defaults, typography mapping, and asset manifest come from the other files in
+`shared/`.
 
 ## Change workflow
 

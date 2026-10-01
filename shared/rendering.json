@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "canvas": {"width": 466, "height": 466},
+  "status_bar": {
+    "height": 31,
+    "text_color": "#7B7D7B",
+    "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
+    "time": {"x": 210, "y": 11, "size": 1},
+    "battery": {"x": 338, "y": 11, "size": 1},
+    "bluetooth": {"x": 24, "y": 15},
+    "wifi": {"x": 58, "y": 15},
+    "cloud": {"x": 420, "y": 15}
+  },
+  "home": {
+    "spotify_asset_scale": 700,
+    "spotify_asset_width": 59,
+    "spotify_asset_height": 59,
+    "usb_icon": {
+      "width": 72,
+      "height": 72,
+      "stroke": 3,
+      "segments": [
+        [36, 52, 36, 20],
+        [36, 20, 27, 28],
+        [36, 20, 45, 28],
+        [36, 35, 22, 35],
+        [22, 35, 22, 28],
+        [36, 44, 50, 44],
+        [50, 44, 50, 37]
+      ]
+    }
+  },
+  "spotify": {
+    "arc": {"x": 42, "y": 42, "size": 382, "rotation": 135, "background_start": 0, "background_end": 270, "width": 11, "background": "#20252A", "active": "#0A84FF"},
+    "actions": [
+      {"x": 132, "y": 94, "symbol": "list"},
+      {"x": 233, "y": 94, "symbol": "shuffle"},
+      {"x": 334, "y": 94, "symbol": "ok"}
+    ],
+    "cover": {"x": 184, "y": 137, "width": 97, "height": 100},
+    "controls": [
+      {"x": 83, "size": 70, "symbol": "previous", "y": 326, "font_size": 24},
+      {"x": 191, "size": 84, "symbol": "toggle", "y": 326, "font_size": 32},
+      {"x": 313, "size": 70, "symbol": "next", "y": 326, "font_size": 24}
+    ],
+    "seek": {"x": 83, "y": 392, "width": 300, "height": 8, "radius": 4, "background": "#343438", "active": "#FFFFFF"}
+  }
+}

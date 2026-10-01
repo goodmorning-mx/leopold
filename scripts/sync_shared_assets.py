@@ -6,7 +6,7 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "shared" / "assets"
 DESTINATIONS = (ROOT / "device" / "assets", ROOT / "frontend" / "public" / "firmware-assets")
-CONTRACTS = ("firmware-ui.json", "interaction.json", "typography.json", "persistence.json", "asset-manifest.json")
+CONTRACTS = ("firmware-ui.json", "interaction.json", "typography.json", "persistence.json", "asset-manifest.json", "rendering.json")
 
 
 def sync() -> None:

@@ -1,7 +1,7 @@
 # Leopold browser simulator
 
 The simulator is a local test surface for the physical 466 × 466 Leopold UI.
-Its firmware reference is release tag `firmware-v0.8.1`, created from the
+Its firmware reference is release tag `firmware-v0.8.2`, created from the
 simulator parity commit on `fix/live-device-time-controls`, the source snapshot identified
 for the firmware release. The compiled
 `firmware.bin` is intentionally not expected in GitHub; PlatformIO output is
@@ -41,11 +41,18 @@ browser debug editor and used by PlatformIO's pre-build generator to produce
 must not be edited by hand. Runtime-only values such as brightness, clock,
 weather, and Cloud/USB state are injected by their respective adapters.
 
+`shared/rendering.json` is the renderer contract consumed by both adapters. It
+defines status-bar visibility and colors, canonical USB geometry, Spotify
+geometry, and shared asset scaling. PlatformIO generates corresponding C++
+constants; the Vite build imports the synchronized JSON copy. Changes to these
+values must be made in `shared/`, never directly in the simulator or firmware.
+
 The visible device surface is a direct browser port of the firmware display
 paths in `device/src/display_manager.cpp`, implemented in
 `frontend/src/simulator/FirmwareCanvas.tsx`. It uses the same screen IDs,
 466 × 466 coordinates, font-size mapping, special control-center and Spotify
-layouts, status bar positions, and binary assets generated from `shared/`.
+layouts, status-bar visibility and positions, USB geometry, and binary assets
+generated from `shared/`.
 The browser cannot execute the ESP32/LVGL binary, so the canvas is the
 renderer adapter. Geometry, assets, typography mapping, persistence defaults,
 and touch thresholds are committed under `shared/`; screen definitions must not
