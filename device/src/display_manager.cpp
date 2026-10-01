@@ -1262,7 +1262,7 @@ void DisplayManager::showWifiConnecting(
 }
 
 void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
-  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_);
+  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
   return;
   const SduiComponent* track = nullptr;
   const SduiComponent* artist = nullptr;
@@ -1361,7 +1361,7 @@ void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
 }
 
 void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
-  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_);
+  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
   return;
   const SduiComponent* account = nullptr;
   const SduiComponent* titles[3] = {};
@@ -1433,7 +1433,7 @@ void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
 }
 
 void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
-  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_);
+  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
   return;
   lv_obj_t* root = cleanLvglScreen(screen.background);
   const bool skyHome = strcmp(screen.screenId, "sky-home") == 0;
@@ -1604,6 +1604,16 @@ void DisplayManager::drawIndicators(
   cloudConnected_ = cloudConnected;
   bluetoothEnabled_ = bluetoothEnabled;
   bluetoothConnected_ = bluetoothConnected;
+  batteryPercent_ = batteryPercent;
+  strncpy(timeText_, timeText == nullptr ? "--:--" : timeText, sizeof(timeText_) - 1);
+  timeText_[sizeof(timeText_) - 1] = '\0';
+  sharedRenderState_.timeText = timeText_;
+  sharedRenderState_.batteryPercent = batteryPercent_;
+  sharedRenderState_.wifiConnected = wifiConnected_;
+  sharedRenderState_.cloudConnected = cloudConnected_;
+  sharedRenderState_.bluetoothEnabled = bluetoothEnabled_;
+  sharedRenderState_.bluetoothConnected = bluetoothConnected_;
+  sharedRenderState_.brightnessPercent = brightnessPercent_;
   display->fillRect(0, 0, kScreenWidth, 31, kBlack);
   display->setTextSize(1);
   drawBluetoothIcon(generated_ui::kStatusBluetoothX, generated_ui::kStatusBluetoothY, bluetoothEnabled);
@@ -1614,6 +1624,10 @@ void DisplayManager::drawIndicators(
   display->printf("%u%%", batteryPercent);
   display->setCursor(generated_ui::kStatusTimeX, generated_ui::kStatusTimeY);
   display->print(timeText);
+}
+
+const SharedRenderState& DisplayManager::sharedRenderState() const {
+  return sharedRenderState_;
 }
 
 void DisplayManager::drawWifiIcon(int16_t x, int16_t y, bool connected) {

@@ -4,6 +4,7 @@
 
 #include "app_state.h"
 #include "bluetooth_manager.h"
+#include "lvgl_renderer.h"
 #include "sdui.h"
 
 namespace leopold {
@@ -34,6 +35,7 @@ class DisplayManager {
   void toggleLanguage();
   bool darkBackground() const;
   bool spanishLanguage() const;
+  const SharedRenderState& sharedRenderState() const;
   void updateControlCenterBrightness();
   void showWifiDetails(
       bool connected,
@@ -123,6 +125,9 @@ class DisplayManager {
   bool cloudConnected_ = false;
   bool bluetoothEnabled_ = false;
   bool bluetoothConnected_ = false;
+  uint8_t batteryPercent_ = 0;
+  char timeText_[16] = "--:--";
+  SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0};
   char pressedButtonId_[kMaxComponentId + 1] = {};
 };
 
