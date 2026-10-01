@@ -123,6 +123,8 @@ uint32_t wifiSelectionStartedAt = 0;
 bool wifiScanRunning = false;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
+char usbCommand[48] = {};
+uint8_t usbCommandLength = 0;
 
 time_t utcEpoch(const struct tm& value);
 
@@ -1130,6 +1132,24 @@ void processInput(uint32_t now) {
   bootWasDown = bootDown;
 }
 
+void processUsbCommands() {
+  while (Serial.available() > 0) {
+    const char value = static_cast<char>(Serial.read());
+    if (value == '\n' || value == '\r') {
+      usbCommand[usbCommandLength] = '\0';
+      if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
+        if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      }
+      usbCommandLength = 0;
+      usbCommand[0] = '\0';
+    } else if (usbCommandLength + 1 < sizeof(usbCommand)) {
+      usbCommand[usbCommandLength++] = value;
+    } else {
+      usbCommandLength = 0;
+    }
+  }
+}
+
 void processEvents(uint32_t now) {
   if (!cloudConnected || eventPending) {
     return;
@@ -1418,6 +1438,7 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
+  processUsbCommands();
   processInput(now);
   if (fatalError) {
     delay(5);

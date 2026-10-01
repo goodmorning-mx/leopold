@@ -54,6 +54,7 @@ lv_display_t* lvglDisplay = nullptr;
 lv_obj_t* brightnessSlider = nullptr;
 lv_obj_t* brightnessValue = nullptr;
 uint8_t* lvglDrawBuffer = nullptr;
+EXT_RAM_BSS_ATTR uint16_t* lvglCaptureBuffer = nullptr;
 
 constexpr size_t kLvglBufferRows = 48;
 constexpr size_t kLvglBufferBytes =
@@ -75,6 +76,14 @@ void lvglFlush(
       reinterpret_cast<uint16_t*>(pixels),
       width,
       height);
+  if (lvglCaptureBuffer != nullptr) {
+    for (int32_t row = 0; row < height; ++row) {
+      memcpy(
+          lvglCaptureBuffer + (area->y1 + row) * kScreenWidth + area->x1,
+          reinterpret_cast<const uint16_t*>(pixels) + row * width,
+          static_cast<size_t>(width) * sizeof(uint16_t));
+    }
+  }
   lv_display_flush_ready(target);
 }
 
@@ -231,6 +240,17 @@ bool DisplayManager::begin() {
         kLvglBufferBytes,
         MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
   }
+  lvglCaptureBuffer = static_cast<uint16_t*>(heap_caps_malloc(
+      kScreenWidth * kScreenHeight * sizeof(uint16_t),
+      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if (lvglCaptureBuffer == nullptr) {
+    lvglCaptureBuffer = static_cast<uint16_t*>(heap_caps_malloc(
+        kScreenWidth * kScreenHeight * sizeof(uint16_t),
+        MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  }
+  if (lvglCaptureBuffer != nullptr) {
+    memset(lvglCaptureBuffer, 0, kScreenWidth * kScreenHeight * sizeof(uint16_t));
+  }
   if (lvglDrawBuffer == nullptr) {
     Serial.println("LVGL draw buffer allocation failed");
     return false;
@@ -255,6 +275,16 @@ void DisplayManager::loop() {
   if (lvglDisplay != nullptr) {
     lv_timer_handler();
   }
+}
+
+bool DisplayManager::writeLvglScreenshot(Stream& output) {
+  if (lvglCaptureBuffer == nullptr) return false;
+  constexpr uint32_t byteCount = kScreenWidth * kScreenHeight * sizeof(uint16_t);
+  output.printf("LEOPOLD_SCREENSHOT_BEGIN %u %u RGB565 %lu\n", kScreenWidth, kScreenHeight, static_cast<unsigned long>(byteCount));
+  output.write(reinterpret_cast<const uint8_t*>(lvglCaptureBuffer), byteCount);
+  output.printf("\nLEOPOLD_SCREENSHOT_END\n");
+  output.flush();
+  return true;
 }
 
 void DisplayManager::centered(

@@ -77,6 +77,7 @@ class DisplayManager {
       const char* timeText);
   void showLocalFace(uint32_t now, bool force = false);
   void cycleLocalExpression();
+  bool writeLvglScreenshot(Stream& output);
 
  private:
   void centered(const char* text, int16_t y, uint8_t size, uint16_t color);
