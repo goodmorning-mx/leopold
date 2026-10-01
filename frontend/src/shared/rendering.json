@@ -12,7 +12,7 @@
     "cloud": {"x": 330, "y": 233}
   },
   "home": {
-    "spotify_asset_scale": 700,
+    "spotify_asset_scale": 180,
     "spotify_asset_width": 59,
     "spotify_asset_height": 59,
     "usb_icon": {

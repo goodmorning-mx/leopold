@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <cstdio>
+#include <cmath>
 
 namespace leopold {
 namespace {
@@ -94,25 +95,32 @@ void drawStatus(lv_obj_t* root, const SharedRenderState& state) {
     lv_obj_set_style_line_rounded(line, true, 0);
   };
   const lv_color_t bluetoothColor = state.bluetoothEnabled ? green : gray;
-  static const lv_point_precise_t bluetooth[] = {{165, 224}, {165, 242}, {171, 236}, {159, 228}, {171, 224}, {159, 238}, {165, 242}};
-  glyphLine(bluetooth, 7, 2, bluetoothColor);
+  // Keep the Bluetooth mark as three independent strokes. A single connected
+  // zig-zag self-intersects and produces a visibly different glyph in LVGL.
+  static const lv_point_precise_t bluetoothStem[] = {{165, 224}, {165, 242}};
+  static const lv_point_precise_t bluetoothUpper[] = {{165, 224}, {171, 230}, {159, 237}};
+  static const lv_point_precise_t bluetoothLower[] = {{165, 242}, {171, 236}, {159, 229}};
+  glyphLine(bluetoothStem, 2, 2, bluetoothColor);
+  glyphLine(bluetoothUpper, 3, 2, bluetoothColor);
+  glyphLine(bluetoothLower, 3, 2, bluetoothColor);
   const lv_color_t wifiColor = state.wifiConnected ? green : gray;
-  for (int16_t radius = 10; radius >= 6; radius -= 4) {
-    lv_obj_t* arc = lv_arc_create(root);
-    lv_obj_set_pos(arc, 190 - radius, 223);
-    lv_obj_set_size(arc, radius * 2, radius * 2);
-    lv_arc_set_rotation(arc, 220);
-    lv_arc_set_bg_angles(arc, 220, 320);
-    lv_arc_set_value(arc, 0);
-    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_arc_width(arc, 2, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(arc, wifiColor, LV_PART_MAIN);
-    lv_obj_set_style_arc_opa(arc, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_arc_opa(arc, LV_OPA_TRANSP, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
+  // Draw sampled arches instead of LVGL arcs. This keeps the Wi-Fi geometry
+  // stable across LVGL versions and the browser WASM build.
+  const int16_t wifiRadii[] = {10, 6};
+  static lv_point_precise_t wifiPoints[2][13] = {};
+  for (uint8_t radiusIndex = 0; radiusIndex < 2; ++radiusIndex) {
+    const int16_t radius = wifiRadii[radiusIndex];
+    lv_point_precise_t* points = wifiPoints[radiusIndex];
+    for (int index = 0; index <= 12; ++index) {
+      const double degrees = 225.0 + (90.0 * index / 12.0);
+      const double radians = degrees * 3.14159265358979323846 / 180.0;
+      points[index].x = static_cast<int16_t>(std::lround(190.0 + std::cos(radians) * radius));
+      points[index].y = static_cast<int16_t>(std::lround(237.0 + std::sin(radians) * radius));
+    }
+    glyphLine(points, 13, 2, wifiColor);
   }
   lv_obj_t* wifiDot = lv_obj_create(root);
-  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, 188, 236);
+  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, 188, 235);
   lv_obj_set_style_radius(wifiDot, LV_RADIUS_CIRCLE, 0); lv_obj_set_style_bg_color(wifiDot, wifiColor, 0); lv_obj_set_style_bg_opa(wifiDot, LV_OPA_COVER, 0); lv_obj_set_style_border_width(wifiDot, 0, 0);
   const lv_color_t cloudColor = state.cloudConnected ? green : gray;
   lv_obj_t* cloud = makePanel(root, 318, 232, 24, 8, 4, cloudColor);
@@ -228,7 +236,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
         lv_obj_t* image = lv_image_create(button);
         lv_image_set_src(image, source);
         lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0);
-        if (strcmp(component.id, "open-spotify") == 0) lv_image_set_scale(image, 700);
+        if (strcmp(component.id, "open-spotify") == 0) lv_image_set_scale(image, 180);
         lv_obj_center(image);
       } else if (strcmp(component.icon, "usb") == 0) {
         drawUsb(button, color565(component.color));
