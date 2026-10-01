@@ -3,9 +3,20 @@ import { SduiButton, SduiDocument, SduiSlider, validateSdui } from './contract';
 import FirmwareCanvas, { FirmwareImages } from './FirmwareCanvas';
 import { classifyGesture, containsPoint, sliderValue } from './interaction';
 import { sampleDocument } from './sample';
+import interaction from '../../../shared/interaction.json';
+import persistence from '../../../shared/persistence.json';
+import assetManifest from '../../../shared/asset-manifest.json';
 
 type EventLog = { at: string; kind: string; detail: string; payload?: string };
 const firmwareReference = 'firmware-v0.8.1';
+
+function stored<T extends number | boolean>(key: string, fallback: T): T {
+  const value = window.localStorage.getItem(`display:${key}`);
+  if (value === null) return fallback;
+  if (typeof fallback === 'boolean') return (value === 'true') as T;
+  const numeric = Number(value);
+  return (Number.isFinite(numeric) ? numeric : fallback) as T;
+}
 
 async function decodeFirmwareAsset(path: string, width: number, height: number): Promise<string> {
   const bytes = new Uint8Array(await (await fetch(path)).arrayBuffer());
@@ -28,14 +39,14 @@ async function decodeFirmwareAsset(path: string, width: number, height: number):
 export default function Simulator() {
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
   const [screenIndex, setScreenIndex] = useState(0);
-  const [clock24, setClock24] = useState(false);
-  const [weatherFahrenheit, setWeatherFahrenheit] = useState(false);
-  const [brightness, setBrightness] = useState(72);
+  const [clock24, setClock24] = useState(() => stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
+  const [weatherFahrenheit, setWeatherFahrenheit] = useState(() => stored('weather_f', Boolean(persistence.settings.weather_fahrenheit.default)));
+  const [brightness, setBrightness] = useState(() => stored('brightness', Number(persistence.settings.brightness.default)));
   const [playing, setPlaying] = useState(false);
   const [localPanel, setLocalPanel] = useState('none');
   const [pressed, setPressed] = useState<string | null>(null);
-  const [darkBackground, setDarkBackground] = useState(false);
-  const [spanishLanguage, setSpanishLanguage] = useState(false);
+  const [darkBackground, setDarkBackground] = useState(() => stored('dark_bg', Boolean(persistence.settings.dark_background.default)));
+  const [spanishLanguage, setSpanishLanguage] = useState(() => stored('spanish', Boolean(persistence.settings.spanish_language.default)));
   const [wifiConnected, setWifiConnected] = useState(true);
   const [cloudConnected, setCloudConnected] = useState(true);
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
@@ -51,17 +62,15 @@ export default function Simulator() {
   const lastSliderValue = useRef<number | null>(null);
   const screen = document.screens[screenIndex] ?? document.screens[0];
   const screenId = screen?.id ?? '';
+  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:brightness`, String(brightness)); }, [brightness]);
+  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:clock_24`, String(clock24)); }, [clock24]);
+  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:weather_f`, String(weatherFahrenheit)); }, [weatherFahrenheit]);
+  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:dark_bg`, String(darkBackground)); }, [darkBackground]);
+  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:spanish`, String(spanishLanguage)); }, [spanishLanguage]);
   useEffect(() => {
     let active = true;
     void Promise.all([
-      decodeFirmwareAsset('/firmware-assets/sky_home.bin', 466, 466).then((url) => ['home', url] as const),
-      decodeFirmwareAsset('/firmware-assets/sky_flower.bin', 466, 466).then((url) => ['flower', url] as const),
-      decodeFirmwareAsset('/firmware-assets/icon_clock.bin', 80, 80).then((url) => ['open-clock', url] as const),
-      decodeFirmwareAsset('/firmware-assets/icon_bolt.bin', 80, 80).then((url) => ['open-voltage', url] as const),
-      decodeFirmwareAsset('/firmware-assets/icon_weather.bin', 75, 75).then((url) => ['open-weather', url] as const),
-      decodeFirmwareAsset('/firmware-assets/icon_nav.bin', 80, 80).then((url) => ['open-navigation', url] as const),
-      decodeFirmwareAsset('/firmware-assets/icon_spotify.bin', 84, 84).then((url) => ['open-spotify', url] as const),
-      decodeFirmwareAsset('/firmware-assets/icon_spotify_large.bin', 97, 100).then((url) => ['spotify-large', url] as const),
+      ...Object.entries(assetManifest.assets).map(async ([key, asset]) => [key, await decodeFirmwareAsset(`/firmware-assets/${asset.file}`, asset.width, asset.height)] as const),
     ]).then((entries) => { if (active) setImages(Object.fromEntries(entries)); }).catch(() => addEvent('asset', 'Firmware asset loading failed; using text fallback.'));
     return () => { active = false; };
   }, []);
@@ -105,7 +114,8 @@ export default function Simulator() {
 
   function updateSlider(point: { x: number; y: number }) {
     if (localPanel !== 'none') return;
-    const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - 16 && point.x <= item.x + item.width + 16 && point.y >= item.y - 16 && point.y <= item.y + item.height + 16);
+    const padding = interaction.touch.slider_touch_padding;
+    const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
     if (!slider) return;
     const value = sliderValue(slider, point);
     if (lastSliderValue.current === value) return;
@@ -136,7 +146,7 @@ export default function Simulator() {
     addEvent('gesture', `${gesture} (${point.x}, ${point.y})`);
     if (gesture === 'swipe-left') { setLocalPanel('none'); setScreenIndex((index) => (index + 1) % document.screens.length); }
     else if (gesture === 'swipe-right') { setLocalPanel('none'); setScreenIndex((index) => (index + document.screens.length - 1) % document.screens.length); }
-    else if (gesture === 'swipe-up') { const home = document.screens.findIndex((item) => item.id === 'sky-home'); setLocalPanel('none'); setScreenIndex(home >= 0 ? home : 0); }
+    else if (gesture === 'swipe-up') { const home = document.screens.findIndex((item) => item.id === interaction.behaviour.swipe_up_screen); setLocalPanel('none'); setScreenIndex(home >= 0 ? home : 0); }
     else if (gesture === 'long-press' && screenId === 'sky-clock') { setClock24((value) => !value); addEvent('state', `Clock format: ${clock24 ? '12-hour' : '24-hour'}`); }
     else if (gesture === 'tap' && localPanel !== 'none') {
       if (point.x <= 116 && point.y <= 108) setLocalPanel(localPanel === 'wifi-networks' || localPanel === 'bluetooth-devices' ? (localPanel === 'wifi-networks' ? 'wifi' : 'bluetooth') : 'none');
@@ -145,7 +155,8 @@ export default function Simulator() {
       if (screenId === 'device-control-center' && point.x >= 72 && point.x <= 170 && point.y >= 120 && point.y <= 218) { setLocalPanel('wifi'); return; }
       if (screenId === 'device-control-center' && point.x >= 180 && point.x <= 278 && point.y >= 120 && point.y <= 218) { setLocalPanel('bluetooth'); return; }
       if (screenId === 'device-control-center' && point.x >= 124 && point.x <= 222 && point.y >= 224 && point.y <= 322) { setLocalPanel('cloud'); return; }
-      const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - 16 && point.x <= item.x + item.width + 16 && point.y >= item.y - 16 && point.y <= item.y + item.height + 16);
+      const padding = interaction.touch.slider_touch_padding;
+      const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
       if (slider) { const value = sliderValue(slider, point); updateSlider(point); addEvent('slider', `${slider.id}: ${value}%`, { revision: document.revision, component_id: slider.id, type: 'tap', value }); }
       if (slider?.id === 'display-brightness') setBrightness(sliderValue(slider, point));
       const button = screen.components.find((item): item is SduiButton => item.type === 'button' && point.x >= item.x && point.x < item.x + item.width && point.y >= item.y && point.y < item.y + item.height);

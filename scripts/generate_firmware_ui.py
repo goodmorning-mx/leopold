@@ -4,19 +4,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sync_shared_assets import sync
 
 from SCons.Script import Import
 
 Import("env")
 root = Path(env.subst("$PROJECT_DIR")).resolve().parent
+import sys
+sys.path.insert(0, str(root / "scripts"))
+from sync_shared_assets import sync
 sync()
 source = root / "shared" / "firmware-ui.json"
 target = root / "device" / "include" / "generated_firmware_ui.h"
 document = json.loads(source.read_text(encoding="utf-8"))
+interaction = json.loads((root / "shared" / "interaction.json").read_text(encoding="utf-8"))
+persistence = json.loads((root / "shared" / "persistence.json").read_text(encoding="utf-8"))
+typography = json.loads((root / "shared" / "typography.json").read_text(encoding="utf-8"))
 
 
 def q(value: object) -> str:
@@ -30,6 +32,23 @@ lines = [
     "",
     "namespace leopold {",
     "namespace generated_ui {",
+    f"constexpr int16_t kSwipeUpDistance = {interaction['touch']['swipe_up_distance']};",
+    f"constexpr int16_t kSwipeHorizontalDistance = {interaction['touch']['swipe_horizontal_distance']};",
+    f"constexpr int16_t kSwipeDirectionRatio = {int(interaction['touch']['swipe_direction_ratio'] * 10)};",
+    f"constexpr uint32_t kSwipeUpMaxDurationMs = {interaction['touch']['swipe_up_max_duration_ms']};",
+    f"constexpr uint32_t kSwipeHorizontalMaxDurationMs = {interaction['touch']['swipe_horizontal_max_duration_ms']};",
+    f"constexpr uint32_t kLongPressDurationMs = {interaction['touch']['long_press_duration_ms']};",
+    f"constexpr uint32_t kTapMaxDurationMs = {interaction['touch']['tap_max_duration_ms']};",
+    f"constexpr int16_t kTapMaxMovement = {interaction['touch']['tap_max_movement']};",
+    f"constexpr int16_t kLongPressMaxMovement = {interaction['touch']['long_press_max_movement']};",
+    f"constexpr uint32_t kDragIntervalMs = {interaction['touch']['drag_interval_ms']};",
+    f"constexpr uint8_t kBrightnessMinimum = {interaction['behaviour']['brightness_minimum']};",
+    f"constexpr uint8_t kBrightnessMaximum = {interaction['behaviour']['brightness_maximum']};",
+    f"constexpr uint8_t kDefaultBrightness = {persistence['settings']['brightness']['default']};",
+    f"constexpr uint8_t kFontSize1 = {typography['sizes']['1']['lvgl']};",
+    f"constexpr uint8_t kFontSize2 = {typography['sizes']['2']['lvgl']};",
+    f"constexpr uint8_t kFontSize3 = {typography['sizes']['3']['lvgl']};",
+    f"constexpr uint8_t kFontSize4 = {typography['sizes']['4']['lvgl']};",
     "inline SduiScreen& append(SduiDocument& document, const char* id, const char* background) {",
     "  SduiScreen& screen = document.screens[document.screenCount++];",
     "  memset(&screen, 0, sizeof(screen));",

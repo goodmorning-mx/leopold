@@ -25,6 +25,17 @@ export type SduiComponent = SduiText | SduiIndicator | SduiButton | SduiProgress
 export type SduiScreen = { id: string; background: string; components: SduiComponent[] };
 export type SduiDocument = { schema_version: 1; revision: number; poll_after_ms: number; screens: SduiScreen[] };
 
+export type SharedInteraction = {
+  canvas: { width: number; height: number };
+  touch: Record<string, number>;
+  behaviour: { swipe_up_screen: string; clock_long_press_action: string; brightness_minimum: number; brightness_maximum: number };
+};
+
+export type SharedPersistence = {
+  namespace: string;
+  settings: Record<string, { key: string; type: string; default: number | boolean; minimum?: number; maximum?: number }>;
+};
+
 const types = new Set(['text', 'indicator', 'button', 'progress', 'slider', 'icon']);
 const color = (value: unknown) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const id = (value: unknown) => typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value);

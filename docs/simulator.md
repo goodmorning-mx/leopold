@@ -45,10 +45,11 @@ The visible device surface is a direct browser port of the firmware display
 paths in `device/src/display_manager.cpp`, implemented in
 `frontend/src/simulator/FirmwareCanvas.tsx`. It uses the same screen IDs,
 466 × 466 coordinates, font-size mapping, special control-center and Spotify
-layouts, status bar positions, and binary assets copied from `device/assets/`.
+layouts, status bar positions, and binary assets generated from `shared/`.
 The browser cannot execute the ESP32/LVGL binary, so the canvas is the
-maintained rendering mapping; changes to C++ display geometry must be reflected
-there and validated against the firmware source.
+renderer adapter. Geometry, assets, typography mapping, persistence defaults,
+and touch thresholds are committed under `shared/`; screen definitions must not
+be duplicated in either target.
 
 ## SDUI and asset mapping
 

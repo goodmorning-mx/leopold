@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { SduiComponent, SduiScreen, SduiText } from './contract';
+import typography from '../../../shared/typography.json';
 
 export type FirmwareImages = Record<string, string>;
 
@@ -23,7 +24,9 @@ type Props = {
 
 const W = 466;
 const H = 466;
-const fonts: Record<number, number> = { 1: 14, 2: 20, 3: 28, 4: 36 };
+const fonts: Record<number, number> = Object.fromEntries(
+  Object.entries(typography.sizes).map(([key, value]) => [Number(key), value.browser]),
+);
 const color = (value: string | undefined, fallback = '#ffffff') => value || fallback;
 
 function rounded(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string, line = 0) {

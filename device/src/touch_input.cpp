@@ -3,6 +3,7 @@
 #include <Wire.h>
 
 #include "board_config.h"
+#include "generated_firmware_ui.h"
 
 namespace leopold {
 namespace {
@@ -59,7 +60,7 @@ bool TouchInput::pollGesture(
     }
     touchLast_ = current;
     wasDown_ = true;
-    if (now - lastDragAt_ >= 16) {
+    if (now - lastDragAt_ >= generated_ui::kDragIntervalMs) {
       gesture = TouchGesture::kDrag;
       point = current;
       lastDragAt_ = now;
@@ -88,21 +89,23 @@ bool TouchInput::pollGesture(
   // A deliberate page swipe must travel far, finish quickly, and stay on a
   // clearly horizontal axis. This prevents normal slider/menu manipulation
   // from changing screens when a finger drifts before release.
-  if (verticalDistance >= 104 &&
+  if (verticalDistance >= generated_ui::kSwipeUpDistance &&
       deltaY < 0 &&
-      verticalDistance * 10 >= horizontalDistance * 17 &&
-      gestureDuration <= 600) {
+      verticalDistance * 10 >= horizontalDistance * generated_ui::kSwipeDirectionRatio &&
+      gestureDuration <= generated_ui::kSwipeUpMaxDurationMs) {
     gesture = TouchGesture::kSwipeUp;
-  } else if (horizontalDistance >= 96 &&
-      horizontalDistance * 10 >= verticalDistance * 17 &&
-      gestureDuration <= 550) {
+  } else if (horizontalDistance >= generated_ui::kSwipeHorizontalDistance &&
+      horizontalDistance * 10 >= verticalDistance * generated_ui::kSwipeDirectionRatio &&
+      gestureDuration <= generated_ui::kSwipeHorizontalMaxDurationMs) {
     gesture =
         deltaX < 0 ? TouchGesture::kSwipeLeft : TouchGesture::kSwipeRight;
-  } else if (gestureDuration >= 700 &&
-             horizontalDistance < 40 && verticalDistance < 40) {
+  } else if (gestureDuration >= generated_ui::kLongPressDurationMs &&
+             horizontalDistance < generated_ui::kLongPressMaxMovement &&
+             verticalDistance < generated_ui::kLongPressMaxMovement) {
     gesture = TouchGesture::kLongPress;
-  } else if (gestureDuration <= 650 &&
-             horizontalDistance < 24 && verticalDistance < 24) {
+  } else if (gestureDuration <= generated_ui::kTapMaxDurationMs &&
+             horizontalDistance < generated_ui::kTapMaxMovement &&
+             verticalDistance < generated_ui::kTapMaxMovement) {
     gesture = TouchGesture::kTap;
   } else {
     // Report a neutral release so a widget that captured the pointer can end

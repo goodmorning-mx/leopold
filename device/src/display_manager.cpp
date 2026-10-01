@@ -9,6 +9,7 @@
 
 #include "board_config.h"
 #include "sky_assets.h"
+#include "generated_firmware_ui.h"
 
 namespace leopold {
 namespace {
@@ -182,8 +183,10 @@ bool DisplayManager::begin() {
     return false;
   }
   displayPreferences.begin("display", false);
-  brightnessPercent_ =
-      constrain(displayPreferences.getUChar("brightness", 70), 5, 100);
+  brightnessPercent_ = constrain(
+      displayPreferences.getUChar("brightness", generated_ui::kDefaultBrightness),
+      generated_ui::kBrightnessMinimum,
+      generated_ui::kBrightnessMaximum);
   darkBackground_ = displayPreferences.getBool("dark_bg", false);
   spanishLanguage_ = displayPreferences.getBool("spanish", false);
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
@@ -520,7 +523,8 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
 }
 
 void DisplayManager::setBrightnessPercent(uint8_t percent) {
-  brightnessPercent_ = constrain(percent, 5, 100);
+  brightnessPercent_ = constrain(
+      percent, generated_ui::kBrightnessMinimum, generated_ui::kBrightnessMaximum);
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   displayPreferences.putUChar("brightness", brightnessPercent_);
 }
