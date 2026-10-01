@@ -49,12 +49,19 @@ function centered(ctx: CanvasRenderingContext2D, value: string, x: number, y: nu
   text(ctx, value, x, y, size, fill, 'center', weight);
 }
 
+const imageCache = new Map<string, HTMLImageElement>();
+
 function drawAsset(ctx: CanvasRenderingContext2D, images: FirmwareImages, key: string, x: number, y: number, w?: number, h?: number) {
   const source = images[key];
   if (!source) return;
-  const image = new Image();
-  image.onload = () => ctx.drawImage(image, x, y, w || image.width, h || image.height);
-  image.src = source;
+  let image = imageCache.get(source);
+  if (!image) {
+    image = new Image();
+    image.src = source;
+    imageCache.set(source, image);
+  }
+  if (image.complete && image.naturalWidth > 0) ctx.drawImage(image, x, y, w || image.width, h || image.height);
+  else image.onload = () => ctx.drawImage(image, x, y, w || image.width, h || image.height);
 }
 
 function drawWhiteAsset(ctx: CanvasRenderingContext2D, images: FirmwareImages, key: string, x: number, y: number, w: number, h: number) {
@@ -116,6 +123,7 @@ function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: Fir
     if (images[asset]) drawAsset(ctx, images, asset, component.x + (component.width - assetWidth) / 2, component.y + (component.height - assetHeight) / 2, assetWidth, assetHeight);
     else if (component.icon === 'whatsapp') drawWhatsapp(ctx, component.x, component.y);
     else if (component.icon === 'usb') centered(ctx, '↯', component.x + component.width / 2, component.y + 18, 34, color(component.color));
+    else if (component.label) centered(ctx, component.label, component.x + component.width / 2, component.y + component.height / 2 - 12, 24, color(component.color));
   });
 }
 
@@ -196,12 +204,13 @@ function drawSpotify(ctx: CanvasRenderingContext2D, images: FirmwareImages, scre
   ctx.beginPath(); ctx.arc(233, 233, 191, Math.PI * .75, Math.PI * 2.25); ctx.strokeStyle = '#20252A'; ctx.lineWidth = 11; ctx.lineCap = 'round'; ctx.stroke();
   ctx.beginPath(); ctx.arc(233, 233, 191, Math.PI * .75, Math.PI * (.75 + 1.5 * volume / 100)); ctx.strokeStyle = '#0A84FF'; ctx.stroke();
   const knobAngle = Math.PI * (.75 + 1.5 * volume / 100); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(233 + 191 * Math.cos(knobAngle), 233 + 191 * Math.sin(knobAngle), 7, 0, Math.PI * 2); ctx.fill();
+  // These controls follow the LVGL Spotify renderer's fixed positions.
   centered(ctx, '☷', 132, 94, 24); centered(ctx, '⌘', 233, 94, 24); centered(ctx, '✓', 334, 94, 24);
   drawWhiteAsset(ctx, images, 'spotify-large', 184, 137, 97, 100);
   const track = (screen.components.find((c): c is SduiText => c.id === 'track' && c.type === 'text')?.text) || 'Sin reproducción';
   const artist = (screen.components.find((c): c is SduiText => c.id === 'artist' && c.type === 'text')?.text) || 'Abre Spotify';
   centered(ctx, track, 233, 252, 22); centered(ctx, artist, 233, 286, 14, '#D1D1D6');
-  centered(ctx, '◀', 118, 342, 24); centered(ctx, playing ? 'Ⅱ' : '▶', 233, 340, 32); centered(ctx, '▶', 348, 342, 24);
+  centered(ctx, '◀', 118, 326, 24); centered(ctx, playing ? 'Ⅱ' : '▶', 233, 326, 32); centered(ctx, '▶', 348, 326, 24);
   const progressComponent = screen.components.find((c) => c.id === 'spotify-seek' && (c.type === 'slider' || c.type === 'progress'));
   const progress = progressComponent && (progressComponent.type === 'slider' || progressComponent.type === 'progress') ? progressComponent.value : 0;
   rounded(ctx, 83, 392, 300, 8, 4, '#343438'); rounded(ctx, 83, 392, 300 * progress / 100, 8, 4, '#fff');
@@ -224,16 +233,21 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
-    if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
-    else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
-    else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
-    else if (screen.id === 'sky-home') drawHome(ctx, screen, images, darkBackground, pressed);
-    else if (screen.id === 'device-control-center') drawControlCenter(ctx, brightness, wifiConnected, cloudConnected, bluetoothEnabled, pressed, spanishLanguage);
-    else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
-    else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
-    else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);
-    drawStatus(ctx, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+    const render = () => {
+      ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
+      if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
+      else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
+      else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
+      else if (screen.id === 'sky-home') drawHome(ctx, screen, images, darkBackground, pressed);
+      else if (screen.id === 'device-control-center') drawControlCenter(ctx, brightness, wifiConnected, cloudConnected, bluetoothEnabled, pressed, spanishLanguage);
+      else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
+      else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
+      else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);
+      drawStatus(ctx, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+    };
+    render();
+    const redrawAfterAssets = window.setTimeout(render, 120);
+    return () => window.clearTimeout(redrawAfterAssets);
   }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }
