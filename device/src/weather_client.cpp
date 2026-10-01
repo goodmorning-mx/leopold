@@ -62,7 +62,10 @@ bool setClockFromDate(const String& header) {
 bool WeatherClient::begin() {
   if (task_ != nullptr) return true;
   return xTaskCreatePinnedToCore(
-             taskEntry, "leopold-weather", 2048, this, 1, &task_, 0) ==
+             // HTTPS/DNS/TLS client calls use substantially more stack than
+             // the polling loop itself. Keep this task isolated from the
+             // display task's stack canary while preserving the same priority.
+             taskEntry, "leopold-weather", 8192, this, 1, &task_, 0) ==
          pdPASS;
 }
 
