@@ -4,6 +4,9 @@
 #include <WiFi.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <mbedtls/sha256.h>
+#include <cstdio>
 
 #include "app_state.h"
 #include "board_config.h"
@@ -17,6 +20,7 @@
 #include "weather_client.h"
 #include "generated_firmware_ui.h"
 #include "wifi_portal.h"
+#include "sky_assets.h"
 
 namespace {
 
@@ -81,6 +85,10 @@ bool onboardingStatusPending = false;
 bool uiPending = false;
 bool heartbeatPending = false;
 bool eventPending = false;
+bool assetPending = false;
+bool retryConnectWithoutSetupToken = false;
+bool weatherRequested = false;
+bool servicesStarted = false;
 bool bootWasDown = false;
 bool bootLongPressHandled = false;
 bool wifiWasConnected = false;
@@ -98,6 +106,7 @@ bool lastBluetoothConnectedIndicator = false;
 uint8_t welcomeStep = 0;
 uint8_t welcomeStepsShown = 0;
 uint8_t activeEventIndex = 0;
+uint8_t nextAssetIndex = 0;
 uint8_t cloudFailures = 0;
 uint32_t bootPressedAt = 0;
 uint32_t nextCloudAttemptAt = 0;
@@ -123,8 +132,88 @@ uint32_t wifiSelectionStartedAt = 0;
 bool wifiScanRunning = false;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
-char usbCommand[48] = {};
+char usbCommand[160] = {};
 uint8_t usbCommandLength = 0;
+
+struct UsbAssetSpec {
+  const char* file;
+  size_t bytes;
+};
+
+constexpr UsbAssetSpec kUsbAssetSpecs[] = {
+    {"sky_home.bin", 466u * 466u * 3u},
+    {"sky_flower.bin", 466u * 466u * 3u},
+    {"sky_chevron.bin", 466u * 466u * 3u},
+    {"icon_clock.bin", 80u * 80u * 3u},
+    {"icon_weather.bin", 75u * 75u * 3u},
+    {"icon_nav.bin", 80u * 80u * 3u},
+    {"icon_whatsapp.bin", 72u * 72u * 3u},
+    {"icon_spotify.bin", 84u * 84u * 3u},
+    {"icon_spotify_large.bin", 97u * 100u * 3u},
+};
+
+const UsbAssetSpec* findUsbAsset(const char* file) {
+  for (const UsbAssetSpec& spec : kUsbAssetSpecs) {
+    if (strcmp(spec.file, file) == 0) return &spec;
+  }
+  return nullptr;
+}
+
+bool receiveUsbAsset(const char* file, size_t byteCount, const char* expectedHash) {
+  const UsbAssetSpec* spec = findUsbAsset(file);
+  if (spec == nullptr || spec->bytes != byteCount || expectedHash == nullptr || strlen(expectedHash) != 64) {
+    Serial.println("LEOPOLD_ASSET_ERROR invalid_manifest");
+    return false;
+  }
+  mkdir("/sd/assets", 0775);
+  char temporaryPath[96] = {};
+  char finalPath[96] = {};
+  snprintf(temporaryPath, sizeof(temporaryPath), "/sd/assets/.%s.tmp", file);
+  snprintf(finalPath, sizeof(finalPath), "/sd/assets/%s", file);
+  FILE* output = fopen(temporaryPath, "wb");
+  if (output == nullptr) {
+    Serial.println("LEOPOLD_ASSET_ERROR open_failed");
+    return false;
+  }
+  mbedtls_sha256_context hash;
+  mbedtls_sha256_init(&hash);
+  mbedtls_sha256_starts(&hash, 0);
+  uint8_t buffer[4096];
+  size_t received = 0;
+  Serial.setTimeout(2000);
+  while (received < byteCount) {
+    const size_t requested = min(sizeof(buffer), byteCount - received);
+    const size_t count = Serial.readBytes(buffer, requested);
+    if (count == 0 || fwrite(buffer, 1, count, output) != count) {
+      fclose(output);
+      remove(temporaryPath);
+      mbedtls_sha256_free(&hash);
+      Serial.println("LEOPOLD_ASSET_ERROR transfer_failed");
+      return false;
+    }
+    mbedtls_sha256_update(&hash, buffer, count);
+    received += count;
+  }
+  fclose(output);
+  uint8_t digest[32] = {};
+  mbedtls_sha256_finish(&hash, digest);
+  mbedtls_sha256_free(&hash);
+  char actualHash[65] = {};
+  for (uint8_t index = 0; index < sizeof(digest); ++index) snprintf(actualHash + index * 2, 3, "%02x", digest[index]);
+  if (strcmp(actualHash, expectedHash) != 0) {
+    remove(temporaryPath);
+    Serial.println("LEOPOLD_ASSET_ERROR checksum_failed");
+    return false;
+  }
+  remove(finalPath);
+  if (rename(temporaryPath, finalPath) != 0) {
+    remove(temporaryPath);
+    Serial.println("LEOPOLD_ASSET_ERROR commit_failed");
+    return false;
+  }
+  Serial.printf("LEOPOLD_ASSET_OK %s\n", file);
+  return true;
+}
 
 time_t utcEpoch(const struct tm& value);
 
@@ -297,12 +386,24 @@ void scheduleCloudRetry(uint32_t now) {
   onboardingStatusPending = false;
   uiPending = false;
   heartbeatPending = false;
+  assetPending = false;
+  nextAssetIndex = 0;
   ++cloudFailures;
   nextCloudAttemptAt = now + retryDelayMs(cloudFailures);
   if (onboardingPending) {
     setState(AppState::kOffline, "TERMINA EN", "TU TELEFONO");
   } else {
     setState(AppState::kOffline);
+  }
+}
+
+void requestNextCloudAsset() {
+  if (!cloudConnected || assetPending || leopold::sky::allAssetsLoaded()) return;
+  if (nextAssetIndex >= leopold::sky::assetCount()) return;
+  const char* file = leopold::sky::assetFile(nextAssetIndex);
+  assetPending = cloud.requestAsset(file);
+  if (assetPending) {
+    Serial.printf("Cloud asset request: %s\n", file);
   }
 }
 
@@ -416,11 +517,14 @@ void updateAdditionalOptionsLabels() {
             screen.spanishLanguage() ? "OPCIONES" : "ADDITIONAL OPTIONS",
             sizeof(component.text));
       } else if (strcmp(component.id, "background-toggle") == 0) {
+        const char* backgroundLabel = screen.backgroundMode() == 0
+            ? (screen.spanishLanguage() ? "FONDO OSCURO" : "BACKGROUND: DARK")
+            : screen.backgroundMode() == 2
+                ? (screen.spanishLanguage() ? "FONDO CHEVRON" : "BACKGROUND: CHEVRON")
+                : (screen.spanishLanguage() ? "FONDO ORIGINAL" : "BACKGROUND: ORIGINAL");
         strlcpy(
             component.text,
-            screen.spanishLanguage()
-                ? (screen.darkBackground() ? "FONDO OSCURO" : "FONDO COLOR")
-                : (screen.darkBackground() ? "DARK BACKGROUND" : "COLOR BACKGROUND"),
+            backgroundLabel,
             sizeof(component.text));
       } else if (strcmp(component.id, "language-toggle") == 0) {
         strlcpy(
@@ -578,15 +682,16 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
         appState = AppState::kError;
         Serial.println("Leopold state: ERROR");
         nextCloudAttemptAt = now + retryDelayMs(++cloudFailures);
+      } else if (response.httpCode == 409 && !retryConnectWithoutSetupToken) {
+        retryConnectWithoutSetupToken = true;
+        nextCloudAttemptAt = now + 250;
+        Serial.println("Cloud onboarding token conflict; retrying without stale token");
       } else if (successful && parseConnectResponse(response)) {
         cloudConnected = true;
+        retryConnectWithoutSetupToken = false;
         cloudFailures = 0;
-        if (weather.begin()) {
-          weather.requestRefresh(currentUi);
-        }
-        if (!bluetooth.enabled()) {
-          bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
-        }
+        weatherRequested = false;
+        servicesStarted = false;
         setState(AppState::kOnline);
         nextHeartbeatAt = now + heartbeatIntervalMs;
         if (onboardingPending && onboardingUrl[0] != '\0') {
@@ -641,6 +746,23 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
         acceptUi(response, now);
       } else {
         scheduleCloudRetry(now);
+      }
+      break;
+
+    case CloudOperation::kFetchAsset:
+      assetPending = false;
+      if (successful && response.body != nullptr &&
+          leopold::sky::loadCloudAsset(
+              response.assetFile, reinterpret_cast<uint8_t*>(response.body),
+              response.bodyLength)) {
+        Serial.printf("Cloud asset loaded: %s (%u bytes)\n",
+                      response.assetFile,
+                      static_cast<unsigned>(response.bodyLength));
+        ++nextAssetIndex;
+      } else {
+        Serial.printf("Cloud asset failed: %s http=%d\n",
+                      response.assetFile, response.httpCode);
+        nextAssetIndex = 0;
       }
       break;
 
@@ -983,7 +1105,7 @@ void processInput(uint32_t now) {
       if (strcmp(button->id, "open-settings") == 0) {
         openLocalScreen("open-settings");
       } else if (strcmp(button->id, "background-toggle") == 0) {
-        screen.toggleBackground();
+        screen.cycleBackground();
         updateAdditionalOptionsLabels();
         screen.renderSduiScreen(currentUi);
         Serial.println("Background preference toggled");
@@ -1139,6 +1261,20 @@ void processUsbCommands() {
       usbCommand[usbCommandLength] = '\0';
       if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strncmp(usbCommand, "LEOPOLD_ASSET_BEGIN ", 20) == 0) {
+        char file[64] = {};
+        unsigned long byteCount = 0;
+        char hash[65] = {};
+        if (sscanf(usbCommand + 20, "%63s %lu %64s", file, &byteCount, hash) == 3) {
+          if (findUsbAsset(file) != nullptr) {
+            Serial.println("LEOPOLD_ASSET_READY");
+            receiveUsbAsset(file, static_cast<size_t>(byteCount), hash);
+          } else {
+            Serial.println("LEOPOLD_ASSET_ERROR unknown_asset");
+          }
+        } else {
+          Serial.println("LEOPOLD_ASSET_ERROR malformed_begin");
+        }
       }
       usbCommandLength = 0;
       usbCommand[0] = '\0';
@@ -1272,7 +1408,8 @@ void processNetwork(uint32_t now) {
       return;
     }
     setState(AppState::kCloudConnecting);
-    connectPending = cloud.requestConnect(wifi.setupToken());
+    connectPending = cloud.requestConnect(
+        retryConnectWithoutSetupToken ? nullptr : wifi.setupToken());
     if (!connectPending) {
       nextCloudAttemptAt = now + 1000;
     }
@@ -1284,6 +1421,17 @@ void processNetwork(uint32_t now) {
     if (!onboardingStatusPending) {
       nextOnboardingPollAt = now + 1000;
     }
+  }
+  requestNextCloudAsset();
+  if (leopold::sky::allAssetsLoaded() && !servicesStarted) {
+    weather.begin();
+    if (!bluetooth.enabled()) {
+      bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
+    }
+    servicesStarted = true;
+  }
+  if (servicesStarted && !weatherRequested) {
+    weatherRequested = weather.requestRefresh(currentUi);
   }
   if (cloudConnected && !onboardingPending &&
       !uiPending && now >= nextUiPollAt) {
@@ -1336,6 +1484,8 @@ void refreshIndicators(uint32_t now) {
         strlcpy(component.text, timeText, sizeof(component.text));
       } else if (strcmp(component.id, "sky-voltage-value") == 0) {
         strlcpy(component.text, voltageText, sizeof(component.text));
+      } else if (strcmp(component.id, "input-voltage-label") == 0) {
+        snprintf(component.text, sizeof(component.text), "INPUT VOLTAGE  %s", voltageText);
       }
     }
   }
@@ -1418,6 +1568,11 @@ void setup() {
   touch.begin();
   telemetry.begin();
   uiStore.begin();
+  if (!leopold::sky::loadSdAssets()) {
+    Serial.println("SD asset pack incomplete; image-backed screens may be unavailable");
+  } else {
+    Serial.println("SD asset pack loaded");
+  }
   hasUi = false;
   cachedRawUi = String();
 

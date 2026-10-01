@@ -61,6 +61,19 @@ sdmmc_card_t* sdCard = nullptr;
 bool sdMounted = false;
 
 void mountSdCard() {
+  Serial.printf("SD stage 1: SPI pins CS=%d MOSI=%d MISO=%d SCLK=%d\n",
+                board::kSdCs, board::kSdMosi, board::kSdMiso, board::kSdSclk);
+  pinMode(board::kSdCs, INPUT_PULLUP);
+  pinMode(board::kSdMosi, INPUT_PULLUP);
+  pinMode(board::kSdMiso, INPUT_PULLUP);
+  pinMode(board::kSdSclk, INPUT_PULLUP);
+  Serial.printf("SD stage 1b: idle levels CS=%d MOSI=%d MISO=%d SCLK=%d\n",
+                digitalRead(board::kSdCs), digitalRead(board::kSdMosi),
+                digitalRead(board::kSdMiso), digitalRead(board::kSdSclk));
+  pinMode(board::kSdCs, OUTPUT);
+  digitalWrite(board::kSdCs, HIGH);
+  delay(100);
+  Serial.println("SD stage 1c: CS held high; 100 ms power-up settling complete");
   spi_bus_config_t busConfig = {};
   busConfig.mosi_io_num = board::kSdMosi;
   busConfig.miso_io_num = board::kSdMiso;
@@ -71,27 +84,53 @@ void mountSdCard() {
   const esp_err_t busResult =
       spi_bus_initialize(SPI3_HOST, &busConfig, SDSPI_DEFAULT_DMA);
   if (busResult != ESP_OK && busResult != ESP_ERR_INVALID_STATE) {
-    Serial.printf("SD SPI initialization failed: %s\n", esp_err_to_name(busResult));
+    Serial.printf("SD stage 2: SPI bus init failed: %s\n",
+                  esp_err_to_name(busResult));
     return;
   }
-
   sdmmc_host_t host = SDSPI_HOST_DEFAULT();
   host.slot = SPI3_HOST;
+  host.max_freq_khz = 400;
   sdspi_device_config_t slotConfig = SDSPI_DEVICE_CONFIG_DEFAULT();
   slotConfig.gpio_cs = static_cast<gpio_num_t>(board::kSdCs);
   slotConfig.host_id = SPI3_HOST;
   esp_vfs_fat_mount_config_t mountConfig = {};
-  mountConfig.format_if_mount_failed = true;
-  mountConfig.max_files = 4;
+  mountConfig.format_if_mount_failed = false;
+  mountConfig.max_files = 5;
   mountConfig.allocation_unit_size = 32 * 1024;
+  Serial.println("SD stage 3: probing card and mounting /sd at 400 kHz");
   const esp_err_t result = esp_vfs_fat_sdspi_mount(
       "/sd", &host, &slotConfig, &mountConfig, &sdCard);
   if (result == ESP_OK) {
     sdMounted = true;
-    Serial.printf("SD card mounted: %.2f GB\n",
-                  static_cast<double>(sdCard->csd.capacity) / 2048.0 / 1024.0);
+    Serial.println("SD stage 4: card identified and filesystem mounted");
+    const char probePath[] = "/sd/.leopold_sd_probe";
+    const char probeText[] = "leopold-sd-probe-v1";
+    char readback[sizeof(probeText)] = {};
+    FILE* probe = fopen(probePath, "wb");
+    if (probe == nullptr ||
+        fwrite(probeText, 1, sizeof(probeText) - 1, probe) !=
+            sizeof(probeText) - 1) {
+      if (probe != nullptr) fclose(probe);
+      Serial.println("SD stage 5: write probe failed");
+      return;
+    }
+    fclose(probe);
+    probe = fopen(probePath, "rb");
+    const size_t bytesRead = probe == nullptr
+                                 ? 0
+                                 : fread(readback, 1, sizeof(probeText) - 1, probe);
+    if (probe != nullptr) fclose(probe);
+    if (bytesRead == sizeof(probeText) - 1 &&
+        memcmp(readback, probeText, sizeof(probeText) - 1) == 0) {
+      Serial.println("SD stage 5: write/read probe passed");
+    } else {
+      Serial.printf("SD stage 5: read probe failed (%u bytes)\n",
+                    static_cast<unsigned>(bytesRead));
+    }
   } else {
-    Serial.printf("SD card unavailable: %s\n", esp_err_to_name(result));
+    Serial.printf("SD stage 4: card identification/mount failed: %s\n",
+                  esp_err_to_name(result));
   }
 }
 

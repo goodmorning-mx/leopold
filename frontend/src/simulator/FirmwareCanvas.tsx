@@ -133,7 +133,7 @@ function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: Fir
     rounded(ctx, component.x, component.y, component.width, component.height, 36, pressed === component.id ? 'rgba(44,44,48,.92)' : 'rgba(20,20,22,.80)', color(component.color), 2);
     const asset = component.id === 'open-spotify' ? 'open-spotify' : component.id;
     const dimensions: Record<string, [number, number]> = {
-      'open-clock': [80, 80], 'open-navigation': [80, 80], 'open-voltage': [80, 80],
+      'open-clock': [80, 80], 'open-navigation': [80, 80], 'open-whatsapp': [72, 72], 'open-voltage': [80, 80],
       'open-weather': [75, 75], 'open-spotify': [59, 59],
     };
     const [assetWidth, assetHeight] = dimensions[asset] || [80, 80];

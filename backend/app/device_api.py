@@ -1,10 +1,13 @@
 import hashlib
+import json
 import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
@@ -41,6 +44,14 @@ Db = Annotated[Session, Depends(get_db)]
 Config = Annotated[Settings, Depends(get_settings)]
 _DUMMY_HASH = hashlib.sha256(b"invalid-device-secret").hexdigest()
 CLAIM_MINUTES = 15
+ASSET_DIR = Path(__file__).resolve().parents[2] / "shared" / "assets"
+ASSET_MANIFEST = json.loads(
+    (ASSET_DIR.parent / "asset-manifest.json").read_text(encoding="utf-8")
+)
+ASSET_FILES = {
+    item["file"]: item
+    for item in ASSET_MANIFEST["assets"].values()
+}
 
 
 def secret_hash(secret: str) -> str:
@@ -363,6 +374,30 @@ def device_onboarding_status(
     return OnboardingStatusResponse(
         claimed=device.owner_id is not None,
         owner_display_name=device.owner.display_name if device.owner else None,
+    )
+
+
+@router.get("/device/assets/{asset_file}")
+def get_device_asset(
+    asset_file: str,
+    device: AuthenticatedDevice,
+) -> FileResponse:
+    """Stream a canonical shared asset to devices without usable SD storage."""
+
+    metadata = ASSET_FILES.get(asset_file)
+    if metadata is None or Path(asset_file).name != asset_file:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    path = ASSET_DIR / asset_file
+    expected_bytes = int(metadata["width"]) * int(metadata["height"]) * 3
+    if not path.is_file() or path.stat().st_size != expected_bytes:
+        raise HTTPException(status_code=503, detail="Asset unavailable")
+    return FileResponse(
+        path,
+        media_type="application/octet-stream",
+        headers={
+            "Cache-Control": "private, max-age=31536000, immutable",
+            "X-Leopold-Asset-Format": metadata["format"],
+        },
     )
 
 

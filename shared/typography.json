@@ -5,7 +5,8 @@
     "1": {"lvgl": 14, "browser": 14, "weight": 400},
     "2": {"lvgl": 20, "browser": 20, "weight": 400},
     "3": {"lvgl": 28, "browser": 28, "weight": 400},
-    "4": {"lvgl": 36, "browser": 36, "weight": 400}
+    "4": {"lvgl": 36, "browser": 36, "weight": 400},
+    "5": {"lvgl": 48, "browser": 48, "weight": 600}
   },
   "browser_fallback": "Arial, sans-serif",
   "known_difference": "Browser text rasterization is not pixel-identical to LVGL Montserrat until framebuffer references are available."

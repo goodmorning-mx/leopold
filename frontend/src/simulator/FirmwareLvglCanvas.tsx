@@ -2,14 +2,14 @@ import { useEffect, useRef } from 'react';
 import { SduiScreen } from './contract';
 import assetManifest from '../shared/asset-manifest.json';
 
-type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; playing: boolean };
+type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean };
 type Module = {
   HEAPU8: Uint8Array;
   _lvgl_wasm_init: () => void;
   _lvgl_wasm_begin: (id: number, background: number) => void;
   _lvgl_wasm_set_asset: (index: number, pointer: number, size: number, width: number, height: number) => void;
   _lvgl_wasm_set_pressed: (id: number) => void;
-  _lvgl_wasm_set_state: (timeText: number, battery: number, wifi: number, cloud: number, bluetooth: number, bluetoothConnected: number, brightness: number) => void;
+  _lvgl_wasm_set_state: (timeText: number, battery: number, wifi: number, cloud: number, bluetooth: number, bluetoothConnected: number, brightness: number, backgroundMode: number) => void;
   _lvgl_wasm_render: () => void;
   _lvgl_wasm_framebuffer: () => number;
   _lvgl_wasm_framebuffer_size: () => number;
@@ -49,7 +49,7 @@ async function loadAssets(module: Module) {
       const bytes = new Uint8Array(await (await fetch(`/firmware-assets/${asset.file}`)).arrayBuffer());
       const pointer = module._malloc(bytes.byteLength);
       module.HEAPU8.set(bytes, pointer);
-      const assetIndex = ['home', 'flower', 'open-clock', 'open-voltage', 'open-weather', 'open-navigation', 'open-spotify', 'spotify-large'].indexOf(key);
+      const assetIndex = ['home', 'flower', 'chevron', 'open-clock', 'open-weather', 'open-navigation', 'open-whatsapp', 'open-spotify', 'spotify-large'].indexOf(key);
       module._lvgl_wasm_set_asset(assetIndex, pointer, bytes.byteLength, asset.width, asset.height);
     })).then(() => undefined);
   }
@@ -70,16 +70,18 @@ function paint(canvas: HTMLCanvasElement, module: Module) {
   canvas.getContext('2d')?.putImageData(image, 0, 0);
 }
 
-export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, playing }: Props) {
+export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
     void loadModule().then(async (module) => {
       await loadAssets(module);
       if (!active || !canvas.current) return;
+      const backgroundLabel = backgroundMode === 0 ? 'BACKGROUND: DARK' : backgroundMode === 2 ? 'BACKGROUND: CHEVRON' : 'BACKGROUND: ORIGINAL';
       const effectiveScreen = {
         ...screen,
         components: screen.components.map((component) => {
+          if (component.type === 'button' && component.id === 'background-toggle') return { ...component, label: backgroundLabel };
           if (component.type !== 'text') return component;
           if (component.id === 'sky-time') return { ...component, text: timeText };
           if (component.id === 'weather-temp') return { ...component, text: weatherFahrenheit ? '72 F' : '22 C' };
@@ -93,11 +95,11 @@ export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherF
         if (component.type === 'slider') callString(module, 'lvgl_wasm_add_slider', [component.id, component.x, component.y, component.width, component.height, component.value, 100, rgb565(component.color)]);
       });
       callString(module, 'lvgl_wasm_set_pressed', [pressed ?? '']);
-      callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness]);
+      callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness, backgroundMode]);
       module._lvgl_wasm_render();
       paint(canvas.current, module);
     });
     return () => { active = false; };
-  }, [screen, pressed]);
+  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing]);
   return <canvas ref={canvas} width={466} height={466} className="firmware-canvas" aria-label="LVGL firmware framebuffer" />;
 }

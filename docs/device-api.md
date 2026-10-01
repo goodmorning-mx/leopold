@@ -145,6 +145,28 @@ curl -i "$LEOPOLD_API_URL/v1/device/ui" \
 
 Si sigue activa la revisión 1, devuelve `304 Not Modified` sin documento.
 
+## Assets compartidos del dispositivo
+
+El directorio raíz `shared/` es la única fuente de verdad para la interfaz del
+simulador y del firmware. El manifiesto `shared/asset-manifest.json` enumera
+los archivos permitidos y `shared/assets/` contiene sus bytes originales.
+
+Cuando un asset no cabe de forma fiable en la memoria persistente del
+dispositivo, el firmware lo descarga desde el backend autenticado:
+
+```bash
+curl --fail-with-body "$LEOPOLD_API_URL/v1/device/assets/icon_clock.bin" \
+  -H "X-Leopold-Device-ID: $LEOPOLD_DEVICE_ID" \
+  -H "Authorization: Bearer $LEOPOLD_DEVICE_SECRET" \
+  -o icon_clock.bin
+```
+
+El backend solo sirve nombres presentes en `shared/asset-manifest.json`,
+devuelve exactamente los bytes de `shared/assets/` y responde con
+`Cache-Control: private, max-age=31536000, immutable`. El simulador usa las
+copias sincronizadas del mismo manifiesto y assets; no se mantienen
+definiciones de pantalla ni assets alternativos por plataforma.
+
 ## Publicar una nueva pantalla remotamente
 
 El endpoint administrativo `PUT /v1/admin/devices/{device_id}/ui` acepta el

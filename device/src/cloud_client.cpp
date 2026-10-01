@@ -24,6 +24,8 @@ const char* pathFor(CloudOperation operation) {
       return "/v1/device/onboarding/status";
     case CloudOperation::kFetchUi:
       return "/v1/device/ui";
+    case CloudOperation::kFetchAsset:
+      return "/v1/device/assets/";
     case CloudOperation::kHeartbeat:
       return "/v1/device/heartbeat";
     case CloudOperation::kEvent:
@@ -35,7 +37,7 @@ const char* pathFor(CloudOperation operation) {
 }  // namespace
 
 void CloudResponse::release() {
-  free(body);
+  if (body != nullptr) heap_caps_free(body);
   body = nullptr;
   bodyLength = 0;
 }
@@ -62,14 +64,24 @@ bool CloudClient::begin() {
 bool CloudClient::requestConnect(const char* setupToken) {
   Request request;
   request.operation = CloudOperation::kConnect;
-  snprintf(
-      request.payload,
-      sizeof(request.payload),
-      "{\"firmware_version\":\"%s\",\"setup_token\":\"%s\","
-      "\"capabilities\":{\"display\":"
-      "\"466x466\",\"touch\":true,\"audio\":false,\"battery\":true}}",
-      config::kFirmwareVersion,
-      setupToken);
+  if (setupToken != nullptr && strlen(setupToken) >= 32) {
+    snprintf(
+        request.payload,
+        sizeof(request.payload),
+        "{\"firmware_version\":\"%s\",\"setup_token\":\"%s\","
+        "\"capabilities\":{\"display\":"
+        "\"466x466\",\"touch\":true,\"audio\":false,\"battery\":true}}",
+        config::kFirmwareVersion,
+        setupToken);
+  } else {
+    snprintf(
+        request.payload,
+        sizeof(request.payload),
+        "{\"firmware_version\":\"%s\","
+        "\"capabilities\":{\"display\":"
+        "\"466x466\",\"touch\":true,\"audio\":false,\"battery\":true}}",
+        config::kFirmwareVersion);
+  }
   return enqueue(request);
 }
 
@@ -86,6 +98,14 @@ bool CloudClient::requestUi(const char* etag) {
   if (etag != nullptr) {
     strlcpy(request.etag, etag, sizeof(request.etag));
   }
+  return enqueue(request);
+}
+
+bool CloudClient::requestAsset(const char* file) {
+  if (file == nullptr || strlen(file) >= sizeof(Request::assetFile)) return false;
+  Request request;
+  request.operation = CloudOperation::kFetchAsset;
+  strlcpy(request.assetFile, file, sizeof(request.assetFile));
   return enqueue(request);
 }
 
@@ -147,13 +167,14 @@ void CloudClient::taskLoop() {
 CloudResponse CloudClient::perform(const Request& request) {
   CloudResponse response;
   response.operation = request.operation;
+  strlcpy(response.assetFile, request.assetFile, sizeof(response.assetFile));
   if (WiFi.status() != WL_CONNECTED) {
     response.httpCode = HTTPC_ERROR_CONNECTION_REFUSED;
     return response;
   }
 
   WiFiClientSecure secure;
-  secure.setCACert(kLetsEncryptTrustBundle);
+  secure.setCACert(LEOPOLD_TLS_ROOT_CA);
   secure.setHandshakeTimeout(5);
   Serial.printf(
       "Cloud request %u: epoch=%lu heap=%u largest=%u\n",
@@ -166,7 +187,8 @@ CloudResponse CloudClient::perform(const Request& request) {
   HTTPClient http;
   http.setConnectTimeout(kHttpTimeoutMs);
   http.setTimeout(kHttpTimeoutMs);
-  const String url = String(LEOPOLD_API_BASE_URL) + pathFor(request.operation);
+  String url = String(LEOPOLD_API_BASE_URL) + pathFor(request.operation);
+  if (request.operation == CloudOperation::kFetchAsset) url += request.assetFile;
   if (!http.begin(secure, url)) {
     response.httpCode = HTTPC_ERROR_CONNECTION_REFUSED;
     return response;
@@ -181,7 +203,8 @@ CloudResponse CloudClient::perform(const Request& request) {
     http.addHeader("If-None-Match", request.etag);
   }
 
-  response.httpCode = request.operation == CloudOperation::kFetchUi
+  response.httpCode = request.operation == CloudOperation::kFetchUi ||
+                             request.operation == CloudOperation::kFetchAsset
                           ? http.GET()
                           : http.POST(String(request.payload));
   if (response.httpCode < 0) {
@@ -201,23 +224,56 @@ CloudResponse CloudClient::perform(const Request& request) {
   }
   const bool expectsBody = request.operation == CloudOperation::kConnect ||
                            request.operation == CloudOperation::kOnboardingStatus ||
-                           request.operation == CloudOperation::kFetchUi;
+                           request.operation == CloudOperation::kFetchUi ||
+                           request.operation == CloudOperation::kFetchAsset;
   if (expectsBody && response.httpCode > 0 &&
       response.httpCode != HTTP_CODE_NOT_MODIFIED) {
     const int contentLength = http.getSize();
-    if (contentLength < 0 ||
-        contentLength > static_cast<int>(kMaxSduiBytes)) {
+    const int maxBody = request.operation == CloudOperation::kFetchAsset
+                            ? 2200000
+                            : static_cast<int>(kMaxSduiBytes);
+    if (contentLength < 0 || contentLength > maxBody) {
       response.httpCode = kResponseTooLarge;
     } else {
-      String body = http.getString();
-      if (body.length() <= kMaxSduiBytes) {
-        response.body = static_cast<char*>(malloc(body.length() + 1));
-        if (response.body != nullptr) {
-          memcpy(response.body, body.c_str(), body.length() + 1);
-          response.bodyLength = body.length();
+      if (request.operation == CloudOperation::kFetchAsset) {
+        const size_t expected = static_cast<size_t>(contentLength);
+        response.body = static_cast<char*>(heap_caps_malloc(
+            expected, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        if (response.body == nullptr) {
+          response.httpCode = kResponseTooLarge;
+        } else {
+          WiFiClient* stream = http.getStreamPtr();
+          size_t received = 0;
+          while (received < expected) {
+            const size_t available = stream->available();
+            if (available == 0) {
+              delay(1);
+              continue;
+            }
+            const size_t count = stream->readBytes(
+                reinterpret_cast<uint8_t*>(response.body) + received,
+                min(available, expected - received));
+            if (count == 0) break;
+            received += count;
+          }
+          if (received != expected) {
+            response.httpCode = kResponseTooLarge;
+            response.release();
+          } else {
+            response.bodyLength = expected;
+          }
         }
       } else {
-        response.httpCode = kResponseTooLarge;
+        String body = http.getString();
+        if (body.length() <= kMaxSduiBytes) {
+          response.body = static_cast<char*>(malloc(body.length() + 1));
+          if (response.body != nullptr) {
+            memcpy(response.body, body.c_str(), body.length() + 1);
+            response.bodyLength = body.length();
+          }
+        } else {
+          response.httpCode = kResponseTooLarge;
+        }
       }
     }
   }

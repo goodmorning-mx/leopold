@@ -12,10 +12,10 @@ static uint16_t framebuffer[kWidth * kHeight];
 static uint16_t drawBuffer[kWidth * kHeight];
 static leopold::SduiScreen screen;
 static char pressedId[leopold::kMaxComponentId + 1];
-static lv_image_dsc_t assets[8];
-static bool assetReady[8];
+static lv_image_dsc_t assets[9];
+static bool assetReady[9];
 static char renderTime[16] = "--:--";
-static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0};
+static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
 
 static void flush(lv_display_t* target, const lv_area_t* area, uint8_t* pixels) {
   const int32_t width = lv_area_get_width(area);
@@ -25,12 +25,13 @@ static void flush(lv_display_t* target, const lv_area_t* area, uint8_t* pixels) 
 }
 
 static int assetIndex(const char* key) {
-  static const char* keys[] = {"home", "flower", "open-clock", "open-voltage", "open-weather", "open-navigation", "open-spotify", "spotify-large"};
-  for (int index = 0; index < 8; ++index) if (strcmp(keys[index], key) == 0) return index;
+  static const char* keys[] = {"home", "flower", "chevron", "open-clock", "open-weather", "open-navigation", "open-whatsapp", "open-spotify", "spotify-large"};
+  for (int index = 0; index < 9; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;
 }
 
 static const lv_image_dsc_t* resolveImage(const char* key) {
+  if (strcmp(key, "open-voltage") == 0) return nullptr;
   const int index = assetIndex(key);
   return index >= 0 && assetReady[index] ? &assets[index] : nullptr;
 }
@@ -49,7 +50,7 @@ void lvgl_wasm_init() {
 }
 
 void lvgl_wasm_set_asset(int index, const uint8_t* data, uint32_t size, uint16_t width, uint16_t height) {
-  if (index < 0 || index >= 8 || data == nullptr || size == 0) return;
+  if (index < 0 || index >= 9 || data == nullptr || size == 0) return;
   assets[index] = {
       .header = {
           .magic = LV_IMAGE_HEADER_MAGIC,
@@ -98,7 +99,7 @@ void lvgl_wasm_add_slider(const char* id, int16_t x, int16_t y, int16_t width, i
 
 void lvgl_wasm_set_pressed(const char* id) { strncpy(pressedId, id == nullptr ? "" : id, sizeof(pressedId) - 1); pressedId[sizeof(pressedId) - 1] = '\0'; }
 
-void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness) {
+void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode) {
   strncpy(renderTime, timeText == nullptr ? "--:--" : timeText, sizeof(renderTime) - 1);
   renderTime[sizeof(renderTime) - 1] = '\0';
   renderState.timeText = renderTime;
@@ -108,9 +109,11 @@ void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool 
   renderState.bluetoothEnabled = bluetooth;
   renderState.bluetoothConnected = bluetoothConnected;
   renderState.brightnessPercent = brightness;
+  renderState.backgroundMode = backgroundMode;
 }
 
 void lvgl_wasm_render() {
+  memset(framebuffer, 0, sizeof(framebuffer));
   leopold::renderSharedLvglScreen(lv_screen_active(), screen, resolveImage, pressedId, &renderState);
   lv_obj_update_layout(lv_screen_active());
   lv_obj_invalidate(lv_screen_active());

@@ -19,6 +19,7 @@ const lv_font_t* fontForSize(uint8_t size) {
     case 1: return &lv_font_montserrat_14;
     case 2: return &lv_font_montserrat_20;
     case 3: return &lv_font_montserrat_28;
+    case 5: return &lv_font_montserrat_48;
     default: return &lv_font_montserrat_36;
   }
 }
@@ -47,9 +48,14 @@ lv_obj_t* makePanel(lv_obj_t* parent, int16_t x, int16_t y, int16_t width, int16
 
 lv_obj_t* makeButton(lv_obj_t* parent, const SduiComponent& component, const char* pressedComponentId) {
   const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
-  lv_obj_t* object = makePanel(parent, component.x, component.y, component.width, component.height, component.height / 2, pressed ? lv_color_hex(0x2C2C30) : lv_color_hex(0x141416));
-  lv_obj_set_style_border_width(object, 2, 0);
+  lv_obj_t* object = makePanel(parent, component.x, component.y, component.width, component.height, component.height / 2, lv_color_hex(0x0D0F12));
+  lv_obj_set_style_border_width(object, 3, 0);
   lv_obj_set_style_border_color(object, color565(component.color), 0);
+  lv_obj_set_style_shadow_width(object, pressed ? 2 : 6, 0);
+  lv_obj_set_style_shadow_opa(object, pressed ? LV_OPA_20 : LV_OPA_40, 0);
+  lv_obj_set_style_shadow_color(object, color565(component.color), 0);
+  lv_obj_t* inset = makePanel(object, 5, 5, component.width - 10, component.height - 10, (component.height - 10) / 2, pressed ? lv_color_hex(0x2C2C30) : lv_color_hex(0x171A1F));
+  lv_obj_set_style_bg_opa(inset, LV_OPA_COVER, 0);
   return object;
 }
 
@@ -70,39 +76,118 @@ void drawUsb(lv_obj_t* parent, lv_color_t color) {
 }
 
 void drawWhatsapp(lv_obj_t* parent, lv_color_t color) {
-  lv_obj_t* bubble = makePanel(parent, 17, 17, 38, 34, 14, color);
-  lv_obj_t* tail = makePanel(parent, 20, 43, 10, 8, 3, color);
-  LV_UNUSED(bubble);
-  LV_UNUSED(tail);
+  // WhatsApp's mark is a speech bubble containing a handset. The button
+  // supplies the outer green ring; this draws the recognizable inner mark.
+  lv_obj_t* ring = lv_arc_create(parent);
+  lv_obj_set_pos(ring, 18, 18);
+  lv_obj_set_size(ring, 36, 36);
+  lv_arc_set_rotation(ring, 0);
+  lv_arc_set_bg_angles(ring, 0, 360);
+  lv_arc_set_range(ring, 0, 100);
+  lv_arc_set_value(ring, 100);
+  lv_obj_remove_flag(ring, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_arc_width(ring, 3, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(ring, color, LV_PART_MAIN);
+  lv_obj_set_style_arc_opa(ring, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(ring, 0, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(ring, LV_OPA_TRANSP, LV_PART_KNOB);
+
+  static const lv_point_precise_t tail[] = {{22, 49}, {18, 54}, {29, 51}};
+  lv_obj_t* tailLine = lv_line_create(parent);
+  lv_line_set_points(tailLine, tail, 3);
+  lv_obj_set_size(tailLine, 72, 72);
+  lv_obj_set_style_line_color(tailLine, color, 0);
+  lv_obj_set_style_line_width(tailLine, 3, 0);
+  lv_obj_set_style_line_rounded(tailLine, true, 0);
+
+  static const lv_point_precise_t handset[] = {
+      {28, 28}, {25, 31}, {29, 38}, {36, 43}, {40, 40},
+  };
+  lv_obj_t* handsetLine = lv_line_create(parent);
+  lv_line_set_points(handsetLine, handset, 5);
+  lv_obj_set_size(handsetLine, 72, 72);
+  lv_obj_set_style_line_color(handsetLine, color, 0);
+  lv_obj_set_style_line_width(handsetLine, 5, 0);
+  lv_obj_set_style_line_rounded(handsetLine, true, 0);
 }
 
-void drawStatus(lv_obj_t* root, const SharedRenderState& state) {
+void drawX(lv_obj_t* parent, lv_color_t color, int16_t size = 32) {
+  const int16_t inset = (72 - size) / 2;
+  static lv_point_precise_t first[2];
+  static lv_point_precise_t second[2];
+  first[0] = {inset, inset};
+  first[1] = {static_cast<int16_t>(inset + size), static_cast<int16_t>(inset + size)};
+  second[0] = {static_cast<int16_t>(inset + size), inset};
+  second[1] = {inset, static_cast<int16_t>(inset + size)};
+  const lv_point_precise_t* strokes[] = {first, second};
+  for (const lv_point_precise_t* points : strokes) {
+    lv_obj_t* line = lv_line_create(parent);
+    lv_line_set_points(line, points, 2);
+    lv_obj_set_size(line, 72, 72);
+    lv_obj_set_style_line_color(line, color, 0);
+    lv_obj_set_style_line_width(line, 4, 0);
+    lv_obj_set_style_line_rounded(line, true, 0);
+  }
+}
+
+void drawGear(lv_obj_t* parent, lv_color_t color) {
+  lv_obj_t* gear = makeLabel(parent, LV_SYMBOL_SETTINGS, &lv_font_montserrat_32, color);
+  lv_obj_center(gear);
+}
+
+void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
   const lv_color_t gray = lv_color_hex(0x7B7D7B);
   const lv_color_t green = lv_color_hex(0x30D158);
-  lv_obj_t* battery = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_14, gray);
-  lv_obj_set_pos(battery, 214, 218);
+  const bool top = strcmp(screen.screenId, "sky-clock") == 0 ||
+                   strcmp(screen.screenId, "sky-weather") == 0;
+  const bool clock = strcmp(screen.screenId, "sky-clock") == 0;
+  const bool showTime = !clock;
+  // The clock does not repeat its primary time readout in the status pill.
+  // Keep that pill compact instead of leaving a visual hole where the time
+  // used to be. Weather retains the small time, but both top pills are inset
+  // from the circular display edge so their rounded corners remain visible.
+  const int16_t surfaceX = clock ? 143 : top ? 110 : 136;
+  const int16_t surfaceY = top ? 18 : 211;
+  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 216;
+  const int16_t surfaceHeight = top ? 34 : 39;
+  const int16_t baseX = clock ? 153 : top ? 119 : 145;
+  const int16_t wifiCenterX = clock ? 184 : top ? 153 : 181;
+  const int16_t cloudX = clock ? 209 : top ? 178 : 194;
+  const int16_t timeX = clock ? 0 : top ? 204 : 237;
+  const int16_t batteryX = clock ? 279 : top ? 307 : 300;
+  lv_obj_t* statusSurface = makePanel(root, surfaceX, surfaceY, surfaceWidth, surfaceHeight, surfaceHeight / 2, lv_color_hex(0x090B0E));
+  lv_obj_set_style_bg_opa(statusSurface, LV_OPA_80, 0);
+  lv_obj_set_style_border_width(statusSurface, 1, 0);
+  lv_obj_set_style_border_color(statusSurface, lv_color_hex(0x252A30), 0);
+  if (showTime) {
+    lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_14, gray);
+    if (top) {
+      lv_obj_set_width(time, 78);
+      lv_obj_set_style_text_align(time, LV_TEXT_ALIGN_CENTER, 0);
+    }
+    lv_obj_set_pos(time, timeX, top ? 25 : 218);
+  }
   lv_obj_t* batteryPercent = makeLabel(root, "", &lv_font_montserrat_14, gray);
   char batteryText[8] = {};
   snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
   lv_label_set_text(batteryPercent, batteryText);
-  lv_obj_set_pos(batteryPercent, 288, 218);
+  if (top) {
+    lv_obj_set_width(batteryPercent, 42);
+    lv_obj_set_style_text_align(batteryPercent, LV_TEXT_ALIGN_RIGHT, 0);
+  }
+  lv_obj_set_pos(batteryPercent, batteryX, top ? 25 : 218);
 
   const auto glyphLine = [root](const lv_point_precise_t* points, uint32_t count, int16_t width, lv_color_t color) {
     lv_obj_t* line = lv_line_create(root);
     lv_line_set_points(line, points, count);
+    lv_obj_set_size(line, 466, 466);
     lv_obj_set_style_line_color(line, color, 0);
     lv_obj_set_style_line_width(line, width, 0);
     lv_obj_set_style_line_rounded(line, true, 0);
   };
   const lv_color_t bluetoothColor = state.bluetoothEnabled ? green : gray;
-  // Keep the Bluetooth mark as three independent strokes. A single connected
-  // zig-zag self-intersects and produces a visibly different glyph in LVGL.
-  static const lv_point_precise_t bluetoothStem[] = {{165, 224}, {165, 242}};
-  static const lv_point_precise_t bluetoothUpper[] = {{165, 224}, {171, 230}, {159, 237}};
-  static const lv_point_precise_t bluetoothLower[] = {{165, 242}, {171, 236}, {159, 229}};
-  glyphLine(bluetoothStem, 2, 2, bluetoothColor);
-  glyphLine(bluetoothUpper, 3, 2, bluetoothColor);
-  glyphLine(bluetoothLower, 3, 2, bluetoothColor);
+  lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_24, bluetoothColor);
+  lv_obj_set_pos(bluetooth, baseX, top ? 25 : 219);
   const lv_color_t wifiColor = state.wifiConnected ? green : gray;
   // Draw sampled arches instead of LVGL arcs. This keeps the Wi-Fi geometry
   // stable across LVGL versions and the browser WASM build.
@@ -114,18 +199,18 @@ void drawStatus(lv_obj_t* root, const SharedRenderState& state) {
     for (int index = 0; index <= 12; ++index) {
       const double degrees = 225.0 + (90.0 * index / 12.0);
       const double radians = degrees * 3.14159265358979323846 / 180.0;
-      points[index].x = static_cast<int16_t>(std::lround(190.0 + std::cos(radians) * radius));
-      points[index].y = static_cast<int16_t>(std::lround(237.0 + std::sin(radians) * radius));
+      points[index].x = static_cast<int16_t>(std::lround(wifiCenterX + std::cos(radians) * radius));
+      points[index].y = static_cast<int16_t>(std::lround((top ? 43 : 237) + std::sin(radians) * radius));
     }
     glyphLine(points, 13, 2, wifiColor);
   }
   lv_obj_t* wifiDot = lv_obj_create(root);
-  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, 188, 235);
+  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, wifiCenterX - 2, top ? 41 : 235);
   lv_obj_set_style_radius(wifiDot, LV_RADIUS_CIRCLE, 0); lv_obj_set_style_bg_color(wifiDot, wifiColor, 0); lv_obj_set_style_bg_opa(wifiDot, LV_OPA_COVER, 0); lv_obj_set_style_border_width(wifiDot, 0, 0);
   const lv_color_t cloudColor = state.cloudConnected ? green : gray;
-  lv_obj_t* cloud = makePanel(root, 318, 232, 24, 8, 4, cloudColor);
-  lv_obj_t* cloudLeft = makePanel(root, 321, 228, 10, 10, 5, cloudColor);
-  lv_obj_t* cloudMid = makePanel(root, 327, 225, 14, 14, 7, cloudColor);
+  lv_obj_t* cloud = makePanel(root, cloudX, top ? 38 : 232, 24, 8, 4, cloudColor);
+  lv_obj_t* cloudLeft = makePanel(root, cloudX + 3, top ? 34 : 228, 10, 10, 5, cloudColor);
+  lv_obj_t* cloudMid = makePanel(root, cloudX + 9, top ? 31 : 225, 14, 14, 7, cloudColor);
   LV_UNUSED(cloud); LV_UNUSED(cloudLeft); LV_UNUSED(cloudMid);
 }
 
@@ -216,7 +301,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   const bool home = strcmp(screen.screenId, "sky-home") == 0;
   const bool flower = strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0;
   if (resolveImage != nullptr && home) {
-    const lv_image_dsc_t* source = resolveImage("home");
+    const lv_image_dsc_t* source = resolveImage(state != nullptr && state->backgroundMode == 2 ? "chevron" : "home");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   } else if (resolveImage != nullptr && flower) {
     const lv_image_dsc_t* source = resolveImage("flower");
@@ -227,23 +312,43 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     const SduiComponent& component = screen.components[index];
     if (component.type == ComponentType::kText) {
       lv_obj_t* text = makeLabel(root, component.text, fontForSize(component.size), color565(component.color));
-      lv_obj_set_pos(text, component.x, component.y);
-      if (component.align == TextAlign::kCenter) lv_obj_set_style_translate_x(text, -lv_obj_get_width(text) / 2, 0);
+      if (component.align == TextAlign::kCenter) {
+        // LVGL's intrinsic label width is not valid until layout has run.
+        // Positioning by that width caused the simulator and device to drift.
+        // A full-width, centered label uses the same text-align operation in
+        // both the native and WASM LVGL renderers.
+        lv_obj_set_width(text, 466);
+        lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_pos(text, component.x - 233, component.y);
+        if (strcmp(screen.screenId, "sky-clock") == 0 && strcmp(component.id, "sky-time") == 0) {
+          lv_obj_update_layout(text);
+          lv_obj_align(text, LV_ALIGN_CENTER, 0, 0);
+        }
+      } else {
+        lv_obj_set_pos(text, component.x, component.y);
+      }
     } else if (component.type == ComponentType::kButton) {
       lv_obj_t* button = makeButton(root, component, pressedComponentId);
       const lv_image_dsc_t* source = resolveImage == nullptr ? nullptr : resolveImage(component.id);
-      if (source != nullptr) {
+      if (strcmp(component.icon, "x") == 0) {
+        lv_obj_t* placeholder = makeLabel(button, "X", &lv_font_montserrat_28, color565(component.color));
+        lv_obj_center(placeholder);
+      } else if (strcmp(component.icon, "gear") == 0) {
+        drawGear(button, color565(component.color));
+      } else if (source != nullptr && strcmp(component.id, "open-spotify") != 0) {
         lv_obj_t* image = lv_image_create(button);
         lv_image_set_src(image, source);
         lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0);
-        if (strcmp(component.id, "open-spotify") == 0) lv_image_set_scale(image, 180);
         lv_obj_center(image);
       } else if (strcmp(component.icon, "usb") == 0) {
         drawUsb(button, color565(component.color));
       } else if (strcmp(component.icon, "whatsapp") == 0) {
         drawWhatsapp(button, color565(component.color));
       } else {
-        lv_obj_t* text = makeLabel(button, component.text, &lv_font_montserrat_20, color565(component.color));
+        const lv_font_t* buttonFont = strcmp(component.id, "open-spotify") == 0
+            ? &lv_font_montserrat_14
+            : &lv_font_montserrat_20;
+        lv_obj_t* text = makeLabel(button, component.text, buttonFont, color565(component.color));
         lv_obj_center(text);
       }
     } else if (component.type == ComponentType::kSlider) {
@@ -265,7 +370,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     }
   }
   if (state != nullptr && (strcmp(screen.screenId, "sky-home") == 0 || strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0 || strcmp(screen.screenId, "device-control-center") == 0)) {
-    drawStatus(root, *state);
+    drawStatus(root, screen, *state);
   }
 }
 

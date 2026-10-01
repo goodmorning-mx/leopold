@@ -8,6 +8,7 @@ enum class CloudOperation : uint8_t {
   kConnect,
   kOnboardingStatus,
   kFetchUi,
+  kFetchAsset,
   kHeartbeat,
   kEvent,
 };
@@ -18,6 +19,7 @@ struct CloudResponse {
   char* body = nullptr;
   size_t bodyLength = 0;
   char etag[64] = {};
+  char assetFile[64] = {};
   char serverDate[40] = {};
 
   void release();
@@ -29,6 +31,7 @@ class CloudClient {
   bool requestConnect(const char* setupToken);
   bool requestOnboardingStatus();
   bool requestUi(const char* etag);
+  bool requestAsset(const char* file);
   bool requestHeartbeat(
       int32_t wifiRssi,
       uint8_t batteryPercent,
@@ -41,6 +44,7 @@ class CloudClient {
     CloudOperation operation = CloudOperation::kConnect;
     char payload[640] = {};
     char etag[64] = {};
+    char assetFile[64] = {};
   };
 
   static void taskEntry(void* context);

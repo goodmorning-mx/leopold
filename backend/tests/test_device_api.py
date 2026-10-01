@@ -235,6 +235,29 @@ def test_ui_is_valid_and_supports_etag(client) -> None:
     assert unchanged.headers["etag"] == '"controls-v1-1"'
 
 
+def test_device_asset_is_authenticated_and_matches_shared_manifest(client) -> None:
+    credentials = provision(client)
+
+    response = client.get(
+        "/v1/device/assets/icon_clock.bin",
+        headers=device_headers(credentials),
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/octet-stream")
+    assert response.headers["x-leopold-asset-format"] == "rgb565a8"
+    assert len(response.content) == 80 * 80 * 3
+
+    unauthorized = client.get("/v1/device/assets/icon_clock.bin")
+    assert unauthorized.status_code == 401
+
+    unknown = client.get(
+        "/v1/device/assets/not-from-the-manifest.bin",
+        headers=device_headers(credentials),
+    )
+    assert unknown.status_code == 404
+
+
 def test_admin_publishes_revision_two_and_device_receives_it(
     client, session_factory
 ) -> None:

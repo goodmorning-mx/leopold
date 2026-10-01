@@ -31,9 +31,9 @@ class DisplayManager {
   bool clearPressedButton();
   void setBrightnessPercent(uint8_t percent);
   uint8_t brightnessPercent() const;
-  void toggleBackground();
+  void cycleBackground();
   void toggleLanguage();
-  bool darkBackground() const;
+  uint8_t backgroundMode() const;
   bool spanishLanguage() const;
   const SharedRenderState& sharedRenderState() const;
   void updateControlCenterBrightness();
@@ -118,7 +118,7 @@ class DisplayManager {
 
   uint8_t localExpression_ = 0;
   uint8_t brightnessPercent_ = 70;
-  bool darkBackground_ = false;
+  uint8_t backgroundMode_ = 1;
   bool spanishLanguage_ = false;
   uint32_t lastFaceFrameAt_ = 0;
   bool wifiConnected_ = false;
@@ -127,7 +127,7 @@ class DisplayManager {
   bool bluetoothConnected_ = false;
   uint8_t batteryPercent_ = 0;
   char timeText_[16] = "--:--";
-  SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0};
+  SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0, 1};
   char pressedButtonId_[kMaxComponentId + 1] = {};
 };
 

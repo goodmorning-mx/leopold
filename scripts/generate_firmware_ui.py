@@ -68,6 +68,7 @@ lines = [
     f"constexpr uint8_t kFontSize2 = {typography['sizes']['2']['lvgl']};",
     f"constexpr uint8_t kFontSize3 = {typography['sizes']['3']['lvgl']};",
     f"constexpr uint8_t kFontSize4 = {typography['sizes']['4']['lvgl']};",
+    f"constexpr uint8_t kFontSize5 = {typography['sizes']['5']['lvgl']};",
     f"constexpr uint16_t kStatusTextColor = {rgb565(status['text_color'])};",
     f"constexpr int16_t kStatusTimeX = {status['time']['x']};",
     f"constexpr int16_t kStatusTimeY = {status['time']['y']};",

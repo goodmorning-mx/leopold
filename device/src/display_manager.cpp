@@ -166,24 +166,11 @@ lv_obj_t* createImage(
 }
 
 const lv_image_dsc_t* skyButtonIcon(const char* id) {
-  if (strcmp(id, "open-clock") == 0) return &sky::kClockIcon;
-  if (strcmp(id, "open-voltage") == 0) return &sky::kBoltIcon;
-  if (strcmp(id, "open-weather") == 0) return &sky::kWeatherIcon;
-  if (strcmp(id, "open-navigation") == 0) return &sky::kNavigationIcon;
-  if (strcmp(id, "open-spotify") == 0) return &sky::kSpotifyIcon;
-  return nullptr;
+  return sky::resolveAsset(id);
 }
 
 const lv_image_dsc_t* sharedImageResolver(const char* id) {
-  if (strcmp(id, "home") == 0) return &sky::kHomeBackground;
-  if (strcmp(id, "flower") == 0) return &sky::kFlowerBackground;
-  if (strcmp(id, "open-clock") == 0) return &sky::kClockIcon;
-  if (strcmp(id, "open-voltage") == 0) return &sky::kBoltIcon;
-  if (strcmp(id, "open-weather") == 0) return &sky::kWeatherIcon;
-  if (strcmp(id, "open-navigation") == 0) return &sky::kNavigationIcon;
-  if (strcmp(id, "open-spotify") == 0) return &sky::kSpotifyIcon;
-  if (strcmp(id, "spotify-large") == 0) return &sky::kSpotifyLargeIcon;
-  return nullptr;
+  return sky::resolveAsset(id);
 }
 
 void drawWhatsappSymbol(lv_obj_t* parent, lv_color_t color) {
@@ -226,7 +213,11 @@ bool DisplayManager::begin() {
       displayPreferences.getUChar("brightness", generated_ui::kDefaultBrightness),
       generated_ui::kBrightnessMinimum,
       generated_ui::kBrightnessMaximum);
-  darkBackground_ = displayPreferences.getBool("dark_bg", false);
+  if (displayPreferences.isKey("background_mode")) {
+    backgroundMode_ = min<uint8_t>(displayPreferences.getUChar("background_mode", 1), 2);
+  } else {
+    backgroundMode_ = displayPreferences.getBool("dark_bg", false) ? 0 : 1;
+  }
   spanishLanguage_ = displayPreferences.getBool("spanish", false);
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   display->fillScreen(kBlack);
@@ -281,7 +272,13 @@ bool DisplayManager::writeLvglScreenshot(Stream& output) {
   if (lvglCaptureBuffer == nullptr) return false;
   constexpr uint32_t byteCount = kScreenWidth * kScreenHeight * sizeof(uint16_t);
   output.printf("LEOPOLD_SCREENSHOT_BEGIN %u %u RGB565 %lu\n", kScreenWidth, kScreenHeight, static_cast<unsigned long>(byteCount));
-  output.write(reinterpret_cast<const uint8_t*>(lvglCaptureBuffer), byteCount);
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(lvglCaptureBuffer);
+  uint32_t written = 0;
+  while (written < byteCount) {
+    const size_t count = output.write(bytes + written, byteCount - written);
+    if (count == 0) return false;
+    written += count;
+  }
   output.printf("\nLEOPOLD_SCREENSHOT_END\n");
   output.flush();
   return true;
@@ -593,9 +590,9 @@ uint8_t DisplayManager::brightnessPercent() const {
   return brightnessPercent_;
 }
 
-void DisplayManager::toggleBackground() {
-  darkBackground_ = !darkBackground_;
-  displayPreferences.putBool("dark_bg", darkBackground_);
+void DisplayManager::cycleBackground() {
+  backgroundMode_ = static_cast<uint8_t>((backgroundMode_ + 1) % 3);
+  displayPreferences.putUChar("background_mode", backgroundMode_);
 }
 
 void DisplayManager::toggleLanguage() {
@@ -603,8 +600,8 @@ void DisplayManager::toggleLanguage() {
   displayPreferences.putBool("spanish", spanishLanguage_);
 }
 
-bool DisplayManager::darkBackground() const {
-  return darkBackground_;
+uint8_t DisplayManager::backgroundMode() const {
+  return backgroundMode_;
 }
 
 bool DisplayManager::spanishLanguage() const {
@@ -1441,12 +1438,12 @@ void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
       strcmp(screen.screenId, "sky-clock") == 0 ||
       strcmp(screen.screenId, "sky-voltage") == 0 ||
       strcmp(screen.screenId, "sky-weather") == 0;
-  if (skyHome && !darkBackground_) {
+  if (skyHome && backgroundMode_ != 0) {
     createImage(root, sky::kHomeBackground, 0, 0, LV_OPA_COVER);
     lv_obj_t* shade = createRoundPanel(
         root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
     lv_obj_set_style_bg_opa(shade, LV_OPA_30, 0);
-  } else if (flowerScreen && !darkBackground_) {
+  } else if (flowerScreen && backgroundMode_ != 0) {
     createImage(root, sky::kFlowerBackground, 0, 0, LV_OPA_COVER);
     lv_obj_t* shade = createRoundPanel(
         root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
@@ -1614,6 +1611,7 @@ void DisplayManager::drawIndicators(
   sharedRenderState_.bluetoothEnabled = bluetoothEnabled_;
   sharedRenderState_.bluetoothConnected = bluetoothConnected_;
   sharedRenderState_.brightnessPercent = brightnessPercent_;
+  sharedRenderState_.backgroundMode = backgroundMode_;
   display->fillRect(0, 0, kScreenWidth, 31, kBlack);
   display->setTextSize(1);
   drawBluetoothIcon(generated_ui::kStatusBluetoothX, generated_ui::kStatusBluetoothY, bluetoothEnabled);

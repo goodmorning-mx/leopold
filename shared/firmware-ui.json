@@ -7,19 +7,17 @@
     {"id":"sky-home","background":"#000000","components":[
       {"type":"button","id":"open-clock","label":"CLOCK","x":197,"y":34,"width":72,"height":72},
       {"type":"button","id":"open-navigation","label":"NAV","x":96,"y":91,"width":72,"height":72,"color":"#0A84FF"},
-      {"type":"button","id":"open-voltage","label":"VOLT","x":298,"y":91,"width":72,"height":72},
+      {"type":"text","id":"voltage-placeholder-home","text":"X","x":334,"y":112,"size":3,"color":"#8E8E93","align":"center"},
       {"type":"button","id":"open-weather","label":"WEATHER","x":43,"y":190,"width":72,"height":72},
       {"type":"button","id":"open-usb","label":"USB","icon":"usb","x":351,"y":190,"width":72,"height":72,"color":"#3D7FFF"},
       {"type":"button","id":"open-whatsapp","label":"CHAT","icon":"whatsapp","x":96,"y":291,"width":72,"height":72,"color":"#30D158"},
       {"type":"button","id":"open-spotify","label":"SPOTIFY","x":298,"y":291,"width":72,"height":72,"color":"#1DB954"},
-      {"type":"button","id":"open-settings","label":"SET","x":197,"y":354,"width":72,"height":72}
+      {"type":"button","id":"open-settings","label":"","icon":"gear","x":197,"y":354,"width":72,"height":72}
     ]},
-    {"id":"sky-clock","background":"#000000","components":[{"type":"text","id":"sky-time","text":"--:--","x":233,"y":169,"size":4,"color":"#FFFFFF","align":"center"}]},
+    {"id":"sky-clock","background":"#000000","components":[{"type":"text","id":"sky-time","text":"--:--","x":233,"y":158,"size":5,"color":"#FFFFFF","align":"center"}]},
     {"id":"sky-voltage","background":"#000000","components":[
-      {"type":"text","id":"voltage-symbol","text":"USB-C","x":233,"y":77,"size":2,"color":"#FFD60A","align":"center"},
-      {"type":"text","id":"sky-voltage-value","text":"-.-- V","x":233,"y":172,"size":4,"color":"#FFFFFF","align":"center"},
-      {"type":"text","id":"voltage-caption","text":"INPUT VOLTAGE","x":233,"y":246,"size":1,"color":"#8E8E93","align":"center"},
-      {"type":"text","id":"voltage-note","text":"POWER + BATTERY MONITOR","x":233,"y":316,"size":2,"color":"#FFD60A","align":"center"}
+      {"type":"text","id":"voltage-placeholder","text":"X","x":233,"y":176,"size":5,"color":"#8E8E93","align":"center"},
+      {"type":"text","id":"voltage-placeholder-note","text":"SCREEN RESERVED","x":233,"y":312,"size":1,"color":"#8E8E93","align":"center"}
     ]},
     {"id":"sky-whatsapp","background":"#000000","components":[
       {"type":"button","id":"open-home","label":"<","x":24,"y":42,"width":66,"height":52},
@@ -41,8 +39,9 @@
     {"id":"device-control-center","background":"#000000","components":[{"type":"slider","id":"display-brightness","x":326,"y":116,"width":78,"height":232,"value":72,"color":"#FFFFFF"},{"type":"button","id":"open-additional-options","label":"Additional options","x":112,"y":369,"width":210,"height":55,"color":"#3D7FFF"}]},
     {"id":"device-additional-options","background":"#000000","components":[
       {"type":"text","id":"options-title","text":"ADDITIONAL OPTIONS","x":233,"y":54,"size":2,"color":"#FFFFFF","align":"center"},
-      {"type":"button","id":"background-toggle","label":"BACKGROUND","x":96,"y":128,"width":274,"height":62,"color":"#3D7FFF"},
+      {"type":"button","id":"background-toggle","label":"BACKGROUND: ORIGINAL","x":96,"y":128,"width":274,"height":62,"color":"#3D7FFF"},
       {"type":"button","id":"language-toggle","label":"LANGUAGE","x":96,"y":210,"width":274,"height":62,"color":"#30D158"},
+      {"type":"text","id":"input-voltage-label","text":"INPUT VOLTAGE  --.-- V","x":233,"y":304,"size":1,"color":"#FFD60A","align":"center"},
       {"type":"button","id":"open-settings","label":"BACK","x":126,"y":336,"width":214,"height":58,"color":"#8E8E93"}
     ]},
     {"id":"sky-weather","background":"#000000","components":[
