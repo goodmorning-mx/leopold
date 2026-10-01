@@ -79,12 +79,12 @@ void drawStatus(lv_obj_t* root, const SharedRenderState& state) {
   const lv_color_t gray = lv_color_hex(0x7B7D7B);
   const lv_color_t green = lv_color_hex(0x30D158);
   lv_obj_t* battery = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_14, gray);
-  lv_obj_set_pos(battery, 210, 11);
+  lv_obj_set_pos(battery, 214, 218);
   lv_obj_t* batteryPercent = makeLabel(root, "", &lv_font_montserrat_14, gray);
   char batteryText[8] = {};
   snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
   lv_label_set_text(batteryPercent, batteryText);
-  lv_obj_set_pos(batteryPercent, 338, 11);
+  lv_obj_set_pos(batteryPercent, 288, 218);
 
   const auto glyphLine = [root](const lv_point_precise_t* points, uint32_t count, int16_t width, lv_color_t color) {
     lv_obj_t* line = lv_line_create(root);
@@ -94,12 +94,12 @@ void drawStatus(lv_obj_t* root, const SharedRenderState& state) {
     lv_obj_set_style_line_rounded(line, true, 0);
   };
   const lv_color_t bluetoothColor = state.bluetoothEnabled ? green : gray;
-  static const lv_point_precise_t bluetooth[] = {{24, 6}, {24, 24}, {30, 18}, {18, 10}, {30, 6}, {18, 20}, {24, 24}};
+  static const lv_point_precise_t bluetooth[] = {{165, 224}, {165, 242}, {171, 236}, {159, 228}, {171, 224}, {159, 238}, {165, 242}};
   glyphLine(bluetooth, 7, 2, bluetoothColor);
   const lv_color_t wifiColor = state.wifiConnected ? green : gray;
   for (int16_t radius = 10; radius >= 6; radius -= 4) {
     lv_obj_t* arc = lv_arc_create(root);
-    lv_obj_set_pos(arc, 58 - radius, 5);
+    lv_obj_set_pos(arc, 190 - radius, 223);
     lv_obj_set_size(arc, radius * 2, radius * 2);
     lv_arc_set_rotation(arc, 220);
     lv_arc_set_bg_angles(arc, 220, 320);
@@ -112,12 +112,12 @@ void drawStatus(lv_obj_t* root, const SharedRenderState& state) {
     lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
   }
   lv_obj_t* wifiDot = lv_obj_create(root);
-  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, 56, 18);
+  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, 188, 236);
   lv_obj_set_style_radius(wifiDot, LV_RADIUS_CIRCLE, 0); lv_obj_set_style_bg_color(wifiDot, wifiColor, 0); lv_obj_set_style_bg_opa(wifiDot, LV_OPA_COVER, 0); lv_obj_set_style_border_width(wifiDot, 0, 0);
   const lv_color_t cloudColor = state.cloudConnected ? green : gray;
-  lv_obj_t* cloud = makePanel(root, 408, 14, 24, 8, 4, cloudColor);
-  lv_obj_t* cloudLeft = makePanel(root, 411, 10, 10, 10, 5, cloudColor);
-  lv_obj_t* cloudMid = makePanel(root, 417, 7, 14, 14, 7, cloudColor);
+  lv_obj_t* cloud = makePanel(root, 318, 232, 24, 8, 4, cloudColor);
+  lv_obj_t* cloudLeft = makePanel(root, 321, 228, 10, 10, 5, cloudColor);
+  lv_obj_t* cloudMid = makePanel(root, 327, 225, 14, 14, 7, cloudColor);
   LV_UNUSED(cloud); LV_UNUSED(cloudLeft); LV_UNUSED(cloudMid);
 }
 
