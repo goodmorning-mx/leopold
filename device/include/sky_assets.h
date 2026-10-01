@@ -15,8 +15,8 @@ extern lv_image_dsc_t kWhatsappIcon;
 extern lv_image_dsc_t kSpotifyIcon;
 extern lv_image_dsc_t kSpotifyLargeIcon;
 
-// Loads canonical RGB565A8 assets from /sd/assets. Missing assets remain
-// unavailable so the renderer can fail safely instead of using stale bytes.
+// Legacy SD loader retained for diagnostics; normal boot loads every asset
+// from GoodMorning Cloud so the device cannot render stale local bytes.
 bool loadSdAssets();
 bool loadCloudAsset(const char* file, const uint8_t* data, size_t bytes);
 bool allAssetsLoaded();

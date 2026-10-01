@@ -1568,11 +1568,11 @@ void setup() {
   touch.begin();
   telemetry.begin();
   uiStore.begin();
-  if (!leopold::sky::loadSdAssets()) {
-    Serial.println("SD asset pack incomplete; image-backed screens may be unavailable");
-  } else {
-    Serial.println("SD asset pack loaded");
-  }
+  // Cloud assets are authoritative. Do not preload SD bytes: a partially
+  // readable card must never cause stale local pixels to bypass the cloud.
+  Serial.printf(
+      "Assets will load from GoodMorning Cloud (%u files)\n",
+      static_cast<unsigned>(leopold::sky::assetCount()));
   hasUi = false;
   cachedRawUi = String();
 
