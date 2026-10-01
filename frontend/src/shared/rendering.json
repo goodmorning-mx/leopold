@@ -5,11 +5,11 @@
     "height": 31,
     "text_color": "#7B7D7B",
     "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
-    "time": {"x": 210, "y": 11, "size": 1},
-    "battery": {"x": 338, "y": 11, "size": 1},
-    "bluetooth": {"x": 24, "y": 15},
-    "wifi": {"x": 58, "y": 15},
-    "cloud": {"x": 420, "y": 15}
+    "time": {"x": 214, "y": 218, "size": 1},
+    "battery": {"x": 288, "y": 218, "size": 1},
+    "bluetooth": {"x": 165, "y": 233},
+    "wifi": {"x": 190, "y": 233},
+    "cloud": {"x": 330, "y": 233}
   },
   "home": {
     "spotify_asset_scale": 700,
