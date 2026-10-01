@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
   "firmware_release": "firmware-v0.8.1",
+  "revision": 12,
+  "poll_after_ms": 5000,
   "screens": [
     {"id":"sky-home","background":"#000000","components":[
       {"type":"button","id":"open-clock","label":"CLOCK","x":197,"y":34,"width":72,"height":72},

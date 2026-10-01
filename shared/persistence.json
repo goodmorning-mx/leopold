@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "namespace": "display",
+  "settings": {
+    "brightness": {"key": "brightness", "type": "integer", "default": 70, "minimum": 5, "maximum": 100},
+    "dark_background": {"key": "dark_bg", "type": "boolean", "default": false},
+    "spanish_language": {"key": "spanish", "type": "boolean", "default": false},
+    "clock_24_hour": {"key": "clock_24", "type": "boolean", "default": false},
+    "weather_fahrenheit": {"key": "weather_f", "type": "boolean", "default": false}
+  }
+}

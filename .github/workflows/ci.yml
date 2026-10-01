@@ -7,6 +7,15 @@ on:
     branches: [dev]
 
 jobs:
+  shared-ui:
+    name: Shared UI contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/validate_shared_ui.py
+      - run: python3 scripts/sync_shared_assets.py
+      - run: git diff --exit-code -- device/assets frontend/public/firmware-assets
+
   frontend:
     name: Frontend checks
     runs-on: ubuntu-latest

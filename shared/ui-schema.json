@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/goodmorning-mx/leopold/shared/ui-schema.json",
+  "title": "Leopold SDUI v1",
+  "type": "object",
+  "required": ["schema_version", "revision", "poll_after_ms", "screens"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "poll_after_ms": {"type": "integer", "minimum": 1000, "maximum": 300000},
+    "screens": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"$ref": "#/$defs/screen"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"},
+    "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+    "coordinate": {"type": "integer", "minimum": 0, "maximum": 465},
+    "screen": {
+      "type": "object",
+      "required": ["id", "background", "components"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "background": {"$ref": "#/$defs/color"},
+        "components": {"type": "array", "maxItems": 12, "items": {"$ref": "#/$defs/component"}}
+      },
+      "additionalProperties": true
+    },
+    "component": {
+      "type": "object",
+      "required": ["type", "id", "x", "y"],
+      "properties": {
+        "type": {"enum": ["text", "indicator", "button", "progress", "slider", "icon"]},
+        "id": {"$ref": "#/$defs/id"},
+        "x": {"$ref": "#/$defs/coordinate"},
+        "y": {"$ref": "#/$defs/coordinate"},
+        "width": {"type": "integer", "minimum": 1, "maximum": 466},
+        "height": {"type": "integer", "minimum": 1, "maximum": 466},
+        "color": {"$ref": "#/$defs/color"},
+        "value": {"type": "integer", "minimum": 0, "maximum": 100}
+      },
+      "additionalProperties": true
+    }
+  }
+}

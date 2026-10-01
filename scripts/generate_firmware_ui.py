@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sync_shared_assets import sync
 
 from SCons.Script import Import
 
 Import("env")
 root = Path(env.subst("$PROJECT_DIR")).resolve().parent
+sync()
 source = root / "shared" / "firmware-ui.json"
 target = root / "device" / "include" / "generated_firmware_ui.h"
 document = json.loads(source.read_text(encoding="utf-8"))

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "canvas": {"width": 466, "height": 466},
+  "touch": {
+    "swipe_up_distance": 104,
+    "swipe_horizontal_distance": 96,
+    "swipe_direction_ratio": 1.7,
+    "swipe_up_max_duration_ms": 600,
+    "swipe_horizontal_max_duration_ms": 550,
+    "long_press_duration_ms": 700,
+    "tap_max_duration_ms": 650,
+    "tap_max_movement": 24,
+    "long_press_max_movement": 40,
+    "drag_interval_ms": 16,
+    "slider_touch_padding": 16
+  },
+  "behaviour": {
+    "swipe_up_screen": "sky-home",
+    "clock_long_press_action": "toggle-clock-format",
+    "brightness_minimum": 5,
+    "brightness_maximum": 100
+  }
+}
