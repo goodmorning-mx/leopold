@@ -25,9 +25,24 @@ class WifiPortal {
   void clearCredentialsAndRestart();
 
  private:
+  static constexpr uint8_t kBackupNetworkCount = 3;
+
+  struct SavedNetwork {
+    char ssid[33] = {};
+    char password[65] = {};
+  };
+
   void startPortal(uint32_t now);
+  void loadBackupNetworks();
+  void saveBackupNetworks();
+  void tryNextBackupNetwork(uint32_t now);
+  void rememberNetwork(const char* networkName, const char* password);
 
   WiFiManager manager_;
+  WiFiManagerParameter* backupSsid_[kBackupNetworkCount] = {};
+  WiFiManagerParameter* backupPassword_[kBackupNetworkCount] = {};
+  SavedNetwork backupNetworks_[kBackupNetworkCount];
+  uint8_t nextBackupNetwork_ = 0;
   char accessPointName_[24] = {};
   char setupToken_[33] = {};
   char setupUrl_[256] = {};

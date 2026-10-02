@@ -11,6 +11,7 @@ namespace {
 
 constexpr uint32_t kConnectWindowMs = 20000;
 constexpr uint32_t kReconnectPortalMs = 60000;
+constexpr uint8_t kMaxCredentialLength = 64;
 
 }  // namespace
 
@@ -38,6 +39,7 @@ void WifiPortal::begin(const char* deviceId) {
     preferences.putString("setup_token", setupToken_);
   }
   preferences.end();
+  loadBackupNetworks();
   snprintf(
       setupUrl_,
       sizeof(setupUrl_),
@@ -69,6 +71,27 @@ void WifiPortal::begin(const char* deviceId) {
   manager_.setTitle("Leopold Wi-Fi");
   manager_.setCustomHeadElement(customHead_);
   manager_.setDarkMode(true);
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    char ssidId[24] = {};
+    char passwordId[24] = {};
+    char ssidLabel[40] = {};
+    char passwordLabel[40] = {};
+    snprintf(ssidId, sizeof(ssidId), "backup_ssid_%u", index + 1);
+    snprintf(passwordId, sizeof(passwordId), "backup_password_%u", index + 1);
+    snprintf(ssidLabel, sizeof(ssidLabel), "Backup Wi-Fi %u", index + 1);
+    snprintf(passwordLabel, sizeof(passwordLabel), "Backup password %u", index + 1);
+    backupSsid_[index] = new WiFiManagerParameter(
+        ssidId, ssidLabel, backupNetworks_[index].ssid, 32);
+    backupPassword_[index] = new WiFiManagerParameter(
+        passwordId,
+        passwordLabel,
+        backupNetworks_[index].password,
+        kMaxCredentialLength,
+        "type='password'");
+    manager_.addParameter(backupSsid_[index]);
+    manager_.addParameter(backupPassword_[index]);
+  }
+  manager_.setSaveParamsCallback([this]() { saveBackupNetworks(); });
   std::vector<const char*> menu = {"wifi", "info", "exit"};
   manager_.setMenu(menu);
 
@@ -78,6 +101,7 @@ void WifiPortal::begin(const char* deviceId) {
   WiFi.begin();
   connectStartedAt_ = millis();
   disconnectedAt_ = connectStartedAt_;
+  nextBackupNetwork_ = 0;
   if (!manager_.getWiFiIsSaved()) {
     startPortal(connectStartedAt_);
   }
@@ -108,6 +132,10 @@ void WifiPortal::loop(uint32_t now) {
 
   const bool initialTimeout = now - connectStartedAt_ >= kConnectWindowMs;
   const bool reconnectTimeout = now - disconnectedAt_ >= kReconnectPortalMs;
+  if (initialTimeout && nextBackupNetwork_ < kBackupNetworkCount) {
+    tryNextBackupNetwork(now);
+    return;
+  }
   if (initialTimeout || reconnectTimeout) {
     startPortal(now);
   }
@@ -171,6 +199,8 @@ void WifiPortal::connectToNetwork(
   prepareForScan();
   WiFi.persistent(true);
   WiFi.begin(networkName, password);
+  rememberNetwork(networkName, password);
+  saveBackupNetworks();
   connectStartedAt_ = now;
   disconnectedAt_ = now;
   Serial.printf("Connecting to selected Wi-Fi: %s\n", networkName);
@@ -191,8 +221,74 @@ void WifiPortal::startPortal(uint32_t now) {
 
 void WifiPortal::clearCredentialsAndRestart() {
   manager_.resetSettings();
+  Preferences preferences;
+  preferences.begin("wifi-backups", false);
+  preferences.clear();
+  preferences.end();
   delay(50);
   ESP.restart();
+}
+
+void WifiPortal::loadBackupNetworks() {
+  Preferences preferences;
+  preferences.begin("wifi-backups", true);
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    char ssidKey[16] = {};
+    char passwordKey[16] = {};
+    snprintf(ssidKey, sizeof(ssidKey), "ssid%u", index);
+    snprintf(passwordKey, sizeof(passwordKey), "pass%u", index);
+    preferences.getString(ssidKey, backupNetworks_[index].ssid, sizeof(backupNetworks_[index].ssid));
+    preferences.getString(passwordKey, backupNetworks_[index].password, sizeof(backupNetworks_[index].password));
+  }
+  preferences.end();
+}
+
+void WifiPortal::saveBackupNetworks() {
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    strlcpy(backupNetworks_[index].ssid, backupSsid_[index]->getValue(), sizeof(backupNetworks_[index].ssid));
+    strlcpy(backupNetworks_[index].password, backupPassword_[index]->getValue(), sizeof(backupNetworks_[index].password));
+  }
+  Preferences preferences;
+  preferences.begin("wifi-backups", false);
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    char ssidKey[16] = {};
+    char passwordKey[16] = {};
+    snprintf(ssidKey, sizeof(ssidKey), "ssid%u", index);
+    snprintf(passwordKey, sizeof(passwordKey), "pass%u", index);
+    preferences.putString(ssidKey, backupNetworks_[index].ssid);
+    preferences.putString(passwordKey, backupNetworks_[index].password);
+  }
+  preferences.end();
+}
+
+void WifiPortal::tryNextBackupNetwork(uint32_t now) {
+  while (nextBackupNetwork_ < kBackupNetworkCount) {
+    const SavedNetwork& network = backupNetworks_[nextBackupNetwork_++];
+    if (network.ssid[0] == '\0' || network.password[0] == '\0') continue;
+    WiFi.disconnect(false, false);
+    WiFi.begin(network.ssid, network.password);
+    connectStartedAt_ = now;
+    disconnectedAt_ = now;
+    Serial.printf("Trying saved Wi-Fi network %u: %s\n", nextBackupNetwork_, network.ssid);
+    return;
+  }
+}
+
+void WifiPortal::rememberNetwork(const char* networkName, const char* password) {
+  if (networkName == nullptr || password == nullptr || networkName[0] == '\0') return;
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    if (strcmp(backupNetworks_[index].ssid, networkName) == 0) {
+      strlcpy(backupNetworks_[index].password, password, sizeof(backupNetworks_[index].password));
+      return;
+    }
+  }
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    if (backupNetworks_[index].ssid[0] == '\0') {
+      strlcpy(backupNetworks_[index].ssid, networkName, sizeof(backupNetworks_[index].ssid));
+      strlcpy(backupNetworks_[index].password, password, sizeof(backupNetworks_[index].password));
+      return;
+    }
+  }
 }
 
 }  // namespace leopold
