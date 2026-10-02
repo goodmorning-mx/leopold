@@ -59,6 +59,46 @@ lv_obj_t* makeButton(lv_obj_t* parent, const SduiComponent& component, const cha
   return object;
 }
 
+lv_obj_t* makeHomeButton(lv_obj_t* parent, const SduiComponent& component, const char* pressedComponentId) {
+  const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
+  const lv_color_t glass = lv_color_hex(0xBFC9D8);
+  const lv_color_t white = lv_color_hex(0xF3F6FA);
+  const lv_color_t accent = color565(component.color);
+  const bool greenAccent = strcmp(component.id, "open-whatsapp") == 0 || strcmp(component.id, "open-spotify") == 0;
+  const bool blueAccent = strcmp(component.id, "open-navigation") == 0 || strcmp(component.id, "open-usb") == 0;
+  lv_obj_t* object = makePanel(
+      parent,
+      component.x,
+      component.y,
+      component.width,
+      component.height,
+      component.height / 2,
+      glass);
+  // The reference uses a luminous frosted-glass disc rather than a dark
+  // outlined button. Keep the color translucent so the active background
+  // still shows through, but make the glass itself readable on both modes.
+  lv_obj_set_style_bg_opa(object, pressed ? LV_OPA_90 : greenAccent ? LV_OPA_50 : blueAccent ? LV_OPA_70 : LV_OPA_90, 0);
+  lv_obj_set_style_border_width(object, 2, 0);
+  lv_obj_set_style_border_color(object, greenAccent || blueAccent ? accent : white, 0);
+  lv_obj_set_style_border_opa(object, greenAccent ? LV_OPA_90 : LV_OPA_80, 0);
+  lv_obj_set_style_shadow_width(object, pressed ? 7 : 20, 0);
+  lv_obj_set_style_shadow_opa(object, pressed ? LV_OPA_60 : LV_OPA_90, 0);
+  lv_obj_set_style_shadow_color(object, accent, 0);
+  lv_obj_t* inset = makePanel(
+      object,
+      6,
+      6,
+      component.width - 12,
+      component.height - 12,
+      (component.height - 12) / 2,
+      white);
+  lv_obj_set_style_bg_opa(inset, pressed ? LV_OPA_70 : greenAccent ? LV_OPA_10 : LV_OPA_60, 0);
+  lv_obj_set_style_border_width(inset, 1, 0);
+  lv_obj_set_style_border_color(inset, greenAccent ? accent : white, 0);
+  lv_obj_set_style_border_opa(inset, greenAccent ? LV_OPA_40 : LV_OPA_50, 0);
+  return object;
+}
+
 void drawUsb(lv_obj_t* parent, lv_color_t color) {
   static const lv_point_precise_t segments[][2] = {
       {{36, 52}, {36, 20}}, {{36, 20}, {27, 28}}, {{36, 20}, {45, 28}},
@@ -130,14 +170,36 @@ void drawX(lv_obj_t* parent, lv_color_t color, int16_t size = 32) {
   }
 }
 
+void drawPairedCircles(lv_obj_t* root, int16_t x, int16_t y, lv_color_t color) {
+  const auto ring = [root, color](int16_t left, int16_t top, int16_t size) {
+    lv_obj_t* arc = lv_arc_create(root);
+    lv_obj_set_pos(arc, left, top);
+    lv_obj_set_size(arc, size, size);
+    lv_arc_set_rotation(arc, 0);
+    lv_arc_set_bg_angles(arc, 0, 360);
+    lv_arc_set_range(arc, 0, 100);
+    lv_arc_set_value(arc, 100);
+    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_arc_width(arc, 2, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(arc, color, LV_PART_MAIN);
+    lv_obj_set_style_arc_opa(arc, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc, 0, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
+  };
+  ring(x, y + 2, 14);
+  ring(x + 8, y + 5, 12);
+  lv_obj_t* dot = makePanel(root, x + 12, y, 4, 4, 2, color);
+  LV_UNUSED(dot);
+}
+
 void drawGear(lv_obj_t* parent, lv_color_t color) {
   lv_obj_t* gear = makeLabel(parent, LV_SYMBOL_SETTINGS, &lv_font_montserrat_32, color);
   lv_obj_center(gear);
 }
 
 void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
-  const lv_color_t gray = lv_color_hex(0x7B7D7B);
-  const lv_color_t green = lv_color_hex(0x30D158);
+  const lv_color_t gray = lv_color_hex(0xD2D8E2);
+  const lv_color_t active = lv_color_hex(0xF3F6FA);
   const bool top = strcmp(screen.screenId, "sky-clock") == 0 ||
                    strcmp(screen.screenId, "sky-weather") == 0;
   const bool clock = strcmp(screen.screenId, "sky-clock") == 0;
@@ -146,26 +208,30 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   // Keep that pill compact instead of leaving a visual hole where the time
   // used to be. Weather retains the small time, but both top pills are inset
   // from the circular display edge so their rounded corners remain visible.
-  const int16_t surfaceX = clock ? 143 : top ? 110 : 136;
-  const int16_t surfaceY = top ? 18 : 211;
-  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 216;
-  const int16_t surfaceHeight = top ? 34 : 39;
-  const int16_t baseX = clock ? 153 : top ? 119 : 145;
-  const int16_t wifiCenterX = clock ? 184 : top ? 153 : 181;
-  const int16_t cloudX = clock ? 209 : top ? 178 : 194;
-  const int16_t timeX = clock ? 0 : top ? 204 : 237;
-  const int16_t batteryX = clock ? 279 : top ? 307 : 300;
-  lv_obj_t* statusSurface = makePanel(root, surfaceX, surfaceY, surfaceWidth, surfaceHeight, surfaceHeight / 2, lv_color_hex(0x090B0E));
+  const int16_t surfaceX = clock ? 143 : top ? 110 : 118;
+  const int16_t surfaceY = top ? 18 : 202;
+  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 221;
+  const int16_t surfaceHeight = top ? 34 : 56;
+  const int16_t baseX = clock ? 153 : top ? 119 : 139;
+  const int16_t wifiCenterX = clock ? 184 : top ? 153 : 172;
+  // The reference pill reads left-to-right as Bluetooth, Wi-Fi, time,
+  // paired-circles, battery. These coordinates are intentionally shared by
+  // the native and WASM renderers through this source file.
+  const int16_t cloudX = clock ? 209 : top ? 238 : 273;
+  const int16_t timeX = clock ? 0 : top ? 172 : 183;
+  const int16_t batteryX = clock ? 279 : top ? 270 : 316;
+  lv_obj_t* statusSurface = makePanel(root, surfaceX, surfaceY, surfaceWidth, surfaceHeight, surfaceHeight / 2, lv_color_hex(0x697382));
   lv_obj_set_style_bg_opa(statusSurface, LV_OPA_80, 0);
   lv_obj_set_style_border_width(statusSurface, 1, 0);
-  lv_obj_set_style_border_color(statusSurface, lv_color_hex(0x252A30), 0);
+  lv_obj_set_style_border_color(statusSurface, lv_color_hex(0xB8C1CE), 0);
+  lv_obj_set_style_border_opa(statusSurface, LV_OPA_50, 0);
   if (showTime) {
-    lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_14, gray);
+    lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, top ? &lv_font_montserrat_14 : &lv_font_montserrat_20, gray);
     if (top) {
       lv_obj_set_width(time, 78);
       lv_obj_set_style_text_align(time, LV_TEXT_ALIGN_CENTER, 0);
     }
-    lv_obj_set_pos(time, timeX, top ? 25 : 218);
+    lv_obj_set_pos(time, timeX, top ? 25 : 214);
   }
   lv_obj_t* batteryPercent = makeLabel(root, "", &lv_font_montserrat_14, gray);
   char batteryText[8] = {};
@@ -185,10 +251,10 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
     lv_obj_set_style_line_width(line, width, 0);
     lv_obj_set_style_line_rounded(line, true, 0);
   };
-  const lv_color_t bluetoothColor = state.bluetoothEnabled ? green : gray;
+  const lv_color_t bluetoothColor = state.bluetoothEnabled ? active : gray;
   lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_24, bluetoothColor);
-  lv_obj_set_pos(bluetooth, baseX, top ? 25 : 219);
-  const lv_color_t wifiColor = state.wifiConnected ? green : gray;
+  lv_obj_set_pos(bluetooth, baseX, top ? 25 : 220);
+  const lv_color_t wifiColor = state.wifiConnected ? active : gray;
   // Draw sampled arches instead of LVGL arcs. This keeps the Wi-Fi geometry
   // stable across LVGL versions and the browser WASM build.
   const int16_t wifiRadii[] = {10, 6};
@@ -200,18 +266,15 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
       const double degrees = 225.0 + (90.0 * index / 12.0);
       const double radians = degrees * 3.14159265358979323846 / 180.0;
       points[index].x = static_cast<int16_t>(std::lround(wifiCenterX + std::cos(radians) * radius));
-      points[index].y = static_cast<int16_t>(std::lround((top ? 43 : 237) + std::sin(radians) * radius));
+      points[index].y = static_cast<int16_t>(std::lround((top ? 43 : 230) + std::sin(radians) * radius));
     }
     glyphLine(points, 13, 2, wifiColor);
   }
   lv_obj_t* wifiDot = lv_obj_create(root);
-  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, wifiCenterX - 2, top ? 41 : 235);
+  lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, wifiCenterX - 2, top ? 41 : 228);
   lv_obj_set_style_radius(wifiDot, LV_RADIUS_CIRCLE, 0); lv_obj_set_style_bg_color(wifiDot, wifiColor, 0); lv_obj_set_style_bg_opa(wifiDot, LV_OPA_COVER, 0); lv_obj_set_style_border_width(wifiDot, 0, 0);
-  const lv_color_t cloudColor = state.cloudConnected ? green : gray;
-  lv_obj_t* cloud = makePanel(root, cloudX, top ? 38 : 232, 24, 8, 4, cloudColor);
-  lv_obj_t* cloudLeft = makePanel(root, cloudX + 3, top ? 34 : 228, 10, 10, 5, cloudColor);
-  lv_obj_t* cloudMid = makePanel(root, cloudX + 9, top ? 31 : 225, 14, 14, 7, cloudColor);
-  LV_UNUSED(cloud); LV_UNUSED(cloudLeft); LV_UNUSED(cloudMid);
+  const lv_color_t cloudColor = state.cloudConnected ? active : gray;
+  drawPairedCircles(root, cloudX, top ? 31 : 216, cloudColor);
 }
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id) {
@@ -300,10 +363,11 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
 
   const bool home = strcmp(screen.screenId, "sky-home") == 0;
   const bool flower = strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0;
-  if (resolveImage != nullptr && home) {
+  const bool backgroundEnabled = state == nullptr || state->backgroundMode != 0;
+  if (resolveImage != nullptr && home && backgroundEnabled) {
     const lv_image_dsc_t* source = resolveImage(state != nullptr && state->backgroundMode == 2 ? "chevron" : "home");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
-  } else if (resolveImage != nullptr && flower) {
+  } else if (resolveImage != nullptr && flower && backgroundEnabled) {
     const lv_image_dsc_t* source = resolveImage("flower");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   }
@@ -328,7 +392,9 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
         lv_obj_set_pos(text, component.x, component.y);
       }
     } else if (component.type == ComponentType::kButton) {
-      lv_obj_t* button = makeButton(root, component, pressedComponentId);
+      lv_obj_t* button = home
+          ? makeHomeButton(root, component, pressedComponentId)
+          : makeButton(root, component, pressedComponentId);
       const lv_image_dsc_t* source = resolveImage == nullptr ? nullptr : resolveImage(component.id);
       if (strcmp(component.icon, "x") == 0) {
         lv_obj_t* placeholder = makeLabel(button, "X", &lv_font_montserrat_28, color565(component.color));

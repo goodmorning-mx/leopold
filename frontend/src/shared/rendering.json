@@ -5,13 +5,23 @@
     "height": 31,
     "text_color": "#7B7D7B",
     "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
-    "time": {"x": 237, "y": 218, "size": 1},
-    "battery": {"x": 300, "y": 218, "size": 1},
-    "bluetooth": {"x": 156, "y": 233},
-    "wifi": {"x": 181, "y": 233},
-    "cloud": {"x": 206, "y": 233}
+    "time": {"x": 208, "y": 214, "size": 2},
+    "battery": {"x": 316, "y": 218, "size": 1},
+    "bluetooth": {"x": 145, "y": 233},
+    "wifi": {"x": 172, "y": 233},
+    "cloud": {"x": 273, "y": 233, "icon": "paired-circles"}
   },
   "home": {
+    "glass_button": {
+      "fill": "#BFC9D8",
+      "fill_opa": 90,
+      "border": "#F3F6FA",
+      "border_opa": 80,
+      "border_width": 2,
+      "shadow_width": 20,
+      "shadow_opa": 90,
+      "inset_opa": 60
+    },
     "spotify_asset_scale": 180,
     "spotify_asset_width": 59,
     "spotify_asset_height": 59,
