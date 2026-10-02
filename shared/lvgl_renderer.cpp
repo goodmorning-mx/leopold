@@ -225,6 +225,10 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   lv_obj_set_style_border_width(statusSurface, 1, 0);
   lv_obj_set_style_border_color(statusSurface, lv_color_hex(0xB8C1CE), 0);
   lv_obj_set_style_border_opa(statusSurface, LV_OPA_50, 0);
+  lv_obj_set_style_shadow_width(statusSurface, 0, 0);
+  lv_obj_set_style_shadow_opa(statusSurface, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_outline_width(statusSurface, 0, 0);
+  lv_obj_set_style_outline_opa(statusSurface, LV_OPA_TRANSP, 0);
   if (showTime) {
     lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, top ? &lv_font_montserrat_14 : &lv_font_montserrat_28, gray);
     if (top) {

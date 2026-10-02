@@ -13,7 +13,9 @@
       "fill_opa": 92,
       "border": "#B8C1CE",
       "border_opa": 50,
-      "border_width": 1
+      "border_width": 1,
+      "shadow_width": 0,
+      "outline_width": 0
     },
     "home_time_font": 28,
     "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
