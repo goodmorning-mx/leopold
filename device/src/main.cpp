@@ -1157,11 +1157,9 @@ void processInput(uint32_t now) {
               screen.brightnessPercent());
         }
       }
-      if (strcmp(currentUi.active().screenId, "device-control-center") == 0) {
-        screen.updateControlCenterBrightness();
-      } else {
-        screen.renderSduiScreen(currentUi);
-      }
+      // Keep the control-center slider inside the shared LVGL scene so the
+      // device follows the same renderer as the simulator.
+      screen.renderSduiScreen(currentUi);
     } else if (gesture != TouchGesture::kDrag &&
                (strcmp(slider->id, "spotify-volume") == 0 ||
                 strcmp(slider->id, "spotify-seek") == 0)) {
@@ -1261,6 +1259,25 @@ void processUsbCommands() {
       usbCommand[usbCommandLength] = '\0';
       if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strncmp(usbCommand, "LEOPOLD_SCREEN ", 15) == 0) {
+        localPanel = LocalPanel::kNone;
+        const char* requestedScreen = usbCommand + 15;
+        const char* openAction = nullptr;
+        if (strcmp(requestedScreen, "sky-home") == 0) openAction = "open-home";
+        else if (strcmp(requestedScreen, "sky-clock") == 0) openAction = "open-clock";
+        else if (strcmp(requestedScreen, "sky-voltage") == 0) openAction = "open-voltage";
+        else if (strcmp(requestedScreen, "sky-whatsapp") == 0) openAction = "open-whatsapp";
+        else if (strcmp(requestedScreen, "computer-controls") == 0) openAction = "open-usb";
+        else if (strcmp(requestedScreen, "device-control-center") == 0) openAction = "open-settings";
+        else if (strcmp(requestedScreen, "device-additional-options") == 0) openAction = "open-additional-options";
+        else if (strcmp(requestedScreen, "sky-weather") == 0) openAction = "open-weather";
+        else if (strcmp(requestedScreen, "sky-navigation") == 0) openAction = "open-navigation";
+        else if (strcmp(requestedScreen, "spotify-player") == 0) openAction = "open-spotify";
+        if (openAction == nullptr || !openLocalScreen(openAction)) {
+          Serial.println("LEOPOLD_SCREEN_ERROR unknown_screen");
+        } else {
+          Serial.printf("LEOPOLD_SCREEN_OK %s\n", currentUi.active().screenId);
+        }
       } else if (strncmp(usbCommand, "LEOPOLD_ASSET_BEGIN ", 20) == 0) {
         char file[64] = {};
         unsigned long byteCount = 0;
@@ -1430,9 +1447,6 @@ void processNetwork(uint32_t now) {
       screen.renderSdui(currentUi);
     }
     weather.begin();
-    if (!bluetooth.enabled()) {
-      bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
-    }
     servicesStarted = true;
   }
   if (servicesStarted && !weatherRequested) {
@@ -1471,7 +1485,6 @@ void refreshIndicators(uint32_t now) {
   char timeText[9] = {};
   telemetry.formattedTime(timeText);
   const uint16_t millivolts = telemetry.batteryMillivolts();
-  const uint8_t batteryPercent = telemetry.batteryPercent();
   char voltageText[16] = {};
   snprintf(
       voltageText,
@@ -1522,26 +1535,12 @@ void refreshIndicators(uint32_t now) {
     lastIndicatorAt = now;
     return;
   }
-  screen.drawIndicators(
-      wifiConnected,
-      cloudConnected,
-      bluetoothEnabled,
-      bluetoothConnected,
-      batteryPercent,
-      timeText);
   const bool liveSkyScreen = hasUi && currentUi.screenCount > 0 &&
       generated_ui::statusBarVisible(currentUi.active().screenId);
   if ((statusChanged && hasUi && currentUi.screenCount > 0 &&
        strcmp(currentUi.active().screenId, "device-control-center") == 0) ||
       liveSkyScreen || weatherRefreshed) {
     screen.renderSduiScreen(currentUi);
-    screen.drawIndicators(
-        wifiConnected,
-        cloudConnected,
-        bluetoothEnabled,
-        bluetoothConnected,
-        batteryPercent,
-        timeText);
   }
   indicatorsInitialized = true;
   lastWifiIndicator = wifiConnected;

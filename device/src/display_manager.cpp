@@ -1583,10 +1583,6 @@ void DisplayManager::renderSduiScreen(const SduiDocument& document) {
     buildLvglSpotifyPlayer(active);
     return;
   }
-  if (strcmp(active.screenId, "device-control-center") == 0) {
-    buildLvglControlCenter();
-    return;
-  }
   buildLvglSduiScreen(active);
 }
 
@@ -1612,16 +1608,9 @@ void DisplayManager::drawIndicators(
   sharedRenderState_.bluetoothConnected = bluetoothConnected_;
   sharedRenderState_.brightnessPercent = brightnessPercent_;
   sharedRenderState_.backgroundMode = backgroundMode_;
-  display->fillRect(0, 0, kScreenWidth, 31, kBlack);
-  display->setTextSize(1);
-  drawBluetoothIcon(generated_ui::kStatusBluetoothX, generated_ui::kStatusBluetoothY, bluetoothEnabled);
-  drawWifiIcon(generated_ui::kStatusWifiX, generated_ui::kStatusWifiY, wifiConnected);
-  drawCloudIcon(generated_ui::kStatusCloudX, generated_ui::kStatusCloudY, cloudConnected);
-  display->setTextColor(generated_ui::kStatusTextColor);
-  display->setCursor(generated_ui::kStatusBatteryX, generated_ui::kStatusBatteryY);
-  display->printf("%u%%", batteryPercent);
-  display->setCursor(generated_ui::kStatusTimeX, generated_ui::kStatusTimeY);
-  display->print(timeText);
+  // Status UI is rendered by the shared LVGL renderer. Drawing a second
+  // direct-to-panel copy here caused a flashing cloud glyph and made screens
+  // without a status bar diverge from the simulator.
 }
 
 const SharedRenderState& DisplayManager::sharedRenderState() const {
@@ -1728,20 +1717,8 @@ void DisplayManager::updateControlCenterBrightness() {
     lv_label_set_text(brightnessValue, value);
     return;
   }
-  // Redraw only this region for smooth touch updates over QSPI.
-  constexpr int16_t sliderX = 326;
-  constexpr int16_t sliderY = 120;
-  constexpr int16_t sliderWidth = 76;
-  constexpr int16_t sliderHeight = 224;
-  constexpr int16_t radius = sliderWidth / 2;
-  display->fillRoundRect(
-      sliderX, sliderY, sliderWidth, sliderHeight, radius, kPanel);
-  const int16_t fillHeight =
-      max<int16_t>(sliderWidth, brightnessPercent_ * sliderHeight / 100);
-  const int16_t fillY = sliderY + sliderHeight - fillHeight;
-  display->fillRoundRect(
-      sliderX, fillY, sliderWidth, fillHeight, radius, kWhite);
-  drawSunGlyph(sliderX + sliderWidth / 2, sliderY + sliderHeight - 36, kBlack);
+  // The shared LVGL renderer owns the slider when the control-center screen
+  // is active; there is no direct-draw fallback that can diverge from it.
 
   display->fillRect(318, 360, 96, 52, kBlack);
   display->setTextSize(2);

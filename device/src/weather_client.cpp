@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include "config_guard.h"
-#include "tls_bundle.h"
+#include "tls_roots.h"
 
 namespace leopold {
 namespace {
@@ -125,7 +125,7 @@ bool WeatherClient::refresh(SduiDocument& document) {
   if (WiFi.status() != WL_CONNECTED || !synchronizeClock()) return false;
 
   WiFiClientSecure secure;
-  secure.setCACert(kLetsEncryptTrustBundle);
+  secure.setCACert(kLetsEncryptRootYrByX1);
   secure.setHandshakeTimeout(8);
   HTTPClient http;
   http.setConnectTimeout(8000);
