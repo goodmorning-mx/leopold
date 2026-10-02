@@ -4,6 +4,18 @@
   "status_bar": {
     "height": 31,
     "text_color": "#7B7D7B",
+    "home_pill": {
+      "x": 126,
+      "y": 202,
+      "width": 211,
+      "height": 54,
+      "fill": "#555C6A",
+      "fill_opa": 92,
+      "border": "#B8C1CE",
+      "border_opa": 50,
+      "border_width": 1
+    },
+    "home_time_font": 28,
     "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
     "time": {"x": 208, "y": 214, "size": 2},
     "battery": {"x": 316, "y": 218, "size": 1},
