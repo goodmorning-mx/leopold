@@ -80,6 +80,8 @@ def main() -> None:
         for x in range(width):
             red, green, blue = rgb[(y * width + x) * 3 : (y * width + x + 1) * 3]
             inside_face = (x - cx) ** 2 + (y - cy) ** 2 <= face_radius**2
+            # Match the live renderer's home status pill exactly so the
+            # artwork mask cannot leave a dark halo around its edge.
             left, top, right, bottom, radius = 116, 194, 346, 266, 30
             in_banner = (left + radius <= x <= right - radius and top <= y <= bottom) or (left <= x <= right and top + radius <= y <= bottom - radius)
             if not in_banner:

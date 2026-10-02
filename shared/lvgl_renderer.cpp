@@ -208,10 +208,10 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   // Keep that pill compact instead of leaving a visual hole where the time
   // used to be. Weather retains the small time, but both top pills are inset
   // from the circular display edge so their rounded corners remain visible.
-  const int16_t surfaceX = clock ? 143 : top ? 110 : 126;
+  const int16_t surfaceX = clock ? 143 : top ? 110 : 116;
   const int16_t surfaceY = top ? 18 : 202;
-  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 211;
-  const int16_t surfaceHeight = top ? 34 : 54;
+  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 230;
+  const int16_t surfaceHeight = top ? 34 : 72;
   const int16_t baseX = clock ? 153 : top ? 119 : 151;
   const int16_t wifiCenterX = clock ? 184 : top ? 153 : 182;
   // The reference pill reads left-to-right as Bluetooth, Wi-Fi, time,
