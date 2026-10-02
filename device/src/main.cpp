@@ -1424,6 +1424,11 @@ void processNetwork(uint32_t now) {
   }
   requestNextCloudAsset();
   if (leopold::sky::allAssetsLoaded() && !servicesStarted) {
+    if (hasUi) {
+      // The first frame may have been rendered before the cloud assets
+      // arrived. Rebuild it now so LVGL resolves the newly loaded images.
+      screen.renderSdui(currentUi);
+    }
     weather.begin();
     if (!bluetooth.enabled()) {
       bluetooth.begin(wifi.accessPointName(), LEOPOLD_DEVICE_ID);
