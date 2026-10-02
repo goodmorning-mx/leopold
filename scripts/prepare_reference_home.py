@@ -72,13 +72,14 @@ def write_png(path: Path, width: int, height: int, rgba: bytes) -> None:
 
 def main() -> None:
     source, destination = map(Path, sys.argv[1:3])
+    face_radius = int(sys.argv[3]) if len(sys.argv) > 3 else 218
     width, height, rgb = read_png(source)
     rgba = bytearray()
     cx = cy = (width - 1) / 2
     for y in range(height):
         for x in range(width):
             red, green, blue = rgb[(y * width + x) * 3 : (y * width + x + 1) * 3]
-            inside_face = (x - cx) ** 2 + (y - cy) ** 2 <= 218**2
+            inside_face = (x - cx) ** 2 + (y - cy) ** 2 <= face_radius**2
             left, top, right, bottom, radius = 116, 194, 346, 266, 30
             in_banner = (left + radius <= x <= right - radius and top <= y <= bottom) or (left <= x <= right and top + radius <= y <= bottom - radius)
             if not in_banner:
