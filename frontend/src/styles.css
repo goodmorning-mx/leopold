@@ -348,14 +348,14 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 
 /* Local Leopold simulator. Coordinates inside .device-surface are the physical
    466px canvas, so SDUI can be copied to firmware without layout conversion. */
-.simulator-shell { min-height: 100vh; padding: 24px 20px 64px; background: radial-gradient(circle at 50% 8%, #303947 0, #11151d 31%, #050608 70%); }
-.simulator-header { display: none; align-items: end; justify-content: space-between; gap: 28px; width: min(1180px, 100%); margin: 0 auto 32px; }
+.simulator-shell { min-height: 100vh; padding: 32px max(20px, 4vw) 64px; background: radial-gradient(circle at 50% 8%, #303947 0, #11151d 31%, #050608 70%); }
+.simulator-header { display: flex; align-items: end; justify-content: space-between; gap: 28px; width: min(1180px, 100%); margin: 0 auto 32px; }
 .simulator-header .kicker { margin-top: 0; }
 .simulator-header h1 { margin-bottom: 10px; }
 .simulator-header .muted { max-width: 620px; margin-bottom: 0; }
-.simulator-grid { display: block; width: min(980px, 100%); margin: auto; }
-.device-column { position: static; }
-.device-frame { width: min(900px, calc(100vw - 40px)); aspect-ratio: 1; margin: auto; padding: 24px; border: 2px solid #cbd0d8; border-radius: 50%; background: linear-gradient(145deg, #aeb4bf 0%, #555c66 42%, #d5d9df 100%); box-shadow: 0 24px 70px #000, inset 0 0 0 3px #69717c; }
+.simulator-grid { display: grid; grid-template-columns: minmax(320px, 520px) minmax(360px, 1fr); align-items: start; gap: 34px; width: min(1180px, 100%); margin: auto; }
+.device-column { position: sticky; top: 24px; }
+.device-frame { width: min(466px, 100%); aspect-ratio: 1; margin: auto; padding: 12px; border: 1px solid #cbd0d8; border-radius: 50%; background: linear-gradient(145deg, #aeb4bf 0%, #555c66 42%, #d5d9df 100%); box-shadow: 0 24px 70px #000, inset 0 0 0 2px #69717c; }
 .device-surface { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 50%; background: #000; color: #fff; touch-action: none; user-select: none; }
 .firmware-canvas { display: block; width: 100%; height: 100%; image-rendering: auto; }
 .device-statusbar { position: absolute; z-index: 2; top: 10px; left: 22px; right: 22px; display: flex; justify-content: space-between; color: #8e8e93; font-size: 9px; letter-spacing: .06em; pointer-events: none; }
@@ -402,9 +402,9 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 .spotify-controls b { display: grid; place-items: center; width: 70px; height: 70px; border-radius: 50%; color: #000; background: #fff; }
 .spotify-seek { position: absolute; left: 18%; right: 18%; bottom: 14%; height: 5px; border-radius: 5px; background: #fff; }
 .device-live-clock, .device-live-weather { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: transparent; pointer-events: none; }
-.device-meta { display: none; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; color: #999; font-size: 12px; }
-.gesture-help { display: none; margin: 12px auto 0; color: #777; font-size: 12px; text-align: center; }
-.simulator-panel { display: grid; gap: 16px; width: min(900px, 100%); margin: 32px auto 0; }
+.device-meta { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; color: #999; font-size: 12px; }
+.gesture-help { display: block; margin: 12px auto 0; color: #777; font-size: 12px; text-align: center; }
+.simulator-panel { display: grid; gap: 16px; }
 .status-card, .debug-card, .events-card { padding: 22px; border: 1px solid #292929; border-radius: 16px; background: #111; }
 .status-card h2, .debug-card h2, .events-card h2 { font-size: 21px; }
 .state-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 11px 18px; margin-top: 18px; color: #888; font-size: 13px; }
@@ -425,5 +425,5 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
   .simulator-header { align-items: flex-start; flex-direction: column; }
   .simulator-grid { grid-template-columns: 1fr; }
   .device-column { position: static; }
-  .device-frame { width: min(900px, calc(100vw - 40px)); }
+  .device-frame { width: min(466px, 100%); }
 }

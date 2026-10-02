@@ -208,20 +208,20 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   // Keep that pill compact instead of leaving a visual hole where the time
   // used to be. Weather retains the small time, but both top pills are inset
   // from the circular display edge so their rounded corners remain visible.
-  const int16_t surfaceX = clock ? 143 : top ? 110 : 118;
+  const int16_t surfaceX = clock ? 143 : top ? 110 : 122;
   const int16_t surfaceY = top ? 18 : 202;
-  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 221;
+  const int16_t surfaceWidth = clock ? 190 : top ? 246 : 214;
   const int16_t surfaceHeight = top ? 34 : 56;
-  const int16_t baseX = clock ? 153 : top ? 119 : 139;
-  const int16_t wifiCenterX = clock ? 184 : top ? 153 : 172;
+  const int16_t baseX = clock ? 153 : top ? 119 : 145;
+  const int16_t wifiCenterX = clock ? 184 : top ? 153 : 179;
   // The reference pill reads left-to-right as Bluetooth, Wi-Fi, time,
   // paired-circles, battery. These coordinates are intentionally shared by
   // the native and WASM renderers through this source file.
-  const int16_t cloudX = clock ? 209 : top ? 238 : 273;
-  const int16_t timeX = clock ? 0 : top ? 172 : 183;
-  const int16_t batteryX = clock ? 279 : top ? 270 : 316;
-  lv_obj_t* statusSurface = makePanel(root, surfaceX, surfaceY, surfaceWidth, surfaceHeight, surfaceHeight / 2, lv_color_hex(0x697382));
-  lv_obj_set_style_bg_opa(statusSurface, LV_OPA_80, 0);
+  const int16_t cloudX = clock ? 209 : top ? 238 : 279;
+  const int16_t timeX = clock ? 0 : top ? 172 : 198;
+  const int16_t batteryX = clock ? 279 : top ? 270 : 294;
+  lv_obj_t* statusSurface = makePanel(root, surfaceX, surfaceY, surfaceWidth, surfaceHeight, surfaceHeight / 2, lv_color_hex(0x626A78));
+  lv_obj_set_style_bg_opa(statusSurface, LV_OPA_90, 0);
   lv_obj_set_style_border_width(statusSurface, 1, 0);
   lv_obj_set_style_border_color(statusSurface, lv_color_hex(0xB8C1CE), 0);
   lv_obj_set_style_border_opa(statusSurface, LV_OPA_50, 0);
