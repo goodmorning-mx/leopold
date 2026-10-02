@@ -364,8 +364,15 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   const bool home = strcmp(screen.screenId, "sky-home") == 0;
   const bool flower = strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0;
   const bool backgroundEnabled = state == nullptr || state->backgroundMode != 0;
-  if (resolveImage != nullptr && home && backgroundEnabled) {
+  // The reference home artwork contains the static glass controls. Keep the
+  // SDUI components as live hit targets, but let the shared artwork supply
+  // their pixels whenever the home screen is in its reference presentation.
+  const bool referenceHome = home && (state == nullptr || state->backgroundMode != 2);
+  if (resolveImage != nullptr && home && referenceHome) {
     const lv_image_dsc_t* source = resolveImage(state != nullptr && state->backgroundMode == 2 ? "chevron" : "home");
+    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
+  } else if (resolveImage != nullptr && home && backgroundEnabled) {
+    const lv_image_dsc_t* source = resolveImage("chevron");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   } else if (resolveImage != nullptr && flower && backgroundEnabled) {
     const lv_image_dsc_t* source = resolveImage("flower");
@@ -374,6 +381,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
 
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
+    if (referenceHome) continue;
     if (component.type == ComponentType::kText) {
       lv_obj_t* text = makeLabel(root, component.text, fontForSize(component.size), color565(component.color));
       if (component.align == TextAlign::kCenter) {
@@ -434,6 +442,11 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
       lv_obj_set_style_bg_color(bar, lv_color_hex(0x3A3A3C), LV_PART_MAIN);
       lv_obj_set_style_bg_color(bar, color565(component.color), LV_PART_INDICATOR);
     }
+  }
+  if (referenceHome) {
+    // Erase the reference image's static status pill before drawing the live
+    // shared pill below. The surrounding black band also removes its glow.
+    makePanel(root, 116, 194, 230, 74, 0, lv_color_black());
   }
   if (state != nullptr && (strcmp(screen.screenId, "sky-home") == 0 || strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0 || strcmp(screen.screenId, "device-control-center") == 0)) {
     drawStatus(root, screen, *state);

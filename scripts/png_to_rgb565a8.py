@@ -32,11 +32,12 @@ def decode(path: Path, remove_white_background: bool = False) -> tuple[int, int,
             compressed.extend(chunk)
         elif kind == b"IEND":
             break
-    if bit_depth != 8 or color_type != 6 or interlace != 0:
-        raise ValueError("expected an 8-bit RGBA, non-interlaced PNG")
+    if bit_depth != 8 or color_type not in (2, 6) or interlace != 0:
+        raise ValueError("expected an 8-bit RGB/RGBA, non-interlaced PNG")
 
     raw = zlib.decompress(compressed)
-    stride = width * 4
+    bytes_per_pixel = 4 if color_type == 6 else 3
+    stride = width * bytes_per_pixel
     rows: list[bytes] = []
     cursor = 0
     previous = bytearray(stride)
@@ -68,7 +69,8 @@ def decode(path: Path, remove_white_background: bool = False) -> tuple[int, int,
     rgb565 = bytearray()
     alpha = bytearray()
     for row in rows:
-        for red, green, blue, opacity in struct.iter_unpack("BBBB", row):
+        pixels = struct.iter_unpack("BBBB", row) if color_type == 6 else ((red, green, blue, 255) for red, green, blue in struct.iter_unpack("BBB", row))
+        for red, green, blue, opacity in pixels:
             if remove_white_background and red >= 248 and green >= 248 and blue >= 248:
                 opacity = 0
             packed = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
