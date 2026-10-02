@@ -48,9 +48,9 @@ def decode(path: Path, remove_white_background: bool = False) -> tuple[int, int,
         cursor += stride
         row = bytearray(stride)
         for index, value in enumerate(encoded):
-            left = row[index - 4] if index >= 4 else 0
+            left = row[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
             above = previous[index]
-            upper_left = previous[index - 4] if index >= 4 else 0
+            upper_left = previous[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
             if filter_type == 0:
                 row[index] = value
             elif filter_type == 1:
