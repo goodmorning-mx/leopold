@@ -82,7 +82,7 @@ def main() -> None:
             inside_face = (x - cx) ** 2 + (y - cy) ** 2 <= face_radius**2
             # Match the live renderer's home status pill exactly so the
             # artwork mask cannot leave a dark halo around its edge.
-            left, top, right, bottom, radius = 116, 194, 346, 266, 30
+            left, top, right, bottom, radius = 114, 202, 338, 258, 28
             in_banner = (left + radius <= x <= right - radius and top <= y <= bottom) or (left <= x <= right and top + radius <= y <= bottom - radius)
             if not in_banner:
                 for corner_x, corner_y in ((left + radius, top + radius), (right - radius, top + radius), (left + radius, bottom - radius), (right - radius, bottom - radius)):
