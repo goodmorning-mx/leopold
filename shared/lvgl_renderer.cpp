@@ -443,11 +443,6 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
       lv_obj_set_style_bg_color(bar, color565(component.color), LV_PART_INDICATOR);
     }
   }
-  if (referenceHome) {
-    // Erase the reference image's static status pill before drawing the live
-    // shared pill below. The surrounding black band also removes its glow.
-    makePanel(root, 116, 194, 230, 74, 0, lv_color_black());
-  }
   if (state != nullptr && (strcmp(screen.screenId, "sky-home") == 0 || strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0 || strcmp(screen.screenId, "device-control-center") == 0)) {
     drawStatus(root, screen, *state);
   }
