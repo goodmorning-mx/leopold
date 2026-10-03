@@ -102,14 +102,16 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, connecte
 function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
   const status = rendering.status_bar;
   if (isHome) {
-    const pill = status.home_pill;
-    rounded(ctx, pill.x, pill.y, pill.width, pill.height, 28, 'rgba(85,92,106,.92)', '#B8C1CE', 1);
+    // Keep the reference bitmap's exact pill silhouette, glow, and edge gaps.
+    // Only clear the live text fields so the simulator can track device time.
+    ctx.fillStyle = 'rgba(85,92,106,.92)';
+    ctx.fillRect(status.time.x - 4, status.time.y - 2, 74, 28);
   }
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, status.height);
   drawBluetooth(ctx, status.bluetooth.x, status.bluetooth.y, bluetoothEnabled);
   drawWifi(ctx, status.wifi.x, status.wifi.y, wifiConnected);
   drawCloud(ctx, status.cloud.x, status.cloud.y, cloudConnected);
-  text(ctx, `${batteryPercent}%`, status.battery.x, status.battery.y, fonts[status.battery.size], status.text_color);
+  if (!isHome) text(ctx, `${batteryPercent}%`, status.battery.x, status.battery.y, fonts[status.battery.size], status.text_color);
   text(ctx, timeText || (clock24 ? '20:42' : '8:42'), status.time.x, status.time.y, fonts[status.time.size], status.text_color);
 }
 

@@ -19,7 +19,7 @@ function stored<T extends number | boolean>(key: string, fallback: T): T {
 }
 
 async function decodeFirmwareAsset(path: string, width: number, height: number): Promise<string> {
-  const bytes = new Uint8Array(await (await fetch(path)).arrayBuffer());
+  const bytes = new Uint8Array(await (await fetch(`${path}?asset-revision=home-reference`)).arrayBuffer());
   const pixels = width * height;
   const image = new ImageData(width, height);
   const alphaOffset = pixels * 2;

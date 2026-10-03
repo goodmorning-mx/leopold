@@ -72,8 +72,9 @@ def write_png(path: Path, width: int, height: int, rgba: bytes) -> None:
 
 def main() -> None:
     source, destination = map(Path, sys.argv[1:3])
-    face_radius = int(sys.argv[3]) if len(sys.argv) > 3 else 232
+    face_radius = int(sys.argv[3]) if len(sys.argv) > 3 else 234
     keep_banner = len(sys.argv) > 4 and sys.argv[4] == "keep-banner"
+    keep_background = len(sys.argv) > 4 and sys.argv[4] == "keep-background"
     width, height, rgb = read_png(source)
     rgba = bytearray()
     cx = cy = (width - 1) / 2
@@ -92,7 +93,10 @@ def main() -> None:
                     if (x - corner_x) ** 2 + (y - corner_y) ** 2 <= radius ** 2:
                         in_banner = True
                         break
-            rgba.extend((0, 0, 0, 0 if not inside_face else 255) if in_banner or not inside_face else (red, green, blue, 255))
+            if keep_background:
+                rgba.extend((red, green, blue, 255))
+            else:
+                rgba.extend((0, 0, 0, 0 if not inside_face else 255) if in_banner or not inside_face else (red, green, blue, 255))
     write_png(destination, width, height, rgba)
 
 
