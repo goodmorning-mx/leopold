@@ -5,9 +5,9 @@
     "height": 31,
     "text_color": "#7B7D7B",
     "home_pill": {
-      "x": 114,
+      "x": 122,
       "y": 202,
-      "width": 224,
+      "width": 214,
       "height": 56,
       "fill": "#555C6A",
       "fill_opa": 92,
@@ -17,13 +17,13 @@
       "shadow_width": 0,
       "outline_width": 0
     },
-    "home_time_font": 28,
+    "home_time_font": 20,
     "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
     "time": {"x": 208, "y": 214, "size": 2},
     "battery": {"x": 316, "y": 218, "size": 1},
     "bluetooth": {"x": 145, "y": 233},
     "wifi": {"x": 172, "y": 233},
-    "cloud": {"x": 273, "y": 233, "icon": "paired-circles"}
+    "cloud": {"x": 279, "y": 233, "icon": "paired-circles"}
   },
   "home": {
     "glass_button": {
