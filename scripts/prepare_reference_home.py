@@ -75,12 +75,20 @@ def main() -> None:
     face_radius = int(sys.argv[3]) if len(sys.argv) > 3 else 234
     keep_banner = len(sys.argv) > 4 and sys.argv[4] == "keep-banner"
     keep_background = len(sys.argv) > 4 and sys.argv[4] == "keep-background"
+    blank_time = len(sys.argv) > 5 and sys.argv[5] == "blank-time"
     width, height, rgb = read_png(source)
     rgba = bytearray()
     cx = cy = (width - 1) / 2
     for y in range(height):
         for x in range(width):
             red, green, blue = rgb[(y * width + x) * 3 : (y * width + x + 1) * 3]
+            if blank_time and 199 <= x <= 277 and 208 <= y <= 244:
+                # Reconstruct the pill fill across the live-time field. The
+                # source artwork contains a fixed 19:52; the simulator paints
+                # the current time at runtime, so that baked text must be
+                # removed without leaving a rectangular repaint patch.
+                sample = (y * width + 190) * 3
+                red, green, blue = rgb[sample : sample + 3]
             inside_face = (x - cx) ** 2 + (y - cy) ** 2 <= face_radius**2
             # Match the live renderer's home status pill exactly so the
             # artwork mask cannot leave a dark halo around its edge.
