@@ -2,3 +2,4 @@
 .vscode/
 include/leopold_config.h
 include/generated_firmware_ui.h
+include/generated_home_asset.h

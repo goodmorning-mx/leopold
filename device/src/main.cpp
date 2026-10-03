@@ -1567,6 +1567,9 @@ void setup() {
       delay(100);
     }
   }
+  if (!leopold::sky::loadEmbeddedHomeAsset()) {
+    Serial.println("Embedded home asset failed to load");
+  }
   screen.showState(leopold::AppState::kBooting);
 
   touch.begin();

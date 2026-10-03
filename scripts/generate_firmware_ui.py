@@ -15,6 +15,7 @@ from sync_shared_assets import sync
 sync()
 source = root / "shared" / "firmware-ui.json"
 target = root / "device" / "include" / "generated_firmware_ui.h"
+home_asset_target = root / "device" / "include" / "generated_home_asset.h"
 document = json.loads(source.read_text(encoding="utf-8"))
 interaction = json.loads((root / "shared" / "interaction.json").read_text(encoding="utf-8"))
 persistence = json.loads((root / "shared" / "persistence.json").read_text(encoding="utf-8"))
@@ -169,3 +170,23 @@ lines.extend(["  }", "}", "}  // namespace generated_ui", "}  // namespace leopo
 generated = "\n".join(lines)
 if not target.exists() or target.read_text(encoding="utf-8") != generated:
     target.write_text(generated, encoding="utf-8")
+
+home_asset = (root / "shared" / "assets" / "sky_home.bin").read_bytes()
+home_asset_lines = [
+    "#pragma once",
+    "#include <Arduino.h>",
+    "",
+    "namespace leopold::sky {",
+    "const uint8_t kHomeAssetData[] PROGMEM = {",
+]
+for offset in range(0, len(home_asset), 16):
+    home_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in home_asset[offset : offset + 16]) + ",")
+home_asset_lines.extend([
+    "};",
+    "constexpr size_t kHomeAssetDataSize = sizeof(kHomeAssetData);",
+    "}  // namespace leopold::sky",
+    "",
+])
+home_asset_generated = "\n".join(home_asset_lines)
+if not home_asset_target.exists() or home_asset_target.read_text(encoding="utf-8") != home_asset_generated:
+    home_asset_target.write_text(home_asset_generated, encoding="utf-8")

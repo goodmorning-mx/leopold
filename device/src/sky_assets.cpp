@@ -1,4 +1,5 @@
 #include "sky_assets.h"
+#include "generated_home_asset.h"
 
 #include <Arduino.h>
 #include <cstdio>
@@ -7,6 +8,8 @@
 #include <esp_heap_caps.h>
 
 namespace {
+
+bool embeddedHomeLoaded = false;
 
 constexpr lv_image_header_t header(uint16_t width, uint16_t height) {
   return {
@@ -102,6 +105,7 @@ bool loadSdAssets() {
 
 bool loadCloudAsset(const char* file, const uint8_t* data, size_t bytes) {
   if (file == nullptr || data == nullptr) return false;
+  if (embeddedHomeLoaded && strcmp(file, "sky_home.bin") == 0) return true;
   for (AssetSlot& asset : assets) {
     const size_t expected = static_cast<size_t>(asset.width) * asset.height * 3;
     if (strcmp(asset.file, file) != 0 || bytes != expected) continue;
@@ -117,6 +121,12 @@ bool loadCloudAsset(const char* file, const uint8_t* data, size_t bytes) {
     return true;
   }
   return false;
+}
+
+bool loadEmbeddedHomeAsset() {
+  if (!loadCloudAsset("sky_home.bin", kHomeAssetData, kHomeAssetDataSize)) return false;
+  embeddedHomeLoaded = true;
+  return true;
 }
 
 bool allAssetsLoaded() {

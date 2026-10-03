@@ -200,6 +200,14 @@ void drawGear(lv_obj_t* parent, lv_color_t color) {
 void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
   const lv_color_t gray = lv_color_hex(0xD2D8E2);
   const lv_color_t active = lv_color_hex(0xF3F6FA);
+  if (strcmp(screen.screenId, "sky-home") == 0) {
+    // sky_home.bin contains the reference bezel, pill, icons, and battery.
+    // Keep the physical renderer from painting a second pill over that asset;
+    // only the time remains live, matching the browser renderer.
+    lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, gray);
+    lv_obj_set_pos(time, 218, 218);
+    return;
+  }
   const bool top = strcmp(screen.screenId, "sky-clock") == 0 ||
                    strcmp(screen.screenId, "sky-weather") == 0;
   const bool clock = strcmp(screen.screenId, "sky-clock") == 0;
