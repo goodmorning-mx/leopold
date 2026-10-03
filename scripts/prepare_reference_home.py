@@ -73,6 +73,7 @@ def write_png(path: Path, width: int, height: int, rgba: bytes) -> None:
 def main() -> None:
     source, destination = map(Path, sys.argv[1:3])
     face_radius = int(sys.argv[3]) if len(sys.argv) > 3 else 218
+    keep_banner = len(sys.argv) > 4 and sys.argv[4] == "keep-banner"
     width, height, rgb = read_png(source)
     rgba = bytearray()
     cx = cy = (width - 1) / 2
@@ -84,6 +85,8 @@ def main() -> None:
             # artwork mask cannot leave a dark halo around its edge.
             left, top, right, bottom, radius = 114, 202, 338, 258, 28
             in_banner = (left + radius <= x <= right - radius and top <= y <= bottom) or (left <= x <= right and top + radius <= y <= bottom - radius)
+            if keep_banner:
+                in_banner = False
             if not in_banner:
                 for corner_x, corner_y in ((left + radius, top + radius), (right - radius, top + radius), (left + radius, bottom - radius), (right - radius, bottom - radius)):
                     if (x - corner_x) ** 2 + (y - corner_y) ** 2 <= radius ** 2:
