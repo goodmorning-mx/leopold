@@ -102,9 +102,9 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, connecte
 function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
   const status = rendering.status_bar;
   if (isHome) {
-    // The home bitmap is a framebuffer capture of the physical device. It
-    // already contains the device's complete status treatment, so repainting
-    // any part of it would make the simulator diverge from the device.
+    // The reference home bitmap already contains the exact status icons and battery.
+    // Clear and redraw only the live time so those bitmap elements are not doubled.
+    text(ctx, timeText || (clock24 ? '20:42' : '8:42'), status.time.x, status.time.y, fonts[status.time.size], status.text_color);
     return;
   }
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, status.height);
