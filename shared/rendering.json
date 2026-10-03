@@ -25,6 +25,18 @@
     "wifi": {"x": 199, "y": 228},
     "cloud": {"x": 282, "y": 228, "icon": "paired-circles"}
   },
+  "settings": {
+    "status_pill": {"x": 137, "y": 39, "width": 195, "height": 34, "radius": 17},
+    "title": {"gear_x": 166, "gear_y": 102, "gear_diameter": 41, "text_x": 196, "text_y": 92, "font_size": 25},
+    "rows": [
+      {"id": "settings-wifi", "x": 73, "y": 130, "width": 320, "height": 49, "active": true, "label": "WiFi", "icon": "wifi"},
+      {"id": "settings-bluetooth", "x": 73, "y": 184, "width": 320, "height": 49, "active": false, "label": "Bluetooth", "icon": "bluetooth"},
+      {"id": "settings-display", "x": 73, "y": 238, "width": 320, "height": 49, "active": false, "label": "Display", "icon": "display"},
+      {"id": "settings-sound", "x": 73, "y": 292, "width": 320, "height": 49, "active": false, "label": "Sound & Vibration", "icon": "sound"}
+    ],
+    "slider": {"x": 98, "y": 358, "width": 272, "height": 28, "radius": 14, "knob_radius": 17, "track": "#113B63", "fill": "#BBD7F5", "accent": "#179AF0"},
+    "brightness_label": {"x": 233, "y": 400, "font_size": 16}
+  },
   "home": {
     "glass_button": {
       "fill": "#BFC9D8",

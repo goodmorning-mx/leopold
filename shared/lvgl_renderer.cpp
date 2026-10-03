@@ -204,8 +204,26 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
     // sky_home.bin contains the reference bezel, pill, icons, and battery.
     // Keep the physical renderer from painting a second pill over that asset;
     // only the time remains live, matching the browser renderer.
-    lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, gray);
-    lv_obj_set_pos(time, 218, 218);
+    const char* live = state.timeText == nullptr ? "--:--" : state.timeText;
+    char clock[8] = {};
+    char period[3] = {};
+    const char* separator = strstr(live, " AM");
+    if (separator == nullptr) separator = strstr(live, " PM");
+    if (separator != nullptr) {
+      const size_t length = static_cast<size_t>(separator - live);
+      snprintf(clock, sizeof(clock), "%.*s", static_cast<int>(length), live);
+      snprintf(period, sizeof(period), "%c%c", separator[1], separator[2]);
+    } else {
+      snprintf(clock, sizeof(clock), "%s", live);
+    }
+    lv_obj_t* timeSlot = makePanel(root, 211, 208, 68, 31, 0, lv_color_hex(0x555C6A));
+    lv_obj_set_style_border_width(timeSlot, 0, 0);
+    lv_obj_t* time = makeLabel(root, clock, &lv_font_montserrat_20, gray);
+    lv_obj_set_pos(time, 218, 214);
+    if (period[0] != '\0') {
+      lv_obj_t* meridiem = makeLabel(root, period, &lv_font_montserrat_12, gray);
+      lv_obj_set_pos(meridiem, 247, 234);
+    }
     return;
   }
   const bool top = strcmp(screen.screenId, "sky-clock") == 0 ||

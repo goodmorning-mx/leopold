@@ -36,7 +36,14 @@
       {"type":"button","id":"computer-volume-up","label":"VOL +","x":306,"y":180,"width":96,"height":72},
       {"type":"button","id":"computer-screenshot","label":"CAPTURE","x":113,"y":292,"width":240,"height":74,"color":"#3D7FFF"}
     ]},
-    {"id":"device-control-center","background":"#000000","components":[{"type":"slider","id":"display-brightness","x":326,"y":116,"width":78,"height":232,"value":72,"color":"#FFFFFF"},{"type":"button","id":"open-additional-options","label":"Additional options","x":112,"y":369,"width":210,"height":55,"color":"#3D7FFF"}]},
+    {"id":"device-control-center","background":"#000000","components":[
+      {"type":"button","id":"settings-wifi","label":"WiFi","icon":"wifi","x":73,"y":130,"width":320,"height":49,"color":"#0A84FF"},
+      {"type":"button","id":"settings-bluetooth","label":"Bluetooth","icon":"bluetooth","x":73,"y":184,"width":320,"height":49},
+      {"type":"button","id":"settings-display","label":"Display","icon":"display","x":73,"y":238,"width":320,"height":49},
+      {"type":"button","id":"settings-sound","label":"Sound & Vibration","icon":"sound","x":73,"y":292,"width":320,"height":49},
+      {"type":"slider","id":"display-brightness","x":98,"y":358,"width":272,"height":28,"value":72,"color":"#BBD7F5"},
+      {"type":"button","id":"open-additional-options","label":"Additional options","x":464,"y":464,"width":1,"height":1,"color":"#3D7FFF"}
+    ]},
     {"id":"device-additional-options","background":"#000000","components":[
       {"type":"text","id":"options-title","text":"ADDITIONAL OPTIONS","x":233,"y":54,"size":2,"color":"#FFFFFF","align":"center"},
       {"type":"button","id":"background-toggle","label":"BACKGROUND: ORIGINAL","x":96,"y":128,"width":274,"height":62,"color":"#3D7FFF"},
