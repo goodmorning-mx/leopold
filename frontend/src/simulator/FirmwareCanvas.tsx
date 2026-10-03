@@ -268,14 +268,19 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       }
     };
     let cancelled = false;
+    let redrawTimers: number[] = [];
     void Promise.all(Object.values(images).map((source) => new Promise<void>((resolve) => {
       const image = new Image();
       image.onload = () => resolve();
       image.onerror = () => resolve();
       image.src = source;
       if (image.complete) resolve();
-    }))).then(() => { if (!cancelled) render(); });
-    return () => { cancelled = true; };
+    }))).then(() => {
+      if (cancelled) return;
+      render();
+      redrawTimers = [100, 300, 700].map((delay) => window.setTimeout(render, delay));
+    });
+    return () => { cancelled = true; redrawTimers.forEach((timer) => window.clearTimeout(timer)); };
   }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }
