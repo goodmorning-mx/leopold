@@ -81,24 +81,30 @@ function componentValue(component: SduiText, clock24: boolean, weatherFahrenheit
 }
 
 function drawWifi(ctx: CanvasRenderingContext2D, x: number, y: number, connected: boolean) {
-  ctx.strokeStyle = connected ? '#00FF00' : '#7BEF7B'; ctx.lineWidth = 2;
+  ctx.strokeStyle = connected ? '#F3F6FA' : '#D2D8E2'; ctx.lineWidth = 2;
   [11, 7].forEach((radius) => { ctx.beginPath(); ctx.arc(x, y + 4, radius, Math.PI * 1.22, Math.PI * 1.78); ctx.stroke(); });
-  ctx.fillStyle = connected ? '#00FF00' : '#7BEF7B'; ctx.beginPath(); ctx.arc(x, y + 7, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = connected ? '#F3F6FA' : '#D2D8E2'; ctx.beginPath(); ctx.arc(x, y + 7, 2, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawBluetooth(ctx: CanvasRenderingContext2D, x: number, y: number, enabled: boolean) {
-  ctx.strokeStyle = enabled ? '#3D7FFF' : '#7BEF7B'; ctx.lineWidth = 2;
+  ctx.strokeStyle = enabled ? '#F3F6FA' : '#D2D8E2'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9); ctx.moveTo(x, y - 9); ctx.lineTo(x + 6, y - 4); ctx.lineTo(x - 5, y + 5); ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 6, y + 4); ctx.lineTo(x, y + 9); ctx.stroke();
 }
 
 function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, connected: boolean) {
-  ctx.fillStyle = connected ? '#00FF00' : '#7BEF7B';
-  [[x - 7, y + 3, 5], [x, y - 1, 7], [x + 7, y + 3, 5]].forEach(([cx, cy, r]) => { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); });
-  rounded(ctx, x - 12, y + 2, 24, 8, 4, ctx.fillStyle);
+  ctx.strokeStyle = connected ? '#F3F6FA' : '#D2D8E2';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x - 4, y + 2, 7, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + 6, y + 5, 6, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(x + 1, y, 2, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawStatus(ctx: CanvasRenderingContext2D, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
+function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
   const status = rendering.status_bar;
+  if (isHome) {
+    const pill = status.home_pill;
+    rounded(ctx, pill.x, pill.y, pill.width, pill.height, 28, 'rgba(85,92,106,.92)', '#B8C1CE', 1);
+  }
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, status.height);
   drawBluetooth(ctx, status.bluetooth.x, status.bluetooth.y, bluetoothEnabled);
   drawWifi(ctx, status.wifi.x, status.wifi.y, wifiConnected);
@@ -127,21 +133,7 @@ function drawUsb(ctx: CanvasRenderingContext2D, x: number, y: number, stroke: st
 }
 
 function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, pressed: string | null) {
-  if (!darkBackground) { drawAsset(ctx, images, 'home', 0, 0, W, H); ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.fillRect(0, 0, W, H); }
-  screen.components.forEach((component) => {
-    if (component.type !== 'button') return;
-    rounded(ctx, component.x, component.y, component.width, component.height, 36, pressed === component.id ? 'rgba(44,44,48,.92)' : 'rgba(20,20,22,.80)', color(component.color), 2);
-    const asset = component.id === 'open-spotify' ? 'open-spotify' : component.id;
-    const dimensions: Record<string, [number, number]> = {
-      'open-clock': [80, 80], 'open-navigation': [80, 80], 'open-whatsapp': [72, 72], 'open-voltage': [80, 80],
-      'open-weather': [75, 75], 'open-spotify': [59, 59],
-    };
-    const [assetWidth, assetHeight] = dimensions[asset] || [80, 80];
-    if (images[asset]) drawAsset(ctx, images, asset, component.x + (component.width - assetWidth) / 2, component.y + (component.height - assetHeight) / 2, assetWidth, assetHeight);
-    else if (component.icon === 'whatsapp') drawWhatsapp(ctx, component.x, component.y);
-    else if (component.icon === 'usb') drawUsb(ctx, component.x, component.y, color(component.color));
-    else if (component.label) centered(ctx, component.label, component.x + component.width / 2, component.y + component.height / 2 - 12, 24, color(component.color));
-  });
+  drawAsset(ctx, images, darkBackground ? 'chevron' : 'home', 0, 0, W, H);
 }
 
 function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, clock24: boolean, weatherFahrenheit: boolean, darkBackground: boolean, spanishLanguage: boolean, pressed: string | null) {
@@ -272,12 +264,18 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
       else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);
       if (localPanel === 'none' && rendering.status_bar.visible_screens.includes(screen.id)) {
-        drawStatus(ctx, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+        drawStatus(ctx, screen.id === 'sky-home', clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       }
     };
-    render();
-    const redrawAfterAssets = window.setTimeout(render, 120);
-    return () => window.clearTimeout(redrawAfterAssets);
+    let cancelled = false;
+    void Promise.all(Object.values(images).map((source) => new Promise<void>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+      image.src = source;
+      if (image.complete) resolve();
+    }))).then(() => { if (!cancelled) render(); });
+    return () => { cancelled = true; };
   }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }
