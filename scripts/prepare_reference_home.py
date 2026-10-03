@@ -76,18 +76,19 @@ def main() -> None:
     keep_banner = len(sys.argv) > 4 and sys.argv[4] == "keep-banner"
     keep_background = len(sys.argv) > 4 and sys.argv[4] == "keep-background"
     blank_time = len(sys.argv) > 5 and sys.argv[5] == "blank-time"
+    trim_bottom = "trim-bottom" in sys.argv[4:]
     width, height, rgb = read_png(source)
     rgba = bytearray()
     cx = cy = (width - 1) / 2
     for y in range(height):
         for x in range(width):
             red, green, blue = rgb[(y * width + x) * 3 : (y * width + x + 1) * 3]
-            if blank_time and 199 <= x <= 277 and 208 <= y <= 244:
+            if blank_time and 211 <= x <= 278 and 211 <= y <= 244:
                 # Reconstruct the pill fill across the live-time field. The
                 # source artwork contains a fixed 19:52; the simulator paints
                 # the current time at runtime, so that baked text must be
                 # removed without leaving a rectangular repaint patch.
-                sample = (y * width + 190) * 3
+                sample = (y * width + 210) * 3
                 red, green, blue = rgb[sample : sample + 3]
             inside_face = (x - cx) ** 2 + (y - cy) ** 2 <= face_radius**2
             # Match the live renderer's home status pill exactly so the
@@ -102,7 +103,7 @@ def main() -> None:
                         in_banner = True
                         break
             if keep_background:
-                rgba.extend((red, green, blue, 255))
+                rgba.extend((red, green, blue, 0 if trim_bottom and y >= 456 else 255))
             else:
                 rgba.extend((0, 0, 0, 0 if not inside_face else 255) if in_banner or not inside_face else (red, green, blue, 255))
     write_png(destination, width, height, rgba)
