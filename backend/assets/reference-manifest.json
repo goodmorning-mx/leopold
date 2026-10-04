@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "mode": "exact-reference-asset",
+  "viewport": {
+    "width": 466,
+    "height": 466
+  },
+  "generator": {
+    "script": "scripts/generate_exact_reference_asset.py",
+    "pillow_version": "12.3.0",
+    "scaling": "RGBA uniform contain, Pillow bilinear, centered black letterbox, no crop"
+  },
+  "comparison_profile": {
+    "capture": "raw canvas PNG from canvas.toDataURL('image/png')",
+    "allowed_color_delta": 0,
+    "maximum_mean_error": 0,
+    "maximum_pixels_over_delta_percent": 0
+  },
+  "states": [
+    {
+      "name": "home",
+      "screen": "sky-home",
+      "source": {
+        "file": "references/home-source.jpeg",
+        "sha256": "a31052628ed428a0db714e26aa7039a3687efe493c705025a1ad70c3383bea4a",
+        "width": 1083,
+        "height": 992,
+        "immutable": true
+      },
+      "generated_asset": {
+        "file": "assets/home-reference-466.png",
+        "sha256": "b42554902f8e101d1ba8880ca93672e985fd7004ee157ba510d6719f0be7db87",
+        "width": 466,
+        "height": 466,
+        "format": "lossless PNG"
+      },
+      "device_asset": {
+        "file": "assets/home-reference-466.bin",
+        "sha256": "124f87cb45115be8553061d37e4f6f6922f7fff06cce074d7385ba84457fb220",
+        "format": "RGB565A8 derived from generated_asset"
+      },
+      "dynamic_masks": [
+        {
+          "name": "live-clock",
+          "reason": "runtime clock is the only permitted visual difference",
+          "x": 215,
+          "y": 215,
+          "width": 66,
+          "height": 32
+        }
+      ],
+      "regions": {
+        "full-static-frame": [
+          0,
+          0,
+          466,
+          466
+        ],
+        "status-strip": [
+          150,
+          190,
+          184,
+          57
+        ],
+        "primary-controls": [
+          70,
+          55,
+          326,
+          344
+        ],
+        "settings-button": [
+          206,
+          324,
+          55,
+          55
+        ]
+      },
+      "consumers": {
+        "browser": "frontend/public/firmware-assets/home-reference-466.png",
+        "device": "device/assets/home-reference-466.bin"
+      }
+    },
+    {
+      "name": "settings",
+      "screen": "device-control-center",
+      "source": {
+        "file": "references/settings-source.png",
+        "sha256": "2cd2d61e3d935c5ee2f78cde9da600a9da7c84d53b0a8fd85739c89f2adcbffd",
+        "width": 1310,
+        "height": 1200,
+        "immutable": true
+      },
+      "generated_asset": {
+        "file": "assets/settings-reference-466.png",
+        "sha256": "e2cf4740118f66239ab0fb5c64336b87730c5b903e29af3968e47da776993ef3",
+        "width": 466,
+        "height": 466,
+        "format": "lossless PNG"
+      },
+      "device_asset": {
+        "file": "assets/settings-reference-466.bin",
+        "sha256": "544b9aa47c08ed0019e6ed7805f2642ead6a2915afd7fe239a54b3c3621644c4",
+        "format": "RGB565A8 derived from generated_asset"
+      },
+      "dynamic_masks": [
+        {
+          "name": "live-clock",
+          "reason": "runtime clock is the only permitted visual difference",
+          "x": 218,
+          "y": 72,
+          "width": 49,
+          "height": 26
+        }
+      ],
+      "regions": {
+        "full-static-frame": [
+          0,
+          0,
+          466,
+          466
+        ],
+        "status-strip": [
+          160,
+          67,
+          150,
+          34
+        ],
+        "title": [
+          160,
+          103,
+          150,
+          33
+        ],
+        "wifi-row": [
+          106,
+          148,
+          258,
+          40
+        ],
+        "bluetooth-row": [
+          106,
+          191,
+          258,
+          41
+        ],
+        "display-row": [
+          106,
+          234,
+          258,
+          41
+        ],
+        "sound-row": [
+          106,
+          277,
+          258,
+          41
+        ],
+        "brightness-slider": [
+          123,
+          336,
+          220,
+          61
+        ]
+      },
+      "consumers": {
+        "browser": "frontend/public/firmware-assets/settings-reference-466.png",
+        "device": "device/assets/settings-reference-466.bin"
+      }
+    }
+  ]
+}

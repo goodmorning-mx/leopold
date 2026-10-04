@@ -6,6 +6,7 @@ import { sampleDocument } from './sample';
 import interaction from '../shared/interaction.json';
 import persistence from '../shared/persistence.json';
 import assetManifest from '../shared/asset-manifest.json';
+import referenceManifest from '../shared/reference-manifest.json';
 
 type EventLog = { at: string; kind: string; detail: string; payload?: string };
 const firmwareReference = 'firmware-v0.8.2';
@@ -37,11 +38,15 @@ async function decodeFirmwareAsset(path: string, width: number, height: number):
 }
 
 export default function Simulator() {
+  const query = new URLSearchParams(window.location.search);
+  const referenceState = query.get('reference');
+  const referenceSettingsMode = referenceState === 'settings';
+  const framebufferCaptureMode = query.get('capture') === '1';
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
-  const [screenIndex, setScreenIndex] = useState(0);
+  const [screenIndex, setScreenIndex] = useState(() => referenceSettingsMode ? sampleDocument.screens.findIndex((item) => item.id === 'device-control-center') : 0);
   const [clock24, setClock24] = useState(() => stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
   const [weatherFahrenheit, setWeatherFahrenheit] = useState(() => stored('weather_f', Boolean(persistence.settings.weather_fahrenheit.default)));
-  const [brightness, setBrightness] = useState(() => stored('brightness', Number(persistence.settings.brightness.default)));
+  const [brightness, setBrightness] = useState(() => referenceSettingsMode ? 50 : stored('brightness', Number(persistence.settings.brightness.default)));
   const [playing, setPlaying] = useState(false);
   const [localPanel, setLocalPanel] = useState('none');
   const [pressed, setPressed] = useState<string | null>(null);
@@ -71,6 +76,7 @@ export default function Simulator() {
     let active = true;
     void Promise.all([
       ...Object.entries(assetManifest.assets).map(async ([key, asset]) => [key, await decodeFirmwareAsset(`/firmware-assets/${asset.file}`, asset.width, asset.height)] as const),
+      ...referenceManifest.states.map(async (state) => [`reference-${state.name}`, `/firmware-assets/${state.generated_asset.file.split('/').pop()}`] as const),
     ]).then((entries) => { if (active) setImages(Object.fromEntries(entries)); }).catch(() => addEvent('asset', 'Firmware asset loading failed; using text fallback.'));
     return () => { active = false; };
   }, []);
@@ -145,8 +151,8 @@ export default function Simulator() {
       if (point.x <= 116 && point.y <= 108) setLocalPanel(localPanel === 'wifi-networks' || localPanel === 'bluetooth-devices' ? (localPanel === 'wifi-networks' ? 'wifi' : 'bluetooth') : 'none');
       else if ((localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') && point.y >= 356) setLocalPanel(localPanel === 'wifi' ? 'wifi-networks' : localPanel === 'bluetooth' ? 'bluetooth-devices' : 'cloud');
     } else if (gesture === 'tap') {
-      if (screenId === 'device-control-center' && point.x >= 73 && point.x <= 393 && point.y >= 130 && point.y < 179) { setLocalPanel('wifi'); return; }
-      if (screenId === 'device-control-center' && point.x >= 73 && point.x <= 393 && point.y >= 184 && point.y < 233) { setLocalPanel('bluetooth'); return; }
+      if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 148 && point.y < 188) { setLocalPanel('wifi'); return; }
+      if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 191 && point.y < 232) { setLocalPanel('bluetooth'); return; }
       const padding = interaction.touch.slider_touch_padding;
       const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
       if (slider) { const value = sliderValue(slider, point); updateSlider(point); addEvent('slider', `${slider.id}: ${value}%`, { revision: document.revision, component_id: slider.id, type: 'tap', value }); }
@@ -159,7 +165,7 @@ export default function Simulator() {
   function applyJson() { try { const parsed: unknown = JSON.parse(json); const result = validateSdui(parsed); if (!result.document) { setJsonMessage(result.errors.join(' ')); return; } setDocument(result.document); setEtag(`"mock-ui-${result.document.revision}"`); setScreenIndex(0); setLocalPanel('none'); setJsonMessage(`Loaded revision ${result.document.revision}; mock Cloud ETag updated.`); addEvent('cloud', `Applied SDUI revision ${result.document.revision}`, { revision: result.document.revision, etag: `mock-ui-${result.document.revision}` }); } catch { setJsonMessage('JSON is not valid.'); } }
   const status = useMemo(() => `${screenIndex + 1} / ${document.screens.length}`, [document.screens.length, screenIndex]);
 
-  return <main className="simulator-shell">
+  return <main className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
     <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Browser rendering of the firmware source at commit {firmwareReference}. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><a className="button secondary compact" href="/">Exit simulator</a></header>
     <div className="simulator-grid">
       <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; setPressed(null); }}>

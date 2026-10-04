@@ -37,11 +37,11 @@
       {"type":"button","id":"computer-screenshot","label":"CAPTURE","x":113,"y":292,"width":240,"height":74,"color":"#3D7FFF"}
     ]},
     {"id":"device-control-center","background":"#000000","components":[
-      {"type":"button","id":"settings-wifi","label":"WiFi","icon":"wifi","x":73,"y":130,"width":320,"height":49,"color":"#0A84FF"},
-      {"type":"button","id":"settings-bluetooth","label":"Bluetooth","icon":"bluetooth","x":73,"y":184,"width":320,"height":49},
-      {"type":"button","id":"settings-display","label":"Display","icon":"display","x":73,"y":238,"width":320,"height":49},
-      {"type":"button","id":"settings-sound","label":"Sound & Vibration","icon":"sound","x":73,"y":292,"width":320,"height":49},
-      {"type":"slider","id":"display-brightness","x":98,"y":358,"width":272,"height":28,"value":72,"color":"#BBD7F5"},
+      {"type":"button","id":"settings-wifi","label":"WiFi","icon":"wifi","x":106,"y":148,"width":258,"height":40,"color":"#0A84FF"},
+      {"type":"button","id":"settings-bluetooth","label":"Bluetooth","icon":"bluetooth","x":106,"y":191,"width":258,"height":41},
+      {"type":"button","id":"settings-display","label":"Display","icon":"display","x":106,"y":234,"width":258,"height":41},
+      {"type":"button","id":"settings-sound","label":"Sound & Vibration","icon":"sound","x":106,"y":277,"width":258,"height":41},
+      {"type":"slider","id":"display-brightness","x":123,"y":336,"width":220,"height":20,"value":50,"color":"#BBD7F5"},
       {"type":"button","id":"open-additional-options","label":"Additional options","x":464,"y":464,"width":1,"height":1,"color":"#3D7FFF"}
     ]},
     {"id":"device-additional-options","background":"#000000","components":[

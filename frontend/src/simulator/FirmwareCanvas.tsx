@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { SduiComponent, SduiScreen, SduiText } from './contract';
 import typography from '../shared/typography.json';
 import rendering from '../shared/rendering.json';
+import referenceManifest from '../shared/reference-manifest.json';
 
 export type FirmwareImages = Record<string, string>;
 
@@ -31,7 +32,7 @@ const fonts: Record<number, number> = Object.fromEntries(
 );
 const color = (value: string | undefined, fallback = '#ffffff') => value || fallback;
 
-function rounded(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string, line = 0) {
+function rounded(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string | CanvasGradient, stroke?: string, line = 0) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
   ctx.fillStyle = fill;
@@ -93,11 +94,16 @@ function drawBluetooth(ctx: CanvasRenderingContext2D, x: number, y: number, enab
 }
 
 function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, connected: boolean) {
-  ctx.strokeStyle = connected ? '#F3F6FA' : '#D2D8E2';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(x - 4, y + 2, 7, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(x + 6, y + 5, 6, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(x + 1, y, 2, 0, Math.PI * 2); ctx.fill();
+  const edge = connected ? '#F3F6FA' : '#D2D8E2';
+  const fill = connected ? '#C8DCFF' : '#AAB8CC';
+  const disc = (cx: number, cy: number, radius: number) => {
+    const gradient = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.35, 1, cx, cy, radius);
+    gradient.addColorStop(0, '#FFFFFF'); gradient.addColorStop(0.5, fill); gradient.addColorStop(1, '#7FA6E0');
+    ctx.fillStyle = gradient; ctx.strokeStyle = edge; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  };
+  disc(x + 7, y + 9, 7); disc(x + 14, y + 11, 6);
+  ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(x + 14, y + 2, 2, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
@@ -143,7 +149,25 @@ function drawUsb(ctx: CanvasRenderingContext2D, x: number, y: number, stroke: st
 }
 
 function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, pressed: string | null) {
-  drawAsset(ctx, images, darkBackground ? 'chevron' : 'home', 0, 0, W, H);
+  drawAsset(ctx, images, 'reference-home', 0, 0, W, H);
+}
+
+function drawExactClock(ctx: CanvasRenderingContext2D, stateName: 'home' | 'settings', value: string) {
+  const state = referenceManifest.states.find((candidate) => candidate.name === stateName);
+  const mask = state?.dynamic_masks[0];
+  if (!mask) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(mask.x, mask.y, mask.width, mask.height);
+  ctx.clip();
+  ctx.fillStyle = stateName === 'home' ? '#555C6A' : '#28313E';
+  ctx.fillRect(mask.x, mask.y, mask.width, mask.height);
+  ctx.fillStyle = '#F4F7FC';
+  ctx.font = `${stateName === 'home' ? 15 : 13}px Montserrat, Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(value, mask.x + mask.width / 2, mask.y + mask.height / 2);
+  ctx.restore();
 }
 
 function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, clock24: boolean, weatherFahrenheit: boolean, darkBackground: boolean, spanishLanguage: boolean, pressed: string | null) {
@@ -191,7 +215,9 @@ function glow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
 }
 
 function drawSettingsIcon(ctx: CanvasRenderingContext2D, kind: string, x: number, y: number, active: boolean) {
-  ctx.save(); glow(ctx, '#DCE9FF', 11); ctx.strokeStyle = '#F7FAFF'; ctx.fillStyle = '#F7FAFF'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const icon = rendering.settings.icon_center;
+  const iconColor = active ? icon.active_color : icon.color;
+  ctx.save(); ctx.translate(x * (1 - icon.scale), y * (1 - icon.scale)); ctx.scale(icon.scale, icon.scale); glow(ctx, '#DCE9FF', 4); ctx.strokeStyle = iconColor; ctx.fillStyle = iconColor; ctx.lineWidth = icon.stroke; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   if (kind === 'wifi') { [11, 7].forEach((r) => { ctx.beginPath(); ctx.arc(x, y + 1, r, Math.PI * 1.22, Math.PI * 1.78); ctx.stroke(); }); ctx.beginPath(); ctx.arc(x, y + 5, 2, 0, Math.PI * 2); ctx.fill(); }
   if (kind === 'bluetooth') { ctx.beginPath(); ctx.moveTo(x, y - 11); ctx.lineTo(x, y + 11); ctx.moveTo(x, y - 11); ctx.lineTo(x + 7, y - 5); ctx.lineTo(x - 6, y + 5); ctx.moveTo(x - 6, y - 5); ctx.lineTo(x + 7, y + 5); ctx.lineTo(x, y + 11); ctx.stroke(); }
   if (kind === 'display') { ctx.strokeRect(x - 10, y - 8, 20, 14); ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y + 11); ctx.moveTo(x - 7, y + 11); ctx.lineTo(x + 7, y + 11); ctx.stroke(); }
@@ -199,25 +225,55 @@ function drawSettingsIcon(ctx: CanvasRenderingContext2D, kind: string, x: number
   ctx.restore();
 }
 
-function drawSettings(ctx: CanvasRenderingContext2D, brightness: number, wifiConnected: boolean, bluetoothEnabled: boolean, pressed: string | null, timeText: string) {
+function drawGear(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#65758B';
+  ctx.strokeStyle = '#65758B';
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  for (let index = 0; index < 8; index += 1) {
+    ctx.save();
+    ctx.rotate(index * Math.PI / 4);
+    ctx.fillRect(-2.5, -13, 5, 7);
+    ctx.restore();
+  }
+  ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#EEF5FF'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawSettings(ctx: CanvasRenderingContext2D, images: FirmwareImages, brightness: number, wifiConnected: boolean, bluetoothEnabled: boolean, pressed: string | null, timeText: string) {
+  drawAsset(ctx, images, 'reference-settings', 0, 0, W, H);
+  drawExactClock(ctx, 'settings', timeText);
+  return;
+  /* Reconstructed-UI fallback retained for future editable-native mode. */
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   const s = rendering.settings;
+  const bubble = s.icon_bubble;
+  const iconCenter = s.icon_center;
+  const chevron = s.chevron;
   ctx.save(); glow(ctx, '#A8C9F2', 15); rounded(ctx, s.status_pill.x, s.status_pill.y, s.status_pill.width, s.status_pill.height, s.status_pill.radius, '#293A50', '#9CB3CD', 1); ctx.restore();
   drawBluetooth(ctx, 157, 55, bluetoothEnabled); drawWifi(ctx, 190, 54, wifiConnected); text(ctx, timeText, 216, 47, 20, '#F4F7FC');
-  ctx.save(); glow(ctx, '#A9C9F4', 9); ctx.fillStyle = '#E6EDF8'; ctx.beginPath(); ctx.arc(285, 56, 7, 0, Math.PI * 2); ctx.fill(); ctx.restore(); text(ctx, '82%', 301, 48, 11, '#DFE8F4');
+  ctx.save(); glow(ctx, '#A9C9F4', s.status_cloud.glow_blur); drawCloud(ctx, s.status_cloud.x, s.status_cloud.y, true); ctx.restore(); text(ctx, '82%', 301, 48, 11, '#DFE8F4');
   ctx.save(); glow(ctx, '#EAF2FF', 18); ctx.fillStyle = '#EEF5FF'; ctx.beginPath(); ctx.arc(s.title.gear_x, s.title.gear_y, s.title.gear_diameter / 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-  text(ctx, '⚙', s.title.gear_x, 91, 25, '#66758A', 'center', 700); text(ctx, 'SETTINGS', s.title.text_x, s.title.text_y, s.title.font_size, '#F6F7FB', 'left', 500);
+  drawGear(ctx, s.title.gear_x, s.title.gear_y); text(ctx, 'SETTINGS', s.title.text_x, s.title.text_y, s.title.font_size, '#F6F7FB', 'left', 500);
   s.rows.forEach((row: {id:string;x:number;y:number;width:number;height:number;active:boolean;label:string;icon:string}) => {
     const selected = row.id === 'settings-wifi' && wifiConnected;
-    ctx.save(); glow(ctx, selected ? '#079BFF' : '#BFD5F5', selected ? 18 : 11); rounded(ctx, row.x, row.y, row.width, row.height, 24, selected ? '#07507F' : '#18212D', selected ? '#08A8FF' : '#6C7C91', 1.5); ctx.restore();
-    ctx.save(); glow(ctx, '#E7F0FF', 18); ctx.fillStyle = '#EAF2FF'; ctx.beginPath(); ctx.arc(row.x + 27, row.y + 24.5, 25, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    drawSettingsIcon(ctx, row.icon, row.x + 27, row.y + 24.5, selected);
+    const rowGradient = ctx.createLinearGradient(0, row.y, 0, row.y + row.height);
+    if (selected) { rowGradient.addColorStop(0, '#12B7FF'); rowGradient.addColorStop(0.48, '#087EBD'); rowGradient.addColorStop(1, '#06446F'); }
+    else { rowGradient.addColorStop(0, '#3B4858'); rowGradient.addColorStop(0.45, '#202B39'); rowGradient.addColorStop(1, '#101823'); }
+    ctx.save(); glow(ctx, selected ? '#079BFF' : '#BFD5F5', selected ? 18 : 11); rounded(ctx, row.x, row.y, row.width, row.height, 24, rowGradient, selected ? '#08A8FF' : '#6C7C91', selected ? 2 : 1.5); ctx.restore();
+    const bubbleX = row.x + bubble.x_offset; const bubbleY = row.y + bubble.y_offset;
+    const iconX = row.x + iconCenter.x_offset; const iconY = row.y + iconCenter.y_offset;
+    ctx.save(); glow(ctx, bubble.glow, bubble.glow_blur); const iconGradient = ctx.createRadialGradient(bubbleX + 17, bubbleY + 14, 2, bubbleX + bubble.radius, bubbleY + bubble.radius, bubble.radius); iconGradient.addColorStop(0, '#FFFFFF'); iconGradient.addColorStop(0.55, selected ? bubble.active_gradient_inner : bubble.gradient_inner); iconGradient.addColorStop(1, selected ? bubble.active_gradient_outer : bubble.gradient_outer); ctx.fillStyle = iconGradient; ctx.beginPath(); ctx.arc(bubbleX + bubble.radius, bubbleY + bubble.radius, bubble.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    drawSettingsIcon(ctx, row.icon, iconX, iconY, selected);
     text(ctx, row.label, row.x + 63, row.y + 13, 20, '#F4F6FA');
-    ctx.save(); glow(ctx, '#D5E3FA', 5); ctx.strokeStyle = '#D5E3FA'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(row.x + row.width - 26, row.y + 17); ctx.lineTo(row.x + row.width - 19, row.y + 24.5); ctx.lineTo(row.x + row.width - 26, row.y + 32); ctx.stroke(); ctx.restore();
+    ctx.save(); glow(ctx, chevron.glow, chevron.glow_blur); ctx.strokeStyle = chevron.color; ctx.lineWidth = chevron.stroke; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(row.x + chevron.x_offset + chevron.points[0][0], row.y + chevron.y_offset + chevron.points[0][1]); ctx.lineTo(row.x + chevron.x_offset + chevron.points[1][0], row.y + chevron.y_offset + chevron.points[1][1]); ctx.lineTo(row.x + chevron.x_offset + chevron.points[2][0], row.y + chevron.y_offset + chevron.points[2][1]); ctx.stroke(); ctx.restore();
   });
-  const slider = s.slider; const ratio = Math.max(0, Math.min(1, (brightness - 5) / 95));
-  ctx.save(); glow(ctx, '#29AFFF', 12); rounded(ctx, slider.x, slider.y, slider.width, slider.height, slider.radius, slider.track, '#198FD3', 1.5); rounded(ctx, slider.x + 2, slider.y + 2, (slider.width - 4) * ratio, slider.height - 4, slider.radius - 2, slider.fill); ctx.restore();
-  ctx.save(); glow(ctx, '#1AA9FF', 16); ctx.fillStyle = slider.accent; ctx.beginPath(); ctx.arc(slider.x + 2 + (slider.width - 4) * ratio, slider.y + slider.height / 2, slider.knob_radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  const slider = s.slider; const ratio = Math.max(0, Math.min(1, brightness / 100)); const knobX = slider.x + slider.width * ratio;
+  ctx.save(); glow(ctx, '#29AFFF', 12); rounded(ctx, slider.x, slider.y, slider.width, slider.height, slider.radius, slider.track, '#198FD3', 1.5); const fillGradient = ctx.createLinearGradient(slider.x, 0, Math.max(slider.x + 1, knobX), 0); fillGradient.addColorStop(0, slider.fill_start); fillGradient.addColorStop(1, slider.fill_end); rounded(ctx, slider.x + 2, slider.y + 2, Math.max(0, knobX - slider.x - 2), slider.height - 4, slider.radius - 2, fillGradient); ctx.restore();
+  ctx.save(); glow(ctx, '#1AA9FF', 16); ctx.fillStyle = slider.accent; ctx.beginPath(); ctx.arc(knobX, slider.y + slider.height / 2, slider.knob_radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   centered(ctx, 'Brightness', s.brightness_label.x, s.brightness_label.y, s.brightness_label.font_size, '#F2F3F7');
 }
 
@@ -303,13 +359,16 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
       else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
       else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
-      else if (screen.id === 'sky-home') drawHome(ctx, screen, images, darkBackground, pressed);
-      else if (screen.id === 'device-control-center') drawSettings(ctx, brightness, wifiConnected, bluetoothEnabled, pressed, settingsTimeText);
+      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', timeText); }
+      else if (screen.id === 'device-control-center') drawSettings(ctx, images, brightness, wifiConnected, bluetoothEnabled, pressed, settingsTimeText);
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
       else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);
-      if (localPanel === 'none' && screen.id !== 'device-control-center' && rendering.status_bar.visible_screens.includes(screen.id)) {
+      if (localPanel === 'none' && screen.id !== 'device-control-center' && screen.id !== 'sky-home' && rendering.status_bar.visible_screens.includes(screen.id)) {
         drawStatus(ctx, screen.id === 'sky-home', clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+      }
+      if (new URLSearchParams(window.location.search).get('capture') === '1') {
+        canvas.dataset.framebufferPng = canvas.toDataURL('image/png');
       }
     };
     let cancelled = false;
@@ -326,6 +385,6 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       redrawTimers = [100, 300, 700].map((delay) => window.setTimeout(render, delay));
     });
     return () => { cancelled = true; redrawTimers.forEach((timer) => window.clearTimeout(timer)); };
-  }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText]);
+  }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }

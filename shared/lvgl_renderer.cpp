@@ -4,6 +4,65 @@
 #include <cstdio>
 #include <cmath>
 
+#if __has_include("generated_firmware_ui.h")
+#include "generated_firmware_ui.h"
+#else
+namespace leopold::generated_ui {
+constexpr int16_t kSettingsStatusX = 137;
+constexpr int16_t kSettingsStatusY = 39;
+constexpr int16_t kSettingsStatusWidth = 195;
+constexpr int16_t kSettingsStatusHeight = 34;
+constexpr int16_t kSettingsStatusRadius = 17;
+constexpr int16_t kSettingsCloudX = 277;
+constexpr int16_t kSettingsCloudY = 48;
+constexpr int16_t kSettingsCloudGlowBlur = 4;
+constexpr int16_t kSettingsBubbleXOffset = 2;
+constexpr int16_t kSettingsBubbleYOffset = -1;
+constexpr int16_t kSettingsBubbleDiameter = 50;
+constexpr int16_t kSettingsBubbleRadius = 25;
+constexpr uint32_t kSettingsBubbleInner = 0xEAF2FF;
+constexpr uint32_t kSettingsBubbleOuter = 0x687993;
+constexpr uint32_t kSettingsBubbleActiveInner = 0xC7E5FF;
+constexpr uint32_t kSettingsBubbleActiveOuter = 0x0B5B9B;
+constexpr int16_t kSettingsIconCenterXOffset = 27;
+constexpr int16_t kSettingsIconCenterYOffset = 49;
+constexpr float kSettingsIconScale = 1.15f;
+constexpr uint32_t kSettingsIconColor = 0xFFFFFF;
+constexpr uint32_t kSettingsIconActiveColor = 0x0DE3FF;
+constexpr int16_t kSettingsChevronXOffset = 293;
+constexpr int16_t kSettingsChevronYOffset = 19;
+constexpr int16_t kSettingsChevronMidX = 7;
+constexpr int16_t kSettingsChevronMidY = 7;
+constexpr int16_t kSettingsChevronEndY = 14;
+constexpr int16_t kSettingsChevronStroke = 3;
+constexpr int16_t kSettingsGearX = 166;
+constexpr int16_t kSettingsGearY = 102;
+constexpr int16_t kSettingsGearDiameter = 41;
+constexpr int16_t kSettingsTitleX = 196;
+constexpr int16_t kSettingsTitleY = 92;
+constexpr int16_t kSettingsTitleFontSize = 25;
+constexpr int16_t kSettingsRowX[] = {73, 73, 73, 73};
+constexpr int16_t kSettingsRowY[] = {130, 184, 238, 292};
+constexpr int16_t kSettingsRowWidth[] = {320, 320, 320, 320};
+constexpr int16_t kSettingsRowHeight[] = {49, 49, 49, 49};
+constexpr uint8_t kSettingsRowCount = 4;
+constexpr int16_t kSettingsSliderX = 98;
+constexpr int16_t kSettingsSliderY = 358;
+constexpr int16_t kSettingsSliderWidth = 272;
+constexpr int16_t kSettingsSliderHeight = 28;
+constexpr int16_t kSettingsSliderRadius = 14;
+constexpr int16_t kSettingsSliderKnobRadius = 17;
+constexpr uint16_t kSettingsSliderTrack = 0x11E5;
+constexpr uint16_t kSettingsSliderFill = 0xB6EB;
+constexpr uint16_t kSettingsSliderFillStart = 0xC71F;
+constexpr uint16_t kSettingsSliderFillEnd = 0x13FA;
+constexpr uint16_t kSettingsSliderAccent = 0x357F;
+constexpr int16_t kSettingsBrightnessLabelX = 233;
+constexpr int16_t kSettingsBrightnessLabelY = 400;
+constexpr int16_t kSettingsBrightnessLabelFontSize = 16;
+}  // namespace leopold::generated_ui
+#endif
+
 namespace leopold {
 namespace {
 
@@ -171,23 +230,16 @@ void drawX(lv_obj_t* parent, lv_color_t color, int16_t size = 32) {
 }
 
 void drawPairedCircles(lv_obj_t* root, int16_t x, int16_t y, lv_color_t color) {
-  const auto ring = [root, color](int16_t left, int16_t top, int16_t size) {
-    lv_obj_t* arc = lv_arc_create(root);
-    lv_obj_set_pos(arc, left, top);
-    lv_obj_set_size(arc, size, size);
-    lv_arc_set_rotation(arc, 0);
-    lv_arc_set_bg_angles(arc, 0, 360);
-    lv_arc_set_range(arc, 0, 100);
-    lv_arc_set_value(arc, 100);
-    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_arc_width(arc, 2, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(arc, color, LV_PART_MAIN);
-    lv_obj_set_style_arc_opa(arc, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_arc_width(arc, 0, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
+  const auto disc = [root, color](int16_t left, int16_t top, int16_t size) {
+    lv_obj_t* object = makePanel(root, left, top, size, size, size / 2, color);
+    lv_obj_set_style_border_width(object, 1, 0);
+    lv_obj_set_style_border_color(object, lv_color_hex(0xF3F6FA), 0);
+    lv_obj_set_style_shadow_width(object, generated_ui::kSettingsCloudGlowBlur, 0);
+    lv_obj_set_style_shadow_opa(object, LV_OPA_80, 0);
+    lv_obj_set_style_shadow_color(object, lv_color_hex(0xA9C9F4), 0);
   };
-  ring(x, y + 2, 14);
-  ring(x + 8, y + 5, 12);
+  disc(x, y + 2, 14);
+  disc(x + 8, y + 5, 12);
   lv_obj_t* dot = makePanel(root, x + 12, y, 4, 4, 2, color);
   LV_UNUSED(dot);
 }
@@ -195,6 +247,77 @@ void drawPairedCircles(lv_obj_t* root, int16_t x, int16_t y, lv_color_t color) {
 void drawGear(lv_obj_t* parent, lv_color_t color) {
   lv_obj_t* gear = makeLabel(parent, LV_SYMBOL_SETTINGS, &lv_font_montserrat_32, color);
   lv_obj_center(gear);
+}
+
+void drawChevron(lv_obj_t* parent, int16_t x, int16_t y) {
+  static lv_point_precise_t points[] = {{0, 0}, {generated_ui::kSettingsChevronMidX, generated_ui::kSettingsChevronMidY}, {0, generated_ui::kSettingsChevronEndY}};
+  lv_obj_t* line = lv_line_create(parent);
+  lv_line_set_points(line, points, 3);
+  lv_obj_set_pos(line, x, y);
+  lv_obj_set_size(line, 10, 18);
+  lv_obj_set_style_line_color(line, lv_color_hex(0xD5E3FA), 0);
+  lv_obj_set_style_line_width(line, generated_ui::kSettingsChevronStroke, 0);
+  lv_obj_set_style_line_rounded(line, true, 0);
+}
+
+void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t centerY, bool active) {
+  constexpr float pi = 3.14159265358979323846f;
+  const lv_color_t color = lv_color_hex(active ? generated_ui::kSettingsIconActiveColor : generated_ui::kSettingsIconColor);
+  const auto line = [parent, color](const lv_point_precise_t* points, uint32_t count, int16_t width = 3) {
+    lv_obj_t* object = lv_line_create(parent);
+    lv_line_set_points(object, points, count);
+    lv_obj_set_size(object, 466, 466);
+    lv_obj_set_style_line_color(object, color, 0);
+    lv_obj_set_style_line_width(object, static_cast<int16_t>(std::lround(width * generated_ui::kSettingsIconScale)), 0);
+    lv_obj_set_style_line_rounded(object, true, 0);
+  };
+  const auto point = [centerX, centerY](float dx, float dy) -> lv_point_precise_t {
+    return {static_cast<int16_t>(std::lround(centerX + dx * generated_ui::kSettingsIconScale)), static_cast<int16_t>(std::lround(centerY + dy * generated_ui::kSettingsIconScale))};
+  };
+  if (index == 0) {
+    static lv_point_precise_t outer[13];
+    static lv_point_precise_t inner[13];
+    for (int16_t i = 0; i < 13; ++i) {
+      const float angle = 1.15f * pi + (0.70f * pi * i / 12.0f);
+      outer[i] = point(std::cos(angle) * 12.0f, std::sin(angle) * 12.0f);
+      inner[i] = point(std::cos(angle) * 7.0f, std::sin(angle) * 7.0f);
+    }
+    line(outer, 13, 3);
+    line(inner, 13, 3);
+    const int16_t dotSize = static_cast<int16_t>(std::lround(4 * generated_ui::kSettingsIconScale));
+    lv_obj_t* dot = makePanel(parent, static_cast<int16_t>(std::lround(centerX - dotSize / 2.0f)), static_cast<int16_t>(std::lround(centerY + 4 * generated_ui::kSettingsIconScale - dotSize / 2.0f)), dotSize, dotSize, dotSize / 2, color);
+    LV_UNUSED(dot);
+    return;
+  }
+  if (index == 1) {
+    static lv_point_precise_t upper[3];
+    static lv_point_precise_t lower[3];
+    static lv_point_precise_t stem[2];
+    upper[0] = point(0, -12); upper[1] = point(8, -5); upper[2] = point(-7, 5);
+    lower[0] = point(-7, -5); lower[1] = point(8, 5); lower[2] = point(0, 12);
+    stem[0] = point(0, -12); stem[1] = point(0, 12);
+    line(upper, 3, 3); line(lower, 3, 3); line(stem, 2, 3);
+    return;
+  }
+  if (index == 2) {
+    static lv_point_precise_t screen[5];
+    static lv_point_precise_t stand[2];
+    static lv_point_precise_t base[2];
+    screen[0] = point(-11, -8); screen[1] = point(11, -8); screen[2] = point(11, 7); screen[3] = point(-11, 7);
+    screen[4] = screen[0];
+    stand[0] = point(0, 7); stand[1] = point(0, 12); base[0] = point(-8, 12); base[1] = point(8, 12);
+    line(screen, 5, 3); line(stand, 2, 3); line(base, 2, 3);
+    return;
+  }
+  static lv_point_precise_t speaker[7];
+  static lv_point_precise_t sound[13];
+  speaker[0] = point(-12, -4); speaker[1] = point(-6, -4); speaker[2] = point(2, -11); speaker[3] = point(2, 11); speaker[4] = point(-6, 4); speaker[5] = point(-12, 4);
+  speaker[6] = speaker[0];
+  for (int16_t i = 0; i < 13; ++i) {
+    const float angle = -0.9f + (1.8f * i / 12.0f);
+    sound[i] = point(std::cos(angle) * 11.0f, std::sin(angle) * 11.0f);
+  }
+  line(speaker, 7, 3); line(sound, 13, 3);
 }
 
 void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
@@ -307,6 +430,93 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   drawPairedCircles(root, cloudX, top ? 31 : 216, cloudColor);
 }
 
+const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
+
+void renderSettings(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
+  using namespace generated_ui;
+  lv_obj_set_style_bg_color(root, lv_color_black(), 0);
+
+  lv_obj_t* status = makePanel(root, kSettingsStatusX, kSettingsStatusY, kSettingsStatusWidth, kSettingsStatusHeight, kSettingsStatusRadius, lv_color_hex(0x293A50));
+  lv_obj_set_style_border_width(status, 1, 0);
+  lv_obj_set_style_border_color(status, lv_color_hex(0x9CB3CD), 0);
+  lv_obj_set_style_shadow_width(status, 15, 0);
+  lv_obj_set_style_shadow_opa(status, LV_OPA_70, 0);
+  lv_obj_set_style_shadow_color(status, lv_color_hex(0xA8C9F2), 0);
+
+  lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, lv_color_hex(0xF3F6FA));
+  lv_obj_set_pos(bluetooth, 148, 43);
+  lv_obj_t* wifi = makeLabel(root, LV_SYMBOL_WIFI, &lv_font_montserrat_20, lv_color_hex(0xF3F6FA));
+  lv_obj_set_pos(wifi, 180, 43);
+  lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, lv_color_hex(0xF4F7FC));
+  lv_obj_set_pos(time, 216, 47);
+  drawPairedCircles(root, generated_ui::kSettingsCloudX, generated_ui::kSettingsCloudY, lv_color_hex(0xE6EDF8));
+  char batteryText[8] = {};
+  snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
+  lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_14, lv_color_hex(0xDFE8F4));
+  lv_obj_set_pos(battery, 301, 48);
+
+  lv_obj_t* gear = makePanel(root, kSettingsGearX - kSettingsGearDiameter / 2, kSettingsGearY - kSettingsGearDiameter / 2, kSettingsGearDiameter, kSettingsGearDiameter, kSettingsGearDiameter / 2, lv_color_hex(0xEEF5FF));
+  lv_obj_set_style_shadow_width(gear, 18, 0);
+  lv_obj_set_style_shadow_opa(gear, LV_OPA_90, 0);
+  lv_obj_set_style_shadow_color(gear, lv_color_hex(0xEAF2FF), 0);
+  lv_obj_t* gearGlyph = makeLabel(gear, LV_SYMBOL_SETTINGS, &lv_font_montserrat_22, lv_color_hex(0x66758A));
+  lv_obj_center(gearGlyph);
+  lv_obj_t* title = makeLabel(root, "SETTINGS", &lv_font_montserrat_28, lv_color_hex(0xF6F7FB));
+  lv_obj_set_pos(title, kSettingsTitleX, kSettingsTitleY);
+
+  const char* ids[] = {"settings-wifi", "settings-bluetooth", "settings-display", "settings-sound"};
+  const char* fallbackLabels[] = {"WiFi", "Bluetooth", "Display", "Sound & Vibration"};
+  for (uint8_t index = 0; index < kSettingsRowCount; ++index) {
+    const SduiComponent* component = findComponent(screen, ids[index]);
+    const bool active = index == 0 && state.wifiConnected;
+    const int16_t x = kSettingsRowX[index];
+    const int16_t y = kSettingsRowY[index];
+    lv_obj_t* row = makePanel(root, x, y, kSettingsRowWidth[index], kSettingsRowHeight[index], 24, lv_color_hex(active ? 0x087EBD : 0x263342));
+    lv_obj_set_style_bg_grad_color(row, lv_color_hex(active ? 0x06446F : 0x101823), 0);
+    lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_border_width(row, active ? 2 : 1, 0);
+    lv_obj_set_style_border_color(row, lv_color_hex(active ? 0x08A8FF : 0x6C7C91), 0);
+    lv_obj_set_style_shadow_width(row, active ? 18 : 11, 0);
+    lv_obj_set_style_shadow_opa(row, LV_OPA_80, 0);
+    lv_obj_set_style_shadow_color(row, lv_color_hex(active ? 0x079BFF : 0xBFD5F5), 0);
+    lv_obj_t* iconCircle = makePanel(root, x + generated_ui::kSettingsBubbleXOffset, y + generated_ui::kSettingsBubbleYOffset, generated_ui::kSettingsBubbleDiameter, generated_ui::kSettingsBubbleDiameter, generated_ui::kSettingsBubbleRadius, lv_color_hex(active ? generated_ui::kSettingsBubbleActiveInner : generated_ui::kSettingsBubbleInner));
+    lv_obj_set_style_bg_grad_color(iconCircle, lv_color_hex(active ? generated_ui::kSettingsBubbleActiveOuter : generated_ui::kSettingsBubbleOuter), 0);
+    lv_obj_set_style_bg_grad_dir(iconCircle, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_shadow_width(iconCircle, 18, 0);
+    lv_obj_set_style_shadow_opa(iconCircle, LV_OPA_90, 0);
+    lv_obj_set_style_shadow_color(iconCircle, lv_color_hex(0xE7F0FF), 0);
+    drawSettingsIcon(root, index, x + generated_ui::kSettingsIconCenterXOffset, y + generated_ui::kSettingsIconCenterYOffset / 2, active);
+    lv_obj_t* label = makeLabel(root, component == nullptr ? fallbackLabels[index] : component->text, &lv_font_montserrat_20, lv_color_hex(0xF4F6FA));
+    lv_obj_set_pos(label, x + 63, y + 13);
+    drawChevron(root, x + generated_ui::kSettingsChevronXOffset, y + generated_ui::kSettingsChevronYOffset);
+  }
+
+  lv_obj_t* slider = lv_slider_create(root);
+  lv_obj_set_pos(slider, kSettingsSliderX, kSettingsSliderY);
+  lv_obj_set_size(slider, kSettingsSliderWidth, kSettingsSliderHeight);
+  lv_slider_set_range(slider, 5, 100);
+  lv_slider_set_value(slider, state.brightnessPercent, LV_ANIM_OFF);
+  lv_obj_remove_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_radius(slider, kSettingsSliderRadius, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderTrack), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_radius(slider, kSettingsSliderRadius, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderFillStart), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_grad_color(slider, lv_color_hex(kSettingsSliderFillEnd), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_grad_dir(slider, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderAccent), LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
+  lv_obj_set_style_radius(slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
+  lv_obj_set_style_width(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
+  lv_obj_set_style_height(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
+
+  lv_obj_t* brightness = makeLabel(root, "Brightness", &lv_font_montserrat_16, lv_color_hex(0xF2F3F7));
+  lv_obj_set_width(brightness, 160);
+  lv_obj_set_style_text_align(brightness, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_pos(brightness, kSettingsBrightnessLabelX - 80, kSettingsBrightnessLabelY);
+}
+
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id) {
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     if (strcmp(screen.components[index].id, id) == 0) return &screen.components[index];
@@ -385,6 +595,11 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   lv_obj_set_style_bg_color(root, color565(screen.background), 0);
   lv_obj_set_style_bg_opa(root, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(root, 0, 0);
+
+  if (state != nullptr && strcmp(screen.screenId, "device-control-center") == 0) {
+    renderSettings(root, screen, *state);
+    return;
+  }
 
   if (strcmp(screen.screenId, "spotify-player") == 0) {
     renderSpotify(root, screen, resolveImage, pressedComponentId);
