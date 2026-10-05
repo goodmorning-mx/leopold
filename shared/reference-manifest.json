@@ -21,22 +21,22 @@
       "name": "home",
       "screen": "sky-home",
       "source": {
-        "file": "references/home-source.jpeg",
-        "sha256": "a31052628ed428a0db714e26aa7039a3687efe493c705025a1ad70c3383bea4a",
-        "width": 1083,
-        "height": 992,
+        "file": "references/home-source.png",
+        "sha256": "5a1d2f08b32d38eb22ad13ef683ddec753c92a65ecbb15fc32a890cad5c58abe",
+        "width": 1310,
+        "height": 1200,
         "immutable": true
       },
       "generated_asset": {
         "file": "assets/home-reference-466.png",
-        "sha256": "b42554902f8e101d1ba8880ca93672e985fd7004ee157ba510d6719f0be7db87",
+        "sha256": "2d5522eeb74545d22b8129d69ccfad5c74011e99c73cc8482178143c2800b1d0",
         "width": 466,
         "height": 466,
         "format": "lossless PNG"
       },
       "device_asset": {
         "file": "assets/home-reference-466.bin",
-        "sha256": "124f87cb45115be8553061d37e4f6f6922f7fff06cce074d7385ba84457fb220",
+        "sha256": "b5a8b51b06cb6fb30850b977fffdf8d88ac99aa47f2e8b58ab60e6830bb37eac",
         "format": "RGB565A8 derived from generated_asset"
       },
       "dynamic_masks": [
@@ -85,21 +85,21 @@
       "screen": "device-control-center",
       "source": {
         "file": "references/settings-source.png",
-        "sha256": "2cd2d61e3d935c5ee2f78cde9da600a9da7c84d53b0a8fd85739c89f2adcbffd",
+        "sha256": "dca1b4ca563f70626733b4c64ce0ca1442f80bd9ca3e7ccd4d3afbdb65ed02ac",
         "width": 1310,
         "height": 1200,
         "immutable": true
       },
       "generated_asset": {
         "file": "assets/settings-reference-466.png",
-        "sha256": "e2cf4740118f66239ab0fb5c64336b87730c5b903e29af3968e47da776993ef3",
+        "sha256": "c4308a17a0f07da146eecf73da0de20271e60f376c7115c0fd2eb1a24b8ac10e",
         "width": 466,
         "height": 466,
         "format": "lossless PNG"
       },
       "device_asset": {
         "file": "assets/settings-reference-466.bin",
-        "sha256": "544b9aa47c08ed0019e6ed7805f2642ead6a2915afd7fe239a54b3c3621644c4",
+        "sha256": "695070c45e875d00d821f84b55e7eff0e793323c300f9bf0935d52c71e6446ca",
         "format": "RGB565A8 derived from generated_asset"
       },
       "dynamic_masks": [
