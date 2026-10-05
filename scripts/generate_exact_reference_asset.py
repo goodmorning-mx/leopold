@@ -23,12 +23,21 @@ SOURCES = (
         "source": ROOT / "shared/references/home-source.png",
         "source_sha256": "5a1d2f08b32d38eb22ad13ef683ddec753c92a65ecbb15fc32a890cad5c58abe",
         "source_size": (1310, 1200),
+        "overlays": (
+            {
+                "name": "home-status-banner",
+                "source": ROOT / "shared/references/home-status-banner-source.png",
+                "source_sha256": "879555f5ee1d81444dff31fead0ca25ad327ae1b61bd2d5ecd67db21e84c7bb2",
+                "source_size": (660, 206),
+                "bounds": (145, 203, 184, 57),
+            },
+        ),
         "asset": ROOT / "shared/assets/home-reference-466.png",
         "device_asset": ROOT / "shared/assets/home-reference-466.bin",
-        "clock_mask": {"x": 215, "y": 215, "width": 66, "height": 32},
+        "clock_mask": {"x": 211, "y": 219, "width": 56, "height": 22},
         "regions": {
             "full-static-frame": [0, 0, 466, 466],
-            "status-strip": [150, 190, 184, 57],
+            "status-strip": [145, 203, 184, 57],
             "primary-controls": [70, 55, 326, 344],
             "settings-button": [206, 324, 55, 55],
         },
@@ -60,13 +69,21 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def render(source: Path) -> bytes:
+def render(source: Path, overlays: tuple[dict[str, object], ...] = ()) -> bytes:
     with Image.open(source) as opened:
         image = opened.convert("RGBA")
     image.thumbnail(TARGET_SIZE, Image.Resampling.BILINEAR, reducing_gap=None)
     canvas = Image.new("RGBA", TARGET_SIZE, (0, 0, 0, 255))
     offset = ((TARGET_SIZE[0] - image.width) // 2, (TARGET_SIZE[1] - image.height) // 2)
     canvas.alpha_composite(image, offset)
+    for overlay in overlays:
+        overlay_source = overlay["source"]
+        bounds = overlay["bounds"]
+        assert isinstance(overlay_source, Path) and isinstance(bounds, tuple)
+        with Image.open(overlay_source) as opened:
+            overlay_image = opened.convert("RGBA")
+        overlay_image = overlay_image.resize((bounds[2], bounds[3]), Image.Resampling.BILINEAR)
+        canvas.alpha_composite(overlay_image, (bounds[0], bounds[1]))
     output = BytesIO()
     canvas.save(output, format="PNG", compress_level=9, optimize=False)
     return output.getvalue()
@@ -104,7 +121,33 @@ def build() -> tuple[dict[Path, bytes], bytes]:
         with Image.open(BytesIO(source_data)) as opened:
             if opened.size != definition["source_size"]:
                 raise ValueError(f"immutable {definition['name']} source dimensions changed")
-        png = render(source)
+        overlays = definition.get("overlays", ())
+        assert isinstance(overlays, tuple)
+        overlay_manifest = []
+        for overlay in overlays:
+            overlay_source = overlay["source"]
+            overlay_size = overlay["source_size"]
+            bounds = overlay["bounds"]
+            assert isinstance(overlay_source, Path) and isinstance(overlay_size, tuple) and isinstance(bounds, tuple)
+            overlay_data = overlay_source.read_bytes()
+            if sha256(overlay_data) != overlay["source_sha256"]:
+                raise ValueError(f"immutable {overlay['name']} source checksum changed")
+            with Image.open(BytesIO(overlay_data)) as opened:
+                if opened.size != overlay_size:
+                    raise ValueError(f"immutable {overlay['name']} source dimensions changed")
+            overlay_manifest.append(
+                {
+                    "name": overlay["name"],
+                    "file": str(overlay_source.relative_to(ROOT / "shared")),
+                    "sha256": sha256(overlay_data),
+                    "width": overlay_size[0],
+                    "height": overlay_size[1],
+                    "immutable": True,
+                    "generated_bounds": {"x": bounds[0], "y": bounds[1], "width": bounds[2], "height": bounds[3]},
+                    "scaling": "Pillow bilinear exact bounds",
+                }
+            )
+        png = render(source, overlays)
         asset = definition["asset"]
         device_asset = definition["device_asset"]
         assert isinstance(asset, Path) and isinstance(device_asset, Path)
@@ -127,6 +170,7 @@ def build() -> tuple[dict[Path, bytes], bytes]:
                     "height": definition["source_size"][1],
                     "immutable": True,
                 },
+                "overlays": overlay_manifest,
                 "generated_asset": {
                     "file": str(asset.relative_to(ROOT / "shared")),
                     "sha256": sha256(png),

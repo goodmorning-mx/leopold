@@ -160,10 +160,28 @@ function drawExactClock(ctx: CanvasRenderingContext2D, stateName: 'home' | 'sett
   ctx.beginPath();
   ctx.rect(mask.x, mask.y, mask.width, mask.height);
   ctx.clip();
-  ctx.fillStyle = stateName === 'home' ? '#555C6A' : '#28313E';
-  ctx.fillRect(mask.x, mask.y, mask.width, mask.height);
+  if (stateName === 'home') {
+    const sampled = ctx.getImageData(mask.x - 1, mask.y, mask.width + 2, mask.height);
+    const background = ctx.createImageData(mask.width, mask.height);
+    for (let y = 0; y < mask.height; y += 1) {
+      const left = (y * (mask.width + 2)) * 4;
+      const right = (y * (mask.width + 2) + mask.width + 1) * 4;
+      for (let x = 0; x < mask.width; x += 1) {
+        const ratio = (x + 1) / (mask.width + 1);
+        const target = (y * mask.width + x) * 4;
+        for (let channel = 0; channel < 3; channel += 1) {
+          background.data[target + channel] = Math.round(sampled.data[left + channel] * (1 - ratio) + sampled.data[right + channel] * ratio);
+        }
+        background.data[target + 3] = 255;
+      }
+    }
+    ctx.putImageData(background, mask.x, mask.y);
+  } else {
+    ctx.fillStyle = '#28313E';
+    ctx.fillRect(mask.x, mask.y, mask.width, mask.height);
+  }
   ctx.fillStyle = '#F4F7FC';
-  ctx.font = `${stateName === 'home' ? 15 : 13}px Montserrat, Arial, sans-serif`;
+  ctx.font = `${stateName === 'home' ? 17 : 13}px Montserrat, Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(value, mask.x + mask.width / 2, mask.y + mask.height / 2);
@@ -359,7 +377,7 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
       else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
       else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
-      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', timeText); }
+      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
       else if (screen.id === 'device-control-center') drawSettings(ctx, images, brightness, wifiConnected, bluetoothEnabled, pressed, settingsTimeText);
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);

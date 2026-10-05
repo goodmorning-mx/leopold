@@ -43,7 +43,11 @@ export default function Simulator() {
   const referenceSettingsMode = referenceState === 'settings';
   const framebufferCaptureMode = query.get('capture') === '1';
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
-  const [screenIndex, setScreenIndex] = useState(() => referenceSettingsMode ? sampleDocument.screens.findIndex((item) => item.id === 'device-control-center') : 0);
+  const [screenIndex, setScreenIndex] = useState(() => {
+    const initialScreen = referenceSettingsMode ? 'device-control-center' : 'sky-home';
+    const initialIndex = sampleDocument.screens.findIndex((item) => item.id === initialScreen);
+    return initialIndex >= 0 ? initialIndex : 0;
+  });
   const [clock24, setClock24] = useState(() => stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
   const [weatherFahrenheit, setWeatherFahrenheit] = useState(() => stored('weather_f', Boolean(persistence.settings.weather_fahrenheit.default)));
   const [brightness, setBrightness] = useState(() => referenceSettingsMode ? 50 : stored('brightness', Number(persistence.settings.brightness.default)));

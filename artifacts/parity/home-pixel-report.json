@@ -16,14 +16,14 @@
     {
       "name": "live-clock",
       "reason": "runtime clock is the only permitted visual difference",
-      "x": 215,
-      "y": 215,
-      "width": 66,
-      "height": 32
+      "x": 211,
+      "y": 219,
+      "width": 56,
+      "height": 22
     }
   ],
   "overall": {
-    "compared_pixels": 215044,
+    "compared_pixels": 215924,
     "mean_error": 0.0,
     "maximum_color_delta": 0,
     "pixels_over_delta": 0,
@@ -33,7 +33,7 @@
   },
   "regions": {
     "full-static-frame": {
-      "compared_pixels": 215044,
+      "compared_pixels": 215924,
       "mean_error": 0.0,
       "maximum_color_delta": 0,
       "pixels_over_delta": 0,
@@ -42,7 +42,7 @@
       "passed": true
     },
     "status-strip": {
-      "compared_pixels": 8376,
+      "compared_pixels": 9256,
       "mean_error": 0.0,
       "maximum_color_delta": 0,
       "pixels_over_delta": 0,
@@ -51,7 +51,7 @@
       "passed": true
     },
     "primary-controls": {
-      "compared_pixels": 110032,
+      "compared_pixels": 110912,
       "mean_error": 0.0,
       "maximum_color_delta": 0,
       "pixels_over_delta": 0,

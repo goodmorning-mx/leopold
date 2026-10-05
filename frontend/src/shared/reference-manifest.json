@@ -27,26 +27,43 @@
         "height": 1200,
         "immutable": true
       },
+      "overlays": [
+        {
+          "name": "home-status-banner",
+          "file": "references/home-status-banner-source.png",
+          "sha256": "879555f5ee1d81444dff31fead0ca25ad327ae1b61bd2d5ecd67db21e84c7bb2",
+          "width": 660,
+          "height": 206,
+          "immutable": true,
+          "generated_bounds": {
+            "x": 145,
+            "y": 203,
+            "width": 184,
+            "height": 57
+          },
+          "scaling": "Pillow bilinear exact bounds"
+        }
+      ],
       "generated_asset": {
         "file": "assets/home-reference-466.png",
-        "sha256": "2d5522eeb74545d22b8129d69ccfad5c74011e99c73cc8482178143c2800b1d0",
+        "sha256": "d5d8e07fb4a4e56f4880a1bc4eb952ceb4989081c984b4e3a0da4689e6921902",
         "width": 466,
         "height": 466,
         "format": "lossless PNG"
       },
       "device_asset": {
         "file": "assets/home-reference-466.bin",
-        "sha256": "b5a8b51b06cb6fb30850b977fffdf8d88ac99aa47f2e8b58ab60e6830bb37eac",
+        "sha256": "8a892908dc0b639959833365c266eb63555cf7119b973a96cf3ad8b4eb4e4bca",
         "format": "RGB565A8 derived from generated_asset"
       },
       "dynamic_masks": [
         {
           "name": "live-clock",
           "reason": "runtime clock is the only permitted visual difference",
-          "x": 215,
-          "y": 215,
-          "width": 66,
-          "height": 32
+          "x": 211,
+          "y": 219,
+          "width": 56,
+          "height": 22
         }
       ],
       "regions": {
@@ -57,8 +74,8 @@
           466
         ],
         "status-strip": [
-          150,
-          190,
+          145,
+          203,
           184,
           57
         ],
@@ -90,6 +107,7 @@
         "height": 1200,
         "immutable": true
       },
+      "overlays": [],
       "generated_asset": {
         "file": "assets/settings-reference-466.png",
         "sha256": "c4308a17a0f07da146eecf73da0de20271e60f376c7115c0fd2eb1a24b8ac10e",
