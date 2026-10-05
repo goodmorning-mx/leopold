@@ -40,8 +40,8 @@ async function decodeFirmwareAsset(path: string, width: number, height: number):
 export default function Simulator() {
   const query = new URLSearchParams(window.location.search);
   const referenceState = query.get('reference');
-  const referenceSettingsMode = referenceState === 'settings';
   const framebufferCaptureMode = query.get('capture') === '1';
+  const referenceSettingsMode = framebufferCaptureMode && referenceState === 'settings';
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
   const [screenIndex, setScreenIndex] = useState(() => {
     const initialScreen = referenceSettingsMode ? 'device-control-center' : 'sky-home';
@@ -60,6 +60,11 @@ export default function Simulator() {
   const [cloudConnected] = useState(false);
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
   const [batteryPercent, setBatteryPercent] = useState(82);
+  useEffect(() => {
+    if (framebufferCaptureMode) return;
+    const homeIndex = sampleDocument.screens.findIndex((item) => item.id === 'sky-home');
+    if (homeIndex >= 0) setScreenIndex(homeIndex);
+  }, [framebufferCaptureMode]);
   const [now, setNow] = useState(() => new Date());
   const [etag, setEtag] = useState('"mock-ui-12"');
   const [pollCount, setPollCount] = useState(0);
