@@ -24,8 +24,12 @@ def resolve_qrcode_include() -> str:
     )
     directories = json.loads(config.stdout).get("directories", {})
     user_directory = Path(
-        directories.get("user", str(Path.home() / "Arduino"))
-    ).expanduser()
+        os.path.expandvars(
+            os.path.expanduser(
+                directories.get("user", str(Path.home() / "Arduino"))
+            )
+        )
+    )
     listed = subprocess.run(
         ["arduino-cli", "lib", "list", "--format", "json"],
         check=True,
@@ -37,10 +41,14 @@ def resolve_qrcode_include() -> str:
     for record in records:
         if record.get("name") == "QRCode" and record.get("version") == "0.0.1":
             location = Path(record["location"])
-            root = location if location.is_absolute() else user_directory / "libraries" / "QRCode"
-            include = root / "src"
-            if (include / "qrcode.h").is_file():
-                return str(include)
+            roots = (
+                (location,) if location.is_absolute()
+                else (user_directory / "libraries" / "QRCode", user_directory / "QRCode")
+            )
+            for root in roots:
+                include = root / "src"
+                if (include / "qrcode.h").is_file():
+                    return str(include)
     raise RuntimeError("Pinned QRCode library source directory was not found")
 
 
