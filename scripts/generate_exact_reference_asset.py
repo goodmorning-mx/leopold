@@ -34,7 +34,7 @@ SOURCES = (
         ),
         "asset": ROOT / "shared/assets/home-reference-466.png",
         "device_asset": ROOT / "shared/assets/home-reference-466.bin",
-        "clock_mask": {"x": 211, "y": 219, "width": 56, "height": 22},
+        "dynamic_masks": [{"name": "live-clock", "reason": "runtime clock", "x": 211, "y": 219, "width": 56, "height": 22}],
         "regions": {
             "full-static-frame": [0, 0, 466, 466],
             "status-strip": [145, 203, 184, 57],
@@ -50,7 +50,13 @@ SOURCES = (
         "source_size": (1310, 1200),
         "asset": ROOT / "shared/assets/settings-reference-466.png",
         "device_asset": ROOT / "shared/assets/settings-reference-466.bin",
-        "clock_mask": {"x": 218, "y": 72, "width": 49, "height": 26},
+        "dynamic_masks": [
+            {"name": "live-clock", "reason": "runtime clock", "x": 218, "y": 72, "width": 49, "height": 26},
+            {"name": "wifi-status", "reason": "Wi-Fi connected/disconnected state", "x": 190, "y": 73, "width": 22, "height": 22},
+            {"name": "cloud-status", "reason": "cloud connected/disconnected state", "x": 264, "y": 72, "width": 24, "height": 24},
+            {"name": "device-connection-status", "reason": "simulator/ESP32 connection state", "x": 163, "y": 73, "width": 20, "height": 22},
+            {"name": "brightness-control", "reason": "live brightness fill, knob, and percentage", "x": 123, "y": 336, "width": 220, "height": 61},
+        ],
         "regions": {
             "full-static-frame": [0, 0, 466, 466],
             "status-strip": [160, 67, 150, 34],
@@ -60,6 +66,30 @@ SOURCES = (
             "display-row": [106, 234, 258, 41],
             "sound-row": [106, 277, 258, 41],
             "brightness-slider": [123, 336, 220, 61],
+        },
+    },
+    {
+        "name": "display",
+        "screen": "settings-display",
+        "source": ROOT / "shared/references/display-source.png",
+        "source_sha256": "e3bd058ddc0c3470bb0eb64111365de8613bcf3eda5fe536208179d76f528b4c",
+        "source_size": (1254, 1254),
+        "asset": ROOT / "shared/assets/display-reference-466.png",
+        "device_asset": ROOT / "shared/assets/display-reference-466.bin",
+        "dynamic_masks": [
+            {"name": "live-clock", "reason": "runtime clock", "x": 211, "y": 39, "width": 57, "height": 29},
+            {"name": "wifi-status", "reason": "Wi-Fi connected/disconnected state", "x": 181, "y": 40, "width": 22, "height": 22},
+            {"name": "cloud-status", "reason": "cloud connected/disconnected state", "x": 267, "y": 39, "width": 24, "height": 24},
+            {"name": "device-connection-status", "reason": "simulator/ESP32 connection state", "x": 154, "y": 40, "width": 20, "height": 22},
+        ],
+        "regions": {
+            "full-static-frame": [0, 0, 466, 466],
+            "status-strip": [141, 37, 185, 34],
+            "title": [140, 70, 188, 46],
+            "language-row": [75, 183, 315, 50],
+            "background-row": [75, 242, 315, 50],
+            "clock-row": [75, 301, 315, 50],
+            "units-row": [75, 359, 315, 50],
         },
     },
 )
@@ -183,13 +213,7 @@ def build() -> tuple[dict[Path, bytes], bytes]:
                     "sha256": sha256(device_bytes),
                     "format": "RGB565A8 derived from generated_asset",
                 },
-                "dynamic_masks": [
-                    {
-                        "name": "live-clock",
-                        "reason": "runtime clock is the only permitted visual difference",
-                        **definition["clock_mask"],
-                    }
-                ],
+                "dynamic_masks": definition["dynamic_masks"],
                 "regions": definition["regions"],
                 "consumers": {
                     "browser": f"frontend/public/firmware-assets/{asset.name}",
@@ -212,7 +236,7 @@ def main() -> None:
         stale = [str(path.relative_to(ROOT)) for path, data in files.items() if not path.is_file() or path.read_bytes() != data]
         if stale:
             raise SystemExit("stale exact-reference outputs: " + ", ".join(stale))
-        print("Exact-reference outputs valid: home and settings")
+        print("Exact-reference outputs valid: home, settings, and display submenu")
         return
     for path, data in files.items():
         path.parent.mkdir(parents=True, exist_ok=True)

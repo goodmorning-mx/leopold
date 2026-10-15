@@ -1,0 +1,125 @@
+{
+  "state": "display",
+  "reference": "shared/assets/display-reference-466.png",
+  "capture": "docs/parity/evidence/2026-10-15/display-framebuffer.png",
+  "dimensions": [
+    466,
+    466
+  ],
+  "profile": {
+    "capture": "raw canvas PNG from canvas.toDataURL('image/png')",
+    "allowed_color_delta": 0,
+    "maximum_mean_error": 0,
+    "maximum_pixels_over_delta_percent": 0
+  },
+  "dynamic_masks": [
+    {
+      "name": "live-clock",
+      "reason": "runtime clock",
+      "x": 211,
+      "y": 39,
+      "width": 57,
+      "height": 29
+    },
+    {
+      "name": "wifi-status",
+      "reason": "Wi-Fi connected/disconnected state",
+      "x": 181,
+      "y": 40,
+      "width": 22,
+      "height": 22
+    },
+    {
+      "name": "cloud-status",
+      "reason": "cloud connected/disconnected state",
+      "x": 267,
+      "y": 39,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "name": "device-connection-status",
+      "reason": "simulator/ESP32 connection state",
+      "x": 154,
+      "y": 40,
+      "width": 20,
+      "height": 22
+    }
+  ],
+  "overall": {
+    "compared_pixels": 214027,
+    "mean_error": 0.0,
+    "maximum_color_delta": 0,
+    "pixels_over_delta": 0,
+    "pixels_over_delta_percent": 0.0,
+    "failure_bounding_box": null,
+    "passed": true
+  },
+  "regions": {
+    "full-static-frame": {
+      "compared_pixels": 214027,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "status-strip": {
+      "compared_pixels": 3161,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "title": {
+      "compared_pixels": 8648,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "language-row": {
+      "compared_pixels": 15750,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "background-row": {
+      "compared_pixels": 15750,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "clock-row": {
+      "compared_pixels": 15750,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "units-row": {
+      "compared_pixels": 15750,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    }
+  },
+  "difference": "docs/parity/evidence/2026-10-15/display-report-v2/display-difference.png",
+  "passed": true
+}

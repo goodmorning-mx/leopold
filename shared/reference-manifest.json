@@ -59,7 +59,7 @@
       "dynamic_masks": [
         {
           "name": "live-clock",
-          "reason": "runtime clock is the only permitted visual difference",
+          "reason": "runtime clock",
           "x": 211,
           "y": 219,
           "width": 56,
@@ -123,11 +123,43 @@
       "dynamic_masks": [
         {
           "name": "live-clock",
-          "reason": "runtime clock is the only permitted visual difference",
+          "reason": "runtime clock",
           "x": 218,
           "y": 72,
           "width": 49,
           "height": 26
+        },
+        {
+          "name": "wifi-status",
+          "reason": "Wi-Fi connected/disconnected state",
+          "x": 190,
+          "y": 73,
+          "width": 22,
+          "height": 22
+        },
+        {
+          "name": "cloud-status",
+          "reason": "cloud connected/disconnected state",
+          "x": 264,
+          "y": 72,
+          "width": 24,
+          "height": 24
+        },
+        {
+          "name": "device-connection-status",
+          "reason": "simulator/ESP32 connection state",
+          "x": 163,
+          "y": 73,
+          "width": 20,
+          "height": 22
+        },
+        {
+          "name": "brightness-control",
+          "reason": "live brightness fill, knob, and percentage",
+          "x": 123,
+          "y": 336,
+          "width": 220,
+          "height": 61
         }
       ],
       "regions": {
@@ -183,6 +215,112 @@
       "consumers": {
         "browser": "frontend/public/firmware-assets/settings-reference-466.png",
         "device": "device/assets/settings-reference-466.bin"
+      }
+    },
+    {
+      "name": "display",
+      "screen": "settings-display",
+      "source": {
+        "file": "references/display-source.png",
+        "sha256": "e3bd058ddc0c3470bb0eb64111365de8613bcf3eda5fe536208179d76f528b4c",
+        "width": 1254,
+        "height": 1254,
+        "immutable": true
+      },
+      "overlays": [],
+      "generated_asset": {
+        "file": "assets/display-reference-466.png",
+        "sha256": "1616bd95bf6cc2fcf37cdbf48f2993e2d09ec1e325b1351fec2b5499fdbf5316",
+        "width": 466,
+        "height": 466,
+        "format": "lossless PNG"
+      },
+      "device_asset": {
+        "file": "assets/display-reference-466.bin",
+        "sha256": "2f74bb55b50b1380f1c95109f56ea9062fbf1185902706d0435dc7af0218200a",
+        "format": "RGB565A8 derived from generated_asset"
+      },
+      "dynamic_masks": [
+        {
+          "name": "live-clock",
+          "reason": "runtime clock",
+          "x": 211,
+          "y": 39,
+          "width": 57,
+          "height": 29
+        },
+        {
+          "name": "wifi-status",
+          "reason": "Wi-Fi connected/disconnected state",
+          "x": 181,
+          "y": 40,
+          "width": 22,
+          "height": 22
+        },
+        {
+          "name": "cloud-status",
+          "reason": "cloud connected/disconnected state",
+          "x": 267,
+          "y": 39,
+          "width": 24,
+          "height": 24
+        },
+        {
+          "name": "device-connection-status",
+          "reason": "simulator/ESP32 connection state",
+          "x": 154,
+          "y": 40,
+          "width": 20,
+          "height": 22
+        }
+      ],
+      "regions": {
+        "full-static-frame": [
+          0,
+          0,
+          466,
+          466
+        ],
+        "status-strip": [
+          141,
+          37,
+          185,
+          34
+        ],
+        "title": [
+          140,
+          70,
+          188,
+          46
+        ],
+        "language-row": [
+          75,
+          183,
+          315,
+          50
+        ],
+        "background-row": [
+          75,
+          242,
+          315,
+          50
+        ],
+        "clock-row": [
+          75,
+          301,
+          315,
+          50
+        ],
+        "units-row": [
+          75,
+          359,
+          315,
+          50
+        ]
+      },
+      "consumers": {
+        "browser": "frontend/public/firmware-assets/display-reference-466.png",
+        "device": "device/assets/display-reference-466.bin"
       }
     }
   ]

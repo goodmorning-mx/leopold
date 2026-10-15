@@ -54,7 +54,7 @@ def metrics(reference: Image.Image, capture: Image.Image, bounds: tuple[int, int
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("state", choices=("home", "settings"))
+    parser.add_argument("state", choices=("home", "settings", "display"))
     parser.add_argument("capture", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()

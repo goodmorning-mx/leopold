@@ -1,0 +1,142 @@
+{
+  "state": "settings",
+  "reference": "shared/assets/settings-reference-466.png",
+  "capture": "docs/parity/evidence/2026-10-15/settings-framebuffer.png",
+  "dimensions": [
+    466,
+    466
+  ],
+  "profile": {
+    "capture": "raw canvas PNG from canvas.toDataURL('image/png')",
+    "allowed_color_delta": 0,
+    "maximum_mean_error": 0,
+    "maximum_pixels_over_delta_percent": 0
+  },
+  "dynamic_masks": [
+    {
+      "name": "live-clock",
+      "reason": "runtime clock",
+      "x": 218,
+      "y": 72,
+      "width": 49,
+      "height": 26
+    },
+    {
+      "name": "wifi-status",
+      "reason": "Wi-Fi connected/disconnected state",
+      "x": 190,
+      "y": 73,
+      "width": 22,
+      "height": 22
+    },
+    {
+      "name": "cloud-status",
+      "reason": "cloud connected/disconnected state",
+      "x": 264,
+      "y": 72,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "name": "device-connection-status",
+      "reason": "simulator/ESP32 connection state",
+      "x": 163,
+      "y": 73,
+      "width": 20,
+      "height": 22
+    },
+    {
+      "name": "brightness-control",
+      "reason": "live brightness fill, knob, and percentage",
+      "x": 123,
+      "y": 336,
+      "width": 220,
+      "height": 61
+    }
+  ],
+  "overall": {
+    "compared_pixels": 201034,
+    "mean_error": 0.0,
+    "maximum_color_delta": 0,
+    "pixels_over_delta": 0,
+    "pixels_over_delta_percent": 0.0,
+    "failure_bounding_box": null,
+    "passed": true
+  },
+  "regions": {
+    "full-static-frame": {
+      "compared_pixels": 201034,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "status-strip": {
+      "compared_pixels": 2398,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "title": {
+      "compared_pixels": 4950,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "wifi-row": {
+      "compared_pixels": 10320,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "bluetooth-row": {
+      "compared_pixels": 10578,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "display-row": {
+      "compared_pixels": 10578,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "sound-row": {
+      "compared_pixels": 10578,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "brightness-slider": {
+      "compared_pixels": 0,
+      "mean_error": 0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0,
+      "failure_bounding_box": null,
+      "passed": true
+    }
+  },
+  "difference": "docs/parity/evidence/2026-10-15/settings-report-v2/settings-difference.png",
+  "passed": true
+}
