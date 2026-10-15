@@ -53,7 +53,7 @@ def main() -> int:
     ]
     commit = os.environ.get("GITHUB_SHA", "local-uncommitted")
     commit_flag = ' -DLEOPOLD_SOURCE_COMMIT="' + commit + '"'
-    qrcode_include = "-I" + resolve_qrcode_include()
+    qrcode_include = " -I" + resolve_qrcode_include()
     for index, property_value in enumerate(properties):
         if property_value.startswith("compiler.cpp.extra_flags="):
             properties[index] += qrcode_include + commit_flag
