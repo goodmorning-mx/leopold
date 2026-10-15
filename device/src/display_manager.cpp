@@ -263,13 +263,87 @@ bool DisplayManager::begin() {
 }
 
 void DisplayManager::loop() {
-  if (lvglDisplay != nullptr) {
+  if (lvglDisplay != nullptr && !calibrationMode_) {
     lv_timer_handler();
   }
 }
 
+void DisplayManager::showCalibration() {
+  if (lvglCaptureBuffer == nullptr) return;
+  calibrationMode_ = true;
+  const int16_t centerX = generated_ui::kCalibrationWidth / 2;
+  const int16_t centerY = generated_ui::kCalibrationHeight / 2;
+  const auto setPixel = [](int16_t x, int16_t y, uint16_t color) {
+    if (x >= 0 && x < generated_ui::kCalibrationWidth && y >= 0 && y < generated_ui::kCalibrationHeight) {
+      lvglCaptureBuffer[y * generated_ui::kCalibrationWidth + x] = color;
+    }
+  };
+  for (int16_t y = 0; y < generated_ui::kCalibrationHeight; ++y) {
+    for (int16_t x = 0; x < generated_ui::kCalibrationWidth; ++x) setPixel(x, y, generated_ui::kCalibrationBackground);
+  }
+  for (int16_t x = 0; x < generated_ui::kCalibrationWidth; ++x) {
+    for (uint8_t offset = 0; offset < generated_ui::kCalibrationBorderWidth; ++offset) {
+      setPixel(x, offset, generated_ui::kCalibrationBorderColor);
+      setPixel(x, generated_ui::kCalibrationHeight - 1 - offset, generated_ui::kCalibrationBorderColor);
+    }
+  }
+  for (int16_t y = 0; y < generated_ui::kCalibrationHeight; ++y) {
+    for (uint8_t offset = 0; offset < generated_ui::kCalibrationBorderWidth; ++offset) {
+      setPixel(offset, y, generated_ui::kCalibrationBorderColor);
+      setPixel(generated_ui::kCalibrationWidth - 1 - offset, y, generated_ui::kCalibrationBorderColor);
+    }
+  }
+  const uint8_t marker = generated_ui::kCalibrationMarkerSize;
+  for (int16_t y = 0; y < marker; ++y) {
+    for (int16_t x = 0; x < marker; ++x) {
+      setPixel(x, y, generated_ui::kCalibrationMarkerColor);
+      setPixel(generated_ui::kCalibrationWidth - marker + x, y, generated_ui::kCalibrationMarkerColor);
+      setPixel(x, generated_ui::kCalibrationHeight - marker + y, generated_ui::kCalibrationMarkerColor);
+      setPixel(generated_ui::kCalibrationWidth - marker + x, generated_ui::kCalibrationHeight - marker + y, generated_ui::kCalibrationMarkerColor);
+    }
+  }
+  for (int16_t coordinate = generated_ui::kCalibrationGridSpacing; coordinate < generated_ui::kCalibrationWidth; coordinate += generated_ui::kCalibrationGridSpacing) {
+    for (int16_t offset = 0; offset < generated_ui::kCalibrationGridWidth; ++offset) {
+      for (int16_t position = 0; position < generated_ui::kCalibrationHeight; ++position) {
+        setPixel(coordinate + offset, position, generated_ui::kCalibrationGridColor);
+        setPixel(position, coordinate + offset, generated_ui::kCalibrationGridColor);
+      }
+    }
+  }
+  for (int16_t offset = 0; offset < generated_ui::kCalibrationCrosshairWidth; ++offset) {
+    for (int16_t position = 0; position < generated_ui::kCalibrationHeight; ++position) {
+      setPixel(centerX - generated_ui::kCalibrationCrosshairWidth / 2 + offset, position, generated_ui::kCalibrationCrosshairColor);
+      setPixel(position, centerY - generated_ui::kCalibrationCrosshairWidth / 2 + offset, generated_ui::kCalibrationCrosshairColor);
+    }
+  }
+  for (uint8_t index = 0; index < generated_ui::kCalibrationRadiusCount; ++index) {
+    const int16_t radius = generated_ui::kCalibrationRadii[index];
+    for (int16_t y = centerY - radius - 2; y <= centerY + radius + 2; ++y) {
+      for (int16_t x = centerX - radius - 2; x <= centerX + radius + 2; ++x) {
+        const int32_t dx = x - centerX;
+        const int32_t dy = y - centerY;
+        const int32_t distanceSquared = dx * dx + dy * dy;
+        const int32_t radiusSquared = radius * radius;
+        if (abs(distanceSquared - radiusSquared) <= radius * generated_ui::kCalibrationCircleWidth) setPixel(x, y, generated_ui::kCalibrationCircleColor);
+      }
+    }
+  }
+  display->draw16bitRGBBitmap(0, 0, lvglCaptureBuffer, generated_ui::kCalibrationWidth, generated_ui::kCalibrationHeight);
+}
+
+void DisplayManager::exitCalibration() {
+  if (!calibrationMode_) return;
+  calibrationMode_ = false;
+}
+
+bool DisplayManager::calibrationMode() const { return calibrationMode_; }
+
 bool DisplayManager::writeLvglScreenshot(Stream& output) {
   if (lvglCaptureBuffer == nullptr) return false;
+  // A USB screenshot can arrive in the same loop iteration as a screen change.
+  // Flush pending LVGL invalidation first so the capture represents the
+  // currently selected screen rather than the previous framebuffer contents.
+  if (!calibrationMode_) lv_timer_handler();
   constexpr uint32_t byteCount = kScreenWidth * kScreenHeight * sizeof(uint16_t);
   output.printf("LEOPOLD_SCREENSHOT_BEGIN %u %u RGB565 %lu\n", kScreenWidth, kScreenHeight, static_cast<unsigned long>(byteCount));
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(lvglCaptureBuffer);

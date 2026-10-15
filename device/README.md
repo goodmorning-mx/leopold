@@ -173,6 +173,25 @@ sin límite.
 
 ## Diagnóstico por Serial
 
+### Preflight de calibración física
+
+La calibración es un modo diagnóstico explícito; no aparece en la navegación
+normal. Con el dispositivo conectado por USB, entra al patrón compartido y
+espera una iteración del firmware antes de capturar:
+
+```bash
+PORT=/dev/ttyACM0
+printf 'LEOPOLD_CALIBRATION\n' > "$PORT"
+sleep 1
+python3 scripts/capture_device_screenshot.py "$PORT" /tmp/leopold-calibration.ppm
+python3 scripts/ppm_to_png.py /tmp/leopold-calibration.ppm /tmp/leopold-calibration.png
+printf 'LEOPOLD_CALIBRATION_EXIT\n' > "$PORT"
+```
+
+`capture_device_screenshot.py` exports the current 466 × 466 framebuffer as
+RGB565-derived PPM data; `ppm_to_png.py` creates a lossless PNG. The explicit
+commands return the device to its prior UI and do not flash or modify firmware.
+
 El monitor muestra:
 
 - versión de firmware;

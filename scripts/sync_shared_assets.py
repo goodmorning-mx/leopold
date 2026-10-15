@@ -10,7 +10,7 @@ DESTINATIONS = (
     ROOT / "device" / "assets",
     ROOT / "frontend" / "public" / "firmware-assets",
 )
-CONTRACTS = ("firmware-ui.json", "interaction.json", "typography.json", "persistence.json", "asset-manifest.json", "rendering.json", "reference-manifest.json", "reference-states.json")
+CONTRACTS = ("firmware-ui.json", "interaction.json", "typography.json", "persistence.json", "asset-manifest.json", "rendering.json", "reference-manifest.json", "reference-states.json", "calibration.json")
 
 
 def sync() -> None:

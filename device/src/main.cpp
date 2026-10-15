@@ -1259,6 +1259,13 @@ void processUsbCommands() {
       usbCommand[usbCommandLength] = '\0';
       if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION") == 0) {
+        screen.showCalibration();
+        Serial.printf("LEOPOLD_CALIBRATION_OK %s\n", screen.calibrationMode() ? "on" : "unavailable");
+      } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION_EXIT") == 0) {
+        screen.exitCalibration();
+        if (hasUi) screen.renderSduiScreen(currentUi);
+        Serial.println("LEOPOLD_CALIBRATION_OK off");
       } else if (strncmp(usbCommand, "LEOPOLD_SCREEN ", 15) == 0) {
         localPanel = LocalPanel::kNone;
         const char* requestedScreen = usbCommand + 15;

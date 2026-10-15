@@ -61,7 +61,7 @@ export default function Simulator() {
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
   const [batteryPercent, setBatteryPercent] = useState(82);
   useEffect(() => {
-    if (framebufferCaptureMode) return;
+    if (framebufferCaptureMode || calibrationMode) return;
     const homeIndex = sampleDocument.screens.findIndex((item) => item.id === 'sky-home');
     if (homeIndex >= 0) setScreenIndex(homeIndex);
   }, [framebufferCaptureMode]);
@@ -71,11 +71,30 @@ export default function Simulator() {
   const [events, setEvents] = useState<EventLog[]>([{ at: new Date().toLocaleTimeString(), kind: 'boot', detail: 'Mock firmware booted; UI revision 12 loaded.', payload: '{"revision":12}' }]);
   const [json, setJson] = useState(() => JSON.stringify(sampleDocument, null, 2));
   const [jsonMessage, setJsonMessage] = useState('');
+  const [captureUrl, setCaptureUrl] = useState('');
+  const [captureDownloadUrl, setCaptureDownloadUrl] = useState('');
+  const calibrationMode = query.get('calibration') === '1';
   const [images, setImages] = useState<FirmwareImages>({});
   const pointer = useRef<{ x: number; y: number; at: number } | null>(null);
   const lastSliderValue = useRef<number | null>(null);
   const screen = document.screens[screenIndex] ?? document.screens[0];
   const screenId = screen?.id ?? '';
+  useEffect(() => {
+    if (!captureUrl) return;
+    let active = true;
+    let objectUrl = '';
+    void fetch(captureUrl).then((response) => response.blob()).then((blob) => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(blob);
+      setCaptureDownloadUrl(objectUrl);
+    });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [captureUrl]);
+  function downloadFramebuffer() {
+    const dataUrl = captureDownloadUrl || captureUrl || window.document.querySelector<HTMLCanvasElement>('.firmware-canvas')?.dataset.framebufferPng;
+    if (!dataUrl) return;
+    window.document.querySelector<HTMLAnchorElement>('.raw-framebuffer-download')?.click();
+  }
   useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:brightness`, String(brightness)); }, [brightness]);
   useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:clock_24`, String(clock24)); }, [clock24]);
   useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:weather_f`, String(weatherFahrenheit)); }, [weatherFahrenheit]);
@@ -175,10 +194,10 @@ export default function Simulator() {
   const status = useMemo(() => `${screenIndex + 1} / ${document.screens.length}`, [document.screens.length, screenIndex]);
 
   return <main className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
-    <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Browser rendering of the firmware source at commit {firmwareReference}. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><a className="button secondary compact" href="/">Exit simulator</a></header>
-    <div className="simulator-grid">
+    <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Browser rendering of the firmware source at commit {firmwareReference}. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
+    {captureUrl ? <img className="raw-framebuffer-preview" src={captureUrl} alt="Raw framebuffer export" /> : null}<div className="simulator-grid">
       <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; setPressed(null); }}>
-        <FirmwareCanvas screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} />
+        <FirmwareCanvas screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
         <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>Unavailable (browser)</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Enabled (mock)' : 'Disabled (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>

@@ -29,6 +29,7 @@ interaction = json.loads((root / "shared" / "interaction.json").read_text(encodi
 persistence = json.loads((root / "shared" / "persistence.json").read_text(encoding="utf-8"))
 typography = json.loads((root / "shared" / "typography.json").read_text(encoding="utf-8"))
 rendering = json.loads((root / "shared" / "rendering.json").read_text(encoding="utf-8"))
+calibration = json.loads((root / "shared" / "calibration.json").read_text(encoding="utf-8"))
 
 
 def q(value: object) -> str:
@@ -81,6 +82,22 @@ lines = [
     f"constexpr uint8_t kBrightnessMinimum = {interaction['behaviour']['brightness_minimum']};",
     f"constexpr uint8_t kBrightnessMaximum = {interaction['behaviour']['brightness_maximum']};",
     f"constexpr uint8_t kDefaultBrightness = {persistence['settings']['brightness']['default']};",
+    f"constexpr int16_t kCalibrationWidth = {calibration['width']};",
+    f"constexpr int16_t kCalibrationHeight = {calibration['height']};",
+    f"constexpr uint16_t kCalibrationBackground = {rgb565(calibration['background'])};",
+    f"constexpr uint16_t kCalibrationBorderColor = {rgb565(calibration['border']['color'])};",
+    f"constexpr uint8_t kCalibrationBorderWidth = {calibration['border']['width']};",
+    f"constexpr uint16_t kCalibrationMarkerColor = {rgb565(calibration['corner_markers']['color'])};",
+    f"constexpr uint8_t kCalibrationMarkerSize = {calibration['corner_markers']['size']};",
+    f"constexpr uint16_t kCalibrationGridColor = {rgb565(calibration['grid']['color'])};",
+    f"constexpr uint8_t kCalibrationGridSpacing = {calibration['grid']['spacing']};",
+    f"constexpr uint8_t kCalibrationGridWidth = {calibration['grid']['width']};",
+    f"constexpr uint16_t kCalibrationCrosshairColor = {rgb565(calibration['crosshair']['color'])};",
+    f"constexpr uint8_t kCalibrationCrosshairWidth = {calibration['crosshair']['width']};",
+    f"constexpr uint16_t kCalibrationCircleColor = {rgb565(calibration['circles']['color'])};",
+    f"constexpr uint8_t kCalibrationCircleWidth = {calibration['circles']['width']};",
+    f"constexpr uint16_t kCalibrationRadii[] = {{{', '.join(str(radius) for radius in calibration['circles']['radii'])}}};",
+    f"constexpr uint8_t kCalibrationRadiusCount = {len(calibration['circles']['radii'])};",
     f"constexpr uint8_t kFontSize1 = {typography['sizes']['1']['lvgl']};",
     f"constexpr uint8_t kFontSize2 = {typography['sizes']['2']['lvgl']};",
     f"constexpr uint8_t kFontSize3 = {typography['sizes']['3']['lvgl']};",

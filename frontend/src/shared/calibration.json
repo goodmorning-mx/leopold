@@ -1,0 +1,10 @@
+{
+  "width": 466,
+  "height": 466,
+  "background": "#000000",
+  "border": {"color": "#FFFFFF", "width": 1},
+  "corner_markers": {"color": "#FFFFFF", "size": 10},
+  "grid": {"color": "#1C9CFF", "spacing": 50, "width": 1},
+  "crosshair": {"color": "#FF3B30", "width": 2},
+  "circles": {"color": "#30D158", "width": 2, "radii": [50, 100, 150, 200]}
+}

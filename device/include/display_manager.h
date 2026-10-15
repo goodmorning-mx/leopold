@@ -79,6 +79,9 @@ class DisplayManager {
       const char* timeText);
   void showLocalFace(uint32_t now, bool force = false);
   void cycleLocalExpression();
+  void showCalibration();
+  void exitCalibration();
+  bool calibrationMode() const;
   bool writeLvglScreenshot(Stream& output);
 
  private:
@@ -125,6 +128,7 @@ class DisplayManager {
   bool cloudConnected_ = false;
   bool bluetoothEnabled_ = false;
   bool bluetoothConnected_ = false;
+  bool calibrationMode_ = false;
   uint8_t batteryPercent_ = 0;
   char timeText_[16] = "--:--";
   SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0, 1};

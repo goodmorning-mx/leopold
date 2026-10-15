@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { SduiComponent, SduiScreen, SduiText } from './contract';
 import typography from '../shared/typography.json';
 import rendering from '../shared/rendering.json';
+import calibrationContract from '../shared/calibration.json';
 import referenceManifest from '../shared/reference-manifest.json';
 
 export type FirmwareImages = Record<string, string>;
@@ -23,6 +24,8 @@ type Props = {
   batteryPercent: number;
   timeText: string;
   settingsTimeText: string;
+  calibration: boolean;
+  onFramebufferCapture?: (dataUrl: string) => void;
 };
 
 const W = 466;
@@ -295,6 +298,30 @@ function drawSettings(ctx: CanvasRenderingContext2D, images: FirmwareImages, bri
   centered(ctx, 'Brightness', s.brightness_label.x, s.brightness_label.y, s.brightness_label.font_size, '#F2F3F7');
 }
 
+function drawCalibration(ctx: CanvasRenderingContext2D) {
+  const calibration = calibrationContract;
+  ctx.fillStyle = calibration.background;
+  ctx.fillRect(0, 0, calibration.width, calibration.height);
+  ctx.strokeStyle = calibration.border.color;
+  ctx.lineWidth = calibration.border.width;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  ctx.fillStyle = calibration.corner_markers.color;
+  const marker = calibration.corner_markers.size;
+  [[0, 0], [W - marker, 0], [0, H - marker], [W - marker, H - marker]].forEach(([x, y]) => ctx.fillRect(x, y, marker, marker));
+  ctx.strokeStyle = calibration.grid.color;
+  ctx.lineWidth = calibration.grid.width;
+  for (let coordinate = calibration.grid.spacing; coordinate < W; coordinate += calibration.grid.spacing) {
+    ctx.beginPath(); ctx.moveTo(coordinate + 0.5, 0); ctx.lineTo(coordinate + 0.5, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, coordinate + 0.5); ctx.lineTo(W, coordinate + 0.5); ctx.stroke();
+  }
+  ctx.strokeStyle = calibration.crosshair.color;
+  ctx.lineWidth = calibration.crosshair.width;
+  ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+  ctx.strokeStyle = calibration.circles.color;
+  ctx.lineWidth = calibration.circles.width;
+  calibration.circles.radii.forEach((radius) => { ctx.beginPath(); ctx.arc(W / 2, H / 2, radius, 0, Math.PI * 2); ctx.stroke(); });
+}
+
 function drawBack(ctx: CanvasRenderingContext2D, x = 28, y = 43, w = 74, h = 48) {
   rounded(ctx, x, y, w, h, h / 2, '#1C1C1E'); centered(ctx, '‹', x + w / 2, y + 8, 32);
 }
@@ -367,14 +394,15 @@ function drawYoutube(ctx: CanvasRenderingContext2D, screen: SduiScreen) {
   rounded(ctx, 139, 381, 188, 54, 27, '#FF453A'); centered(ctx, 'Actualizar', 233, 397, 16);
 }
 
-export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText }: Props) {
+export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     const render = () => {
       ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
-      if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
+      if (calibration) drawCalibration(ctx);
+      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
       else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
       else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
       else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
@@ -386,7 +414,9 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
         drawStatus(ctx, screen.id === 'sky-home', clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       }
       if (new URLSearchParams(window.location.search).get('capture') === '1') {
-        canvas.dataset.framebufferPng = canvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png');
+        canvas.dataset.framebufferPng = dataUrl;
+        onFramebufferCapture?.(dataUrl);
       }
     };
     let cancelled = false;
@@ -403,6 +433,6 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       redrawTimers = [100, 300, 700].map((delay) => window.setTimeout(render, delay));
     });
     return () => { cancelled = true; redrawTimers.forEach((timer) => window.clearTimeout(timer)); };
-  }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText]);
+  }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }
