@@ -16,6 +16,14 @@ CONFIG = ROOT / "device" / "firmware-build.json"
 def resolve_qrcode_include() -> str:
     """Install and explicitly select the pinned QRCode library header."""
     subprocess.run(["arduino-cli", "lib", "install", "QRCode@0.0.1"], check=True)
+    config = subprocess.run(
+        ["arduino-cli", "config", "dump", "--format", "json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    directories = json.loads(config.stdout).get("directories", {})
+    user_directory = Path(directories.get("user", str(Path.home() / "Arduino")))
     listed = subprocess.run(
         ["arduino-cli", "lib", "list", "--format", "json"],
         check=True,
@@ -26,7 +34,8 @@ def resolve_qrcode_include() -> str:
     records = payload if isinstance(payload, list) else payload.get("libraries", [])
     for record in records:
         if record.get("name") == "QRCode" and record.get("version") == "0.0.1":
-            root = Path(record["location"])
+            location = Path(record["location"])
+            root = location if location.is_absolute() else user_directory / "libraries" / "QRCode"
             include = root / "src"
             if (include / "qrcode.h").is_file():
                 return str(include)
