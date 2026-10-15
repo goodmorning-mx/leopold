@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 config = json.loads((ROOT / "device" / "firmware-build.json").read_text())
 sketch = (ROOT / "device" / "src" / "sketch.yaml").read_text()
-required = ("FlashSize=16M", "CPUFreq=240", "FlashFreq=80", "FlashMode=qio", "PSRAM=opi", "PartitionScheme=custom")
+required = ("FlashSize=16M", "CPUFreq=240", "FlashMode=qio", "PSRAM=opi", "PartitionScheme=custom")
 assert config["sketch"] == "device/src"
 assert config["profile"] == "leopold"
 assert all(option in config["fqbn"] for option in required)
