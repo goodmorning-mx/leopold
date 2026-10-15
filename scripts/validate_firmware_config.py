@@ -14,7 +14,7 @@ assert config["sketch"] == "device/src"
 assert config["profile"] == "leopold"
 assert all(option in config["fqbn"] for option in required)
 assert config["fqbn"] in sketch
-assert (ROOT / config["sketch"] / "leopold.ino").is_file()
+assert (ROOT / config["sketch"] / "src.ino").is_file()
 assert (ROOT / config["flash"]["partition_file"]).is_file()
 assert any(path.suffix == ".cpp" for path in (ROOT / config["sketch"]).iterdir())
 assert not (ROOT / "device" / "platformio.ini").exists()
