@@ -46,8 +46,9 @@ mask; capture mode exposes the square framebuffer only for measurement.
 3. Run `python3 scripts/sync_shared_assets.py` and
    `python3 scripts/verify_shared_outputs.py`.
 4. Run `cd frontend && npm run typecheck && npm run build`.
-5. Run the firmware build with the repository-local PlatformIO environment:
-   `device/.tools/platformio-venv/bin/pio run`.
+5. Treat the successful GitHub Actions firmware artifact as the only supported
+   firmware input. Use `scripts/flash_firmware.py` only after explicit hardware
+   authorization; local firmware compilation is not part of this workflow.
 6. Open `/simulator` and exercise every state in
    `shared/reference-states.json`.
 7. For exact-reference states, run the raw framebuffer comparator and require

@@ -69,9 +69,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: 1.2.2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --upgrade pip platformio
-      - run: pio run
-        working-directory: device
+      - name: Generate and validate shared firmware output
+        run: |
+          python3 scripts/validate_shared_ui.py
+          python3 scripts/sync_shared_assets.py
+          python3 scripts/verify_shared_outputs.py
+          python3 scripts/generate_firmware_ui.py
+          python3 scripts/validate_firmware_config.py
+          git diff --exit-code -- device frontend/public/firmware-assets frontend/src/shared shared
+      - name: Build with pinned Arduino CLI profile
+        env:
+          ARDUINO_CLI_VERSION: 1.2.2
+        run: python3 scripts/build_firmware.py
+      - name: Package firmware artifact
+        env:
+          ARDUINO_CLI_VERSION: 1.2.2
+        run: python3 scripts/package_firmware.py device/build firmware-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leopold-firmware-${{ github.sha }}
+          path: firmware-release/

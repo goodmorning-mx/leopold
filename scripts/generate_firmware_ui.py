@@ -5,10 +5,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from SCons.Script import Import
+try:
+    from SCons.Script import Import
+except ModuleNotFoundError:
+    Import = None
 
-Import("env")
-root = Path(env.subst("$PROJECT_DIR")).resolve().parent
+if Import is not None:
+    Import("env")
+    root = Path(env.subst("$PROJECT_DIR")).resolve().parent
+else:
+    root = Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0, str(root / "scripts"))
 from sync_shared_assets import sync
@@ -16,6 +22,8 @@ sync()
 source = root / "shared" / "firmware-ui.json"
 target = root / "device" / "include" / "generated_firmware_ui.h"
 home_asset_target = root / "device" / "include" / "generated_home_asset.h"
+settings_asset_target = root / "device" / "include" / "generated_settings_asset.h"
+display_asset_target = root / "device" / "include" / "generated_display_asset.h"
 document = json.loads(source.read_text(encoding="utf-8"))
 interaction = json.loads((root / "shared" / "interaction.json").read_text(encoding="utf-8"))
 persistence = json.loads((root / "shared" / "persistence.json").read_text(encoding="utf-8"))
@@ -59,6 +67,7 @@ lines = [
     "",
     "namespace leopold {",
     "namespace generated_ui {",
+    f"constexpr uint32_t kUiRevision = {document['revision']};",
     f"constexpr int16_t kSwipeUpDistance = {interaction['touch']['swipe_up_distance']};",
     f"constexpr int16_t kSwipeHorizontalDistance = {interaction['touch']['swipe_horizontal_distance']};",
     f"constexpr int16_t kSwipeDirectionRatio = {int(interaction['touch']['swipe_direction_ratio'] * 10)};",
@@ -230,7 +239,7 @@ generated = "\n".join(lines)
 if not target.exists() or target.read_text(encoding="utf-8") != generated:
     target.write_text(generated, encoding="utf-8")
 
-home_asset = (root / "shared" / "assets" / "sky_home.bin").read_bytes()
+home_asset = (root / "shared" / "assets" / "home-reference-466.bin").read_bytes()
 home_asset_lines = [
     "#pragma once",
     "#include <Arduino.h>",
@@ -249,3 +258,43 @@ home_asset_lines.extend([
 home_asset_generated = "\n".join(home_asset_lines)
 if not home_asset_target.exists() or home_asset_target.read_text(encoding="utf-8") != home_asset_generated:
     home_asset_target.write_text(home_asset_generated, encoding="utf-8")
+
+settings_asset = (root / "shared" / "assets" / "settings-reference-466.bin").read_bytes()
+settings_asset_lines = [
+    "#pragma once",
+    "#include <Arduino.h>",
+    "",
+    "namespace leopold::sky {",
+    "const uint8_t kSettingsAssetData[] PROGMEM = {",
+]
+for offset in range(0, len(settings_asset), 16):
+    settings_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in settings_asset[offset : offset + 16]) + ",")
+settings_asset_lines.extend([
+    "};",
+    "constexpr size_t kSettingsAssetDataSize = sizeof(kSettingsAssetData);",
+    "}  // namespace leopold::sky",
+    "",
+])
+settings_asset_generated = "\n".join(settings_asset_lines)
+if not settings_asset_target.exists() or settings_asset_target.read_text(encoding="utf-8") != settings_asset_generated:
+    settings_asset_target.write_text(settings_asset_generated, encoding="utf-8")
+
+display_asset = (root / "shared" / "assets" / "display-reference-466.bin").read_bytes()
+display_asset_lines = [
+    "#pragma once",
+    "#include <Arduino.h>",
+    "",
+    "namespace leopold::sky {",
+    "const uint8_t kDisplayAssetData[] PROGMEM = {",
+]
+for offset in range(0, len(display_asset), 16):
+    display_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in display_asset[offset : offset + 16]) + ",")
+display_asset_lines.extend([
+    "};",
+    "constexpr size_t kDisplayAssetDataSize = sizeof(kDisplayAssetData);",
+    "}  // namespace leopold::sky",
+    "",
+])
+display_asset_generated = "\n".join(display_asset_lines)
+if not display_asset_target.exists() or display_asset_target.read_text(encoding="utf-8") != display_asset_generated:
+    display_asset_target.write_text(display_asset_generated, encoding="utf-8")

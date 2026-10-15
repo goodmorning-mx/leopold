@@ -10,6 +10,12 @@
 
 namespace leopold::config {
 
+#ifndef LEOPOLD_SOURCE_COMMIT
+#define LEOPOLD_SOURCE_COMMIT "local-uncommitted"
+#endif
+
+constexpr char kSourceCommit[] = LEOPOLD_SOURCE_COMMIT;
+
 constexpr bool contains(const char* value, const char* needle) {
   for (size_t start = 0; value[start] != '\0'; ++start) {
     size_t offset = 0;

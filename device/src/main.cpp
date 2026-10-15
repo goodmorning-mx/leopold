@@ -1558,6 +1558,9 @@ void setup() {
   Serial.printf(
       "Leopold firmware %s starting\n",
       leopold::config::kFirmwareVersion);
+  Serial.printf("LEOPOLD_FIRMWARE_REVISION commit=%s ui=%lu\n",
+                leopold::config::kSourceCommit,
+                static_cast<unsigned long>(leopold::generated_ui::kUiRevision));
   randomSeed(micros());
 
   pinMode(leopold::board::kBootButton, INPUT_PULLUP);

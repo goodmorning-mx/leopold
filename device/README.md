@@ -19,23 +19,14 @@ anuncia comercialmente como SH8601/CO5300 y necesita la secuencia
 `Arduino_CO5300`. Algunas revisiones pueden requerir `Arduino_SH8601`; confirma
 la revisión física antes de cambiar el controlador en `src/display_manager.cpp`.
 
-## Instalar PlatformIO
+## Build authority and firmware packages
 
-Instala PlatformIO Core o la extensión PlatformIO IDE para VS Code. Para
-verificar la instalación:
-
-```bash
-pio --version
-```
-
-En esta estación de desarrollo también puede usarse:
-
-```bash
-/home/goodmorning/.platformio/penv/bin/pio --version
-```
-
-Las versiones de ArduinoJson, WiFiManager y Arduino_GFX están fijadas en
-`platformio.ini` para obtener builds reproducibles.
+GitHub Actions is the authoritative compiler. The repository-owned Arduino CLI
+profile in `src/sketch.yaml` and `firmware-build.json` pins the ESP32 core,
+board options, and libraries. A local checkout does not need a firmware
+compiler. Download the firmware package from the successful GitHub Actions run
+or tagged GitHub Release; it contains checksums, offsets, and the exact source
+and UI revisions.
 
 ## Configuración segura del dispositivo
 
@@ -66,29 +57,16 @@ El ejemplo incluye el certificado público ISRG Root X1 para validar TLS. No se
 usa `setInsecure()`. Si el API cambia de cadena de confianza, actualiza el
 certificado raíz público después de verificar la nueva cadena.
 
-## Compilar y cargar
+## Flash a downloaded package
 
 ```bash
-cd device
-pio run
-pio run --target upload
-pio device monitor --baud 115200
+python3 scripts/flash_firmware.py --package <downloaded-package> --port /dev/ttyACM0
+python3 scripts/verify_firmware.py --port /dev/ttyACM0 --commit <source-commit>
 ```
 
-Para indicar el puerto manualmente:
-
-```bash
-pio run --target upload --upload-port /dev/ttyACM0
-pio device monitor --port /dev/ttyACM0 --baud 115200
-```
-
-Para un reinicio completo durante testing, borra toda la flash antes de volver
-a cargar. Esto elimina Wi‑Fi, NVS y la caché LittleFS:
-
-```bash
-pio run --target erase --upload-port /dev/ttyACM0
-pio run --target upload --upload-port /dev/ttyACM0
-```
+The helper verifies every package checksum and invokes Espressif `esptool`
+using the manifest offsets. It never compiles firmware and contains no
+credentials. Flashing is a separate, explicitly authorized action.
 
 Para repetir también el onboarding de cuenta, elimina la vinculación exacta del
 dispositivo en el backend de `dev`. Nunca ejecutes esa operación en producción.

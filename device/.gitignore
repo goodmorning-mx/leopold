@@ -1,5 +1,6 @@
-.pio/
+build/
 .vscode/
 include/leopold_config.h
 include/generated_firmware_ui.h
 include/generated_home_asset.h
+include/generated_settings_asset.h

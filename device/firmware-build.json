@@ -1,0 +1,31 @@
+{
+  "sketch": "device/src",
+  "profile": "leopold",
+  "fqbn": "esp32:esp32:esp32s3:USBMode=hwcdc,CDCOnBoot=cdc,UploadMode=default,CPUFreq=240,FlashFreq=80,FlashMode=qio,FlashSize=16M,PartitionScheme=custom,PSRAM=opi,LoopCore=1,EventsCore=1,EraseFlash=none,JTAGAdapter=default,ZigbeeMode=default",
+  "core": "esp32:esp32@3.2.0",
+  "core_index_url": "https://espressif.github.io/arduino-esp32/package_esp32_index.json",
+  "libraries": {
+    "GFX Library for Arduino": "1.6.7",
+    "lvgl": "9.3.0",
+    "ArduinoJson": "7.4.2",
+    "WiFiManager": "2.0.17",
+    "QRCode": "0.0.1"
+  },
+  "build_properties": [
+    "compiler.warning_flags=-Wall -Wextra",
+    "compiler.c.extra_flags=-I{root}/device/include -I{root}/shared -DLV_CONF_INCLUDE_SIMPLE -DBOARD_HAS_PSRAM -DWM_NODEBUG -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1",
+    "compiler.cpp.extra_flags=-I{root}/device/include -I{root}/shared -DLV_CONF_INCLUDE_SIMPLE -DBOARD_HAS_PSRAM -DWM_NODEBUG -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1",
+    "upload.speed=921600"
+  ],
+  "flash": {
+    "chip": "esp32s3",
+    "flash_size": "16MB",
+    "partition_file": "device/src/partitions.csv",
+    "images": {
+      "bootloader.bin": "0x0000",
+      "partitions.bin": "0x8000",
+      "boot_app0.bin": "0xe000",
+      "firmware.bin": "0x10000"
+    }
+  }
+}

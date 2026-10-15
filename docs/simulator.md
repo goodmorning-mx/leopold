@@ -3,9 +3,10 @@
 The simulator is a local test surface for the physical 466 × 466 Leopold UI.
 Its firmware reference is release tag `firmware-v0.8.2`, created from the
 simulator parity commit on `fix/live-device-time-controls`, the source snapshot identified
-for the firmware release. The compiled
-`firmware.bin` is intentionally not expected in GitHub; PlatformIO output is
-local and ignored. The simulator is available at `/simulator` in the Vite app
+for the firmware release.
+Firmware binaries are produced only by GitHub Actions and downloaded as a
+checksummed package; local build output is not an authoritative artifact. The
+simulator is available at `/simulator` in the Vite app
 and uses safe mock values by default. It does not call Device Cloud, open USB,
 or use device credentials.
 
@@ -36,14 +37,14 @@ deployment.
 ## Firmware renderer mapping
 
 `shared/firmware-ui.json` is the fallback shell definition consumed by the
-browser debug editor and used by PlatformIO's pre-build generator to produce
+browser debug editor and used by the Arduino CLI generator to produce
 `device/include/generated_firmware_ui.h`. The generated file is ignored and
 must not be edited by hand. Runtime-only values such as brightness, clock,
 weather, and Cloud/USB state are injected by their respective adapters.
 
 `shared/rendering.json` is the renderer contract consumed by both adapters. It
 defines status-bar visibility and colors, canonical USB geometry, Spotify
-geometry, and shared asset scaling. PlatformIO generates corresponding C++
+geometry, and shared asset scaling. Arduino CLI generates corresponding C++
 constants; the Vite build imports the synchronized JSON copy. Changes to these
 values must be made in `shared/`, never directly in the simulator or firmware.
 
@@ -88,16 +89,12 @@ the simulator, or the browser bundle.
 ## Firmware changes
 
 For UI-only SDUI work, validate the browser and backend contracts without
-flashing hardware. If firmware changes are required, build from `device/`:
+flashing hardware. If firmware changes are required, wait for the GitHub
+Actions artifact from the same commit:
 
 ```bash
-pio run
-```
-
-Flashing is a separate, explicitly authorized action:
-
-```bash
-pio run --target upload --upload-port <authorized-port>
+python3 scripts/flash_firmware.py --package <downloaded-package> --port <authorized-port>
+python3 scripts/verify_firmware.py --port <authorized-port> --commit <source-commit>
 ```
 
 The simulator does not replace a physical-device smoke test. Report firmware
