@@ -23,7 +23,9 @@ def resolve_qrcode_include() -> str:
         text=True,
     )
     directories = json.loads(config.stdout).get("directories", {})
-    user_directory = Path(directories.get("user", str(Path.home() / "Arduino")))
+    user_directory = Path(
+        directories.get("user", str(Path.home() / "Arduino"))
+    ).expanduser()
     listed = subprocess.run(
         ["arduino-cli", "lib", "list", "--format", "json"],
         check=True,
