@@ -13,6 +13,26 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "device" / "firmware-build.json"
 
 
+def resolve_qrcode_include() -> str:
+    """Install and explicitly select the pinned QRCode library header."""
+    subprocess.run(["arduino-cli", "lib", "install", "QRCode@0.0.1"], check=True)
+    listed = subprocess.run(
+        ["arduino-cli", "lib", "list", "--format", "json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(listed.stdout)
+    records = payload if isinstance(payload, list) else payload.get("libraries", [])
+    for record in records:
+        if record.get("name") == "QRCode" and record.get("version") == "0.0.1":
+            root = Path(record["location"])
+            include = root / "src"
+            if (include / "qrcode.h").is_file():
+                return str(include)
+    raise RuntimeError("Pinned QRCode library source directory was not found")
+
+
 def main() -> int:
     config = json.loads(CONFIG.read_text(encoding="utf-8"))
     subprocess.run([sys.executable, str(ROOT / "scripts" / "prepare_firmware_build.py")], check=True)
@@ -22,13 +42,15 @@ def main() -> int:
         item.replace("{root}", str(ROOT)) for item in config["build_properties"]
     ]
     commit = os.environ.get("GITHUB_SHA", "local-uncommitted")
-    commit_flag = " -DLEOPOLD_SOURCE_COMMIT=\\\"" + commit + "\\\""
+    commit_flag = ' -DLEOPOLD_SOURCE_COMMIT="' + commit + '"'
+    qrcode_include = "-I" + resolve_qrcode_include()
     for index, property_value in enumerate(properties):
         if property_value.startswith("compiler.cpp.extra_flags="):
-            properties[index] += commit_flag
-            break
-    else:
-        properties.append("compiler.cpp.extra_flags=" + commit_flag)
+            properties[index] += qrcode_include + commit_flag
+        elif property_value.startswith("compiler.c.extra_flags="):
+            properties[index] += qrcode_include
+    if not any(property_value.startswith("compiler.cpp.extra_flags=") for property_value in properties):
+        properties.append("compiler.cpp.extra_flags=" + qrcode_include + commit_flag)
     command = [
         "arduino-cli",
         "compile",
