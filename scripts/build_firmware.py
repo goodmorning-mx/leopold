@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "device" / "firmware-build.json"
 
 
-def resolve_qrcode_include() -> str:
-    """Install and explicitly select the pinned QRCode library header."""
+def resolve_qrcode_paths() -> tuple[str, str]:
+    """Install and explicitly select the pinned QRCode library sources."""
     subprocess.run(["arduino-cli", "lib", "install", "QRCode@0.0.1"], check=True)
     config = subprocess.run(
         ["arduino-cli", "config", "dump", "--format", "json"],
@@ -38,8 +38,9 @@ def resolve_qrcode_include() -> str:
     )
     for root in roots:
         include = root / "src"
-        if (include / "qrcode.h").is_file():
-            return str(include)
+        source = include / "qrcode.c"
+        if (include / "qrcode.h").is_file() and source.is_file():
+            return str(include), str(source)
     raise RuntimeError("Pinned QRCode library source directory was not found")
 
 
@@ -53,14 +54,16 @@ def main() -> int:
     ]
     commit = os.environ.get("GITHUB_SHA", "local-uncommitted")
     commit_flag = ' -DLEOPOLD_SOURCE_COMMIT="' + commit + '"'
-    qrcode_include = " -I" + resolve_qrcode_include()
+    qrcode_include_path, qrcode_source_path = resolve_qrcode_paths()
+    qrcode_include = " -I" + qrcode_include_path
+    qrcode_source = ' -DLEOPOLD_QRCODE_SOURCE="' + qrcode_source_path + '"'
     for index, property_value in enumerate(properties):
         if property_value.startswith("compiler.cpp.extra_flags="):
-            properties[index] += qrcode_include + commit_flag
+            properties[index] += qrcode_include + qrcode_source + commit_flag
         elif property_value.startswith("compiler.c.extra_flags="):
             properties[index] += qrcode_include
     if not any(property_value.startswith("compiler.cpp.extra_flags=") for property_value in properties):
-        properties.append("compiler.cpp.extra_flags=" + qrcode_include + commit_flag)
+        properties.append("compiler.cpp.extra_flags=" + qrcode_include + qrcode_source + commit_flag)
     command = [
         "arduino-cli",
         "compile",
