@@ -14,6 +14,7 @@
   "build_properties": [
     "compiler.warning_flags=-Wall -Wextra",
     "compiler.c.extra_flags=-I{root}/device/include -I{root}/shared -DLV_CONF_INCLUDE_SIMPLE -DBOARD_HAS_PSRAM -DWM_NODEBUG -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1",
+    "compiler.S.extra_flags=-I{root}/device/include -DLV_CONF_INCLUDE_SIMPLE",
     "compiler.cpp.extra_flags=-I{root}/device/include -I{root}/shared -DLV_CONF_INCLUDE_SIMPLE -DBOARD_HAS_PSRAM -DWM_NODEBUG -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1",
     "upload.speed=921600"
   ],
