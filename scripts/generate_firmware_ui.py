@@ -276,7 +276,7 @@ home_asset_generated = "\n".join(home_asset_lines)
 if not home_asset_target.exists() or home_asset_target.read_text(encoding="utf-8") != home_asset_generated:
     home_asset_target.write_text(home_asset_generated, encoding="utf-8")
 
-settings_asset = (root / "shared" / "assets" / "settings-reference-466.bin").read_bytes()
+settings_asset = (root / "shared" / "assets" / "settings-neutral-466.bin").read_bytes()
 settings_asset_lines = [
     "#pragma once",
     "#include <Arduino.h>",

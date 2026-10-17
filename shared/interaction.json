@@ -12,7 +12,19 @@
     "tap_max_movement": 24,
     "long_press_max_movement": 40,
     "drag_interval_ms": 16,
-    "slider_touch_padding": 16
+    "slider_touch_padding": 16,
+    "settings_row_bounds": [
+      {"id": "settings-wifi", "x": 106, "y": 148, "width": 258, "height": 40},
+      {"id": "settings-bluetooth", "x": 106, "y": 191, "width": 258, "height": 41},
+      {"id": "settings-display", "x": 106, "y": 234, "width": 258, "height": 41},
+      {"id": "settings-sound", "x": 106, "y": 277, "width": 258, "height": 41}
+    ],
+    "settings_pressed_masks": {
+      "settings-wifi": [72, 127, 322, 56],
+      "settings-bluetooth": [72, 181, 322, 56],
+      "settings-display": [72, 235, 322, 56],
+      "settings-sound": [72, 289, 322, 56]
+    }
   },
   "behaviour": {
     "swipe_up_screen": "sky-home",

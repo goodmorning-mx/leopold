@@ -101,39 +101,57 @@
       "name": "settings",
       "screen": "device-control-center",
       "source": {
-        "file": "references/settings-source.png",
-        "sha256": "dca1b4ca563f70626733b4c64ce0ca1442f80bd9ca3e7ccd4d3afbdb65ed02ac",
-        "width": 1310,
-        "height": 1200,
+        "file": "references/phase1-settings/settings-neutral-466.png",
+        "sha256": "391c361fd5dc73548e9bc8912d5e29e72382ac26688ad3b75eb2350daa19c7cd",
+        "width": 466,
+        "height": 466,
         "immutable": true
       },
-      "overlays": [],
+      "overlays": [
+        {"name": "status-bluetooth-connected", "file": "references/phase1-settings/status-bluetooth-connected-660x206.png", "sha256": "3c60d44fa55e0259fa8cb3741d6aa18e5160bbaa346adfb34b253720da9da55b", "width": 660, "height": 206, "immutable": true},
+        {"name": "status-bluetooth-disconnected", "file": "references/phase1-settings/status-bluetooth-disconnected-660x206.png", "sha256": "ce77592599a66b567d816cddaede60ce34de97749a7c55d0c5eb074b6e2a37d7", "width": 660, "height": 206, "immutable": true}
+      ],
       "generated_asset": {
-        "file": "assets/settings-reference-466.png",
-        "sha256": "c4308a17a0f07da146eecf73da0de20271e60f376c7115c0fd2eb1a24b8ac10e",
+        "file": "assets/settings-neutral-466.png",
+        "sha256": "391c361fd5dc73548e9bc8912d5e29e72382ac26688ad3b75eb2350daa19c7cd",
         "width": 466,
         "height": 466,
         "format": "lossless PNG"
       },
       "device_asset": {
-        "file": "assets/settings-reference-466.bin",
-        "sha256": "695070c45e875d00d821f84b55e7eff0e793323c300f9bf0935d52c71e6446ca",
+        "file": "assets/settings-neutral-466.bin",
+        "sha256": "5516678f7e55f1fa5dfbcc3ecf0b03c6f904e129ba497e2637c8c090201ea939",
         "format": "RGB565A8 derived from generated_asset"
       },
+      "pressed_states": [
+        {"state": "wifi-pressed", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "sha256": "04a475b5e33bfc8754e5e4e1bd5fd7447f94cc9093ed13bbd68f71d62726db1e", "asset": "assets/settings-wifi-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 127, 322, 56]},
+        {"state": "bluetooth-pressed", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "sha256": "3936c14adcdeb6b6ebcb31306d6d139690a45276748bfecfcadfbdaf24372459", "asset": "assets/settings-bluetooth-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 181, 322, 56]},
+        {"state": "display-pressed", "source": "references/phase1-settings/settings-display-pressed-466.png", "sha256": "b054c4c91fa8e6df482e6a4877cffc686971fafe63bcdecf995bc3085625525e", "asset": "assets/settings-display-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 235, 322, 56]},
+        {"state": "sound-pressed", "source": "references/phase1-settings/settings-sound-pressed-466.png", "sha256": "68dd0fdfa9070aab28e9a8e5b0a2a1eb3789265f0e3c9a522319613223413f3d", "asset": "assets/settings-sound-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 289, 322, 56]}
+      ],
+      "status_shell_mask": [137, 39, 195, 38],
       "dynamic_masks": [
+        {
+          "name": "status-shell",
+          "reason": "connected/disconnected status banner shell authority",
+          "x": 137,
+          "y": 39,
+          "width": 195,
+          "height": 38
+        },
         {
           "name": "live-clock",
           "reason": "runtime clock",
-          "x": 218,
-          "y": 72,
+          "x": 216,
+          "y": 45,
           "width": 49,
           "height": 26
         },
         {
           "name": "wifi-status",
           "reason": "Wi-Fi connected/disconnected state",
-          "x": 190,
-          "y": 73,
+          "x": 181,
+          "y": 45,
           "width": 22,
           "height": 22
         },
@@ -141,25 +159,33 @@
           "name": "cloud-status",
           "reason": "cloud connected/disconnected state",
           "x": 264,
-          "y": 72,
+          "y": 45,
           "width": 24,
           "height": 24
         },
         {
-          "name": "device-connection-status",
-          "reason": "simulator/ESP32 connection state",
-          "x": 163,
-          "y": 73,
-          "width": 20,
+          "name": "bluetooth-status",
+          "reason": "Bluetooth connected/disconnected; simulator and ESP32 share this visual treatment",
+          "x": 153,
+          "y": 45,
+          "width": 22,
           "height": 22
+        },
+        {
+          "name": "battery-status",
+          "reason": "live battery percentage",
+          "x": 294,
+          "y": 45,
+          "width": 31,
+          "height": 24
         },
         {
           "name": "brightness-control",
           "reason": "live brightness fill, knob, and percentage",
-          "x": 123,
+          "x": 82,
           "y": 336,
-          "width": 220,
-          "height": 61
+          "width": 304,
+          "height": 88
         }
       ],
       "regions": {
@@ -170,10 +196,10 @@
           466
         ],
         "status-strip": [
-          160,
-          67,
-          150,
-          34
+          137,
+          39,
+          195,
+          38
         ],
         "title": [
           160,
@@ -206,15 +232,17 @@
           41
         ],
         "brightness-slider": [
-          123,
+          82,
           336,
-          220,
-          61
+          304,
+          88
         ]
       },
       "consumers": {
-        "browser": "frontend/public/firmware-assets/settings-reference-466.png",
-        "device": "device/assets/settings-reference-466.bin"
+        "browser": "frontend/public/firmware-assets/settings-neutral-466.bin",
+        "backend": "backend/assets/settings-neutral-466.bin",
+        "device": "device/assets/settings-neutral-466.bin",
+        "embedded_fallback": "device/include/generated_settings_asset.h"
       }
     },
     {

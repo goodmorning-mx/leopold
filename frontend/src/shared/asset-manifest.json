@@ -12,6 +12,11 @@
     "open-spotify": {"file": "icon_spotify.bin", "width": 84, "height": 84, "format": "rgb565a8"},
     "spotify-large": {"file": "icon_spotify_large.bin", "width": 97, "height": 100, "format": "rgb565a8"},
     "exact-home-device": {"file": "home-reference-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "home-reference-466.png"},
-    "exact-settings-device": {"file": "settings-reference-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-reference-466.png"}
+    "settings-neutral": {"file": "settings-neutral-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-neutral-466.png", "state": "settings-neutral", "source": "references/phase1-settings/settings-neutral-466.png"},
+    "settings-wifi-pressed": {"file": "settings-wifi-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-wifi-pressed-322x56.png", "state": "settings-wifi-pressed", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "bounds": [72, 127, 322, 56]},
+    "settings-bluetooth-pressed": {"file": "settings-bluetooth-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-bluetooth-pressed-322x56.png", "state": "settings-bluetooth-pressed", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "bounds": [72, 181, 322, 56]},
+    "settings-display-pressed": {"file": "settings-display-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-display-pressed-322x56.png", "state": "settings-display-pressed", "source": "references/phase1-settings/settings-display-pressed-466.png", "bounds": [72, 235, 322, 56]},
+    "settings-sound-pressed": {"file": "settings-sound-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-sound-pressed-322x56.png", "state": "settings-sound-pressed", "source": "references/phase1-settings/settings-sound-pressed-466.png", "bounds": [72, 289, 322, 56]},
+    "exact-settings-device-legacy": {"file": "settings-reference-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-reference-466.png", "state": "legacy-settings-reference", "active": false}
   }
 }
