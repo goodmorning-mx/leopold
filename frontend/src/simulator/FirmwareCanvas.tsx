@@ -297,7 +297,7 @@ function drawLiveSettingsBrightness(ctx: CanvasRenderingContext2D, brightness: n
     : 0.5 + 0.5 * (value - 50) / (maximum - 50);
   const knobX = slider.x + slider.width * ratio;
   ctx.fillStyle = '#000';
-  ctx.fillRect(98, 336, 272, 84);
+  ctx.fillRect(63, 336, 342, 88);
   ctx.save();
   glow(ctx, '#29AFFF', 12);
   rounded(ctx, slider.x, slider.y, slider.width, slider.height, slider.radius, slider.track, '#198FD3', 1.5);

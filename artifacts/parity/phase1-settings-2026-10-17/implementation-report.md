@@ -38,7 +38,7 @@ The neutral base is the immutable framebuffer authority. Simulator and device us
 
 The status shell is `[137,39,195,38]`. Independent masks are Bluetooth `[153,45,22,22]`, Wi-Fi `[181,45,22,22]`, live clock `[216,45,49,26]`, cloud `[264,45,24,24]`, and battery `[294,45,31,24]`. The left status icon is Bluetooth ownership; simulator and ESP32 map to the same connected visual treatment.
 
-The complete live brightness mask is `[82,336,304,88]`, covering the baked control and glow. Shared geometry is x `98`, width `272`, y `358`, height `28`; values map to x `98` at 5%, x `234` at 50%, and x `370` at 100%. Values clamp only at 5 and 100, update continuously, persist through the existing state, and apply through existing device brightness behavior.
+The complete live brightness mask is `[63,336,342,88]`, covering the baked control and endpoint glow. Shared geometry is x `98`, width `272`, y `358`, height `28`; values map to x `98` at 5%, x `234` at 50%, and x `370` at 100%. Values clamp only at 5 and 100, update continuously, persist through the existing state, and apply through existing device brightness behavior.
 
 ## Captures and reports
 
@@ -46,7 +46,7 @@ Fresh raw neutral capture: `artifacts/parity/phase1-settings-2026-10-17/settings
 
 Numeric report and difference image: `artifacts/parity/phase1-settings-2026-10-17/neutral-report/settings-pixel-report.json` and `settings-difference.png`. The neutral comparison passes with zero mean error, zero maximum color delta, and zero pixels over delta after declared dynamic masks.
 
-Pressed/status/5%-50%-100% fresh browser captures were not produced in this environment: the available browser automation could load the simulator and export the neutral raw framebuffer, but could not synthesize the required pointer-down/drag states. They remain an explicit simulator acceptance follow-up; no exact parity claim is made for those un-captured states.
+All ten deterministic simulator captures are now present under `artifacts/parity/phase1-settings-2026-10-17/captures/`. The machine-readable acceptance report and ten lossless difference images are under `artifacts/parity/phase1-settings-2026-10-17/acceptance/`; all ten states pass their declared outside-mask and selected-region checks.
 
 ## Validation
 

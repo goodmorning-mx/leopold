@@ -182,9 +182,9 @@
         {
           "name": "brightness-control",
           "reason": "live brightness fill, knob, and percentage",
-          "x": 82,
+          "x": 63,
           "y": 336,
-          "width": 304,
+          "width": 342,
           "height": 88
         }
       ],
@@ -232,9 +232,9 @@
           41
         ],
         "brightness-slider": [
-          82,
+          63,
           336,
-          304,
+          342,
           88
         ]
       },

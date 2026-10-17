@@ -42,6 +42,16 @@ export default function Simulator() {
   const referenceState = query.get('reference');
   const framebufferCaptureMode = query.get('capture') === '1';
   const referenceSettingsMode = framebufferCaptureMode && referenceState === 'settings';
+  const captureState = framebufferCaptureMode ? query.get('capture-state') : null;
+  const capturePressedByState: Record<string, string> = {
+    'wifi-pressed': 'settings-wifi',
+    'bluetooth-pressed': 'settings-bluetooth',
+    'display-pressed': 'settings-display',
+    'sound-pressed': 'settings-sound',
+  };
+  const capturePressed = captureState ? capturePressedByState[captureState] ?? null : null;
+  const captureBrightness = captureState === 'brightness-5' ? 5 : captureState === 'brightness-50' ? 50 : captureState === 'brightness-100' ? 100 : null;
+  const captureConnected = captureState === 'connected' ? true : captureState === 'disconnected' ? false : null;
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
   const [screenIndex, setScreenIndex] = useState(() => {
     const initialScreen = referenceSettingsMode ? 'device-control-center' : 'sky-home';
@@ -50,15 +60,15 @@ export default function Simulator() {
   });
   const [clock24, setClock24] = useState(() => stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
   const [weatherFahrenheit, setWeatherFahrenheit] = useState(() => stored('weather_f', Boolean(persistence.settings.weather_fahrenheit.default)));
-  const [brightness, setBrightness] = useState(() => referenceSettingsMode ? 50 : stored('brightness', Number(persistence.settings.brightness.default)));
+  const [brightness, setBrightness] = useState(() => captureBrightness ?? (referenceSettingsMode ? 50 : stored('brightness', Number(persistence.settings.brightness.default))));
   const [playing, setPlaying] = useState(false);
   const [localPanel, setLocalPanel] = useState('none');
-  const [pressed, setPressed] = useState<string | null>(null);
+  const [pressed, setPressed] = useState<string | null>(capturePressed);
   const [backgroundMode, setBackgroundMode] = useState(() => stored('background_mode', Number(persistence.settings.background_mode.default)));
   const [spanishLanguage, setSpanishLanguage] = useState(() => stored('spanish', Boolean(persistence.settings.spanish_language.default)));
-  const [wifiConnected, setWifiConnected] = useState(true);
-  const [cloudConnected, setCloudConnected] = useState(false);
-  const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
+  const [wifiConnected, setWifiConnected] = useState(captureConnected ?? true);
+  const [cloudConnected, setCloudConnected] = useState(captureConnected ?? false);
+  const [bluetoothEnabled, setBluetoothEnabled] = useState(captureConnected ?? true);
   const [batteryPercent, setBatteryPercent] = useState(82);
   useEffect(() => {
     if (framebufferCaptureMode || calibrationMode) return;
@@ -106,10 +116,10 @@ export default function Simulator() {
       ...Object.entries(assetManifest.assets).map(async ([key, asset]) => [key, await decodeFirmwareAsset(`/firmware-assets/${asset.file}`, asset.width, asset.height)] as const),
       ...referenceManifest.states.map(async (state) => [`reference-${state.name}`, `/firmware-assets/${state.generated_asset.file.split('/').pop()}`] as const),
       ['settings-neutral-exact', '/firmware-assets/settings-neutral-466.png'] as const,
-      ['settings-wifi-pressed-exact', '/firmware-assets/settings-wifi-pressed-322x56.png'] as const,
-      ['settings-bluetooth-pressed-exact', '/firmware-assets/settings-bluetooth-pressed-322x56.png'] as const,
-      ['settings-display-pressed-exact', '/firmware-assets/settings-display-pressed-322x56.png'] as const,
-      ['settings-sound-pressed-exact', '/firmware-assets/settings-sound-pressed-322x56.png'] as const,
+      ['settings-wifi-pressed-exact', '/firmware-assets/settings-wifi-pressed-322x56.png?asset-revision=phase1-pressed-v2'] as const,
+      ['settings-bluetooth-pressed-exact', '/firmware-assets/settings-bluetooth-pressed-322x56.png?asset-revision=phase1-pressed-v2'] as const,
+      ['settings-display-pressed-exact', '/firmware-assets/settings-display-pressed-322x56.png?asset-revision=phase1-pressed-v2'] as const,
+      ['settings-sound-pressed-exact', '/firmware-assets/settings-sound-pressed-322x56.png?asset-revision=phase1-pressed-v2'] as const,
     ]).then((entries) => { if (active) setImages(Object.fromEntries(entries)); }).catch(() => addEvent('asset', 'Firmware asset loading failed; using text fallback.'));
     return () => { active = false; };
   }, []);

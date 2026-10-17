@@ -513,7 +513,7 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
     drawChevron(root, x + generated_ui::kSettingsChevronXOffset, y + generated_ui::kSettingsChevronYOffset);
   }
 
-  lv_obj_t* sliderMask = makePanel(root, 98, 336, 272, 84, 0, lv_color_black());
+  lv_obj_t* sliderMask = makePanel(root, 63, 336, 342, 88, 0, lv_color_black());
   lv_obj_set_style_border_width(sliderMask, 0, 0);
   lv_obj_t* slider = lv_slider_create(root);
   lv_obj_set_pos(slider, kSettingsSliderX, kSettingsSliderY);
