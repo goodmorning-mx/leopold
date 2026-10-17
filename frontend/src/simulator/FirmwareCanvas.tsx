@@ -264,9 +264,77 @@ function drawGear(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.restore();
 }
 
-function drawSettings(ctx: CanvasRenderingContext2D, images: FirmwareImages, brightness: number, wifiConnected: boolean, bluetoothEnabled: boolean, pressed: string | null, timeText: string) {
-  drawAsset(ctx, images, 'reference-settings', 0, 0, W, H);
-  drawExactClock(ctx, 'settings', timeText);
+function drawSettingsStatus(ctx: CanvasRenderingContext2D, timeText: string, wifiConnected: boolean, cloudConnected: boolean, bluetoothConnected: boolean, batteryPercent: number) {
+  const masks: [number, number, number, number][] = [[153, 45, 22, 22], [181, 45, 22, 22], [216, 45, 49, 26], [264, 45, 24, 24], [294, 45, 31, 24]];
+  masks.forEach(([x, y, width, height]) => {
+    const sampled = ctx.getImageData(x - 1, y, width + 2, height);
+    const background = ctx.createImageData(width, height);
+    for (let row = 0; row < height; row += 1) {
+      const left = row * (width + 2) * 4;
+      const right = (row * (width + 2) + width + 1) * 4;
+      for (let column = 0; column < width; column += 1) {
+        const ratio = (column + 1) / (width + 1);
+        const target = (row * width + column) * 4;
+        for (let channel = 0; channel < 4; channel += 1) background.data[target + channel] = Math.round(sampled.data[left + channel] * (1 - ratio) + sampled.data[right + channel] * ratio);
+      }
+    }
+    ctx.putImageData(background, x, y);
+  });
+  drawBluetooth(ctx, 164, 51, bluetoothConnected);
+  drawWifi(ctx, 192, 51, wifiConnected);
+  drawCloud(ctx, 267, 45, cloudConnected);
+  text(ctx, timeText, 240, 48, 17, '#F4F7FC', 'center');
+  text(ctx, `${batteryPercent}%`, 309, 49, 11, '#DFE8F4', 'center');
+}
+
+function drawLiveSettingsBrightness(ctx: CanvasRenderingContext2D, brightness: number) {
+  const slider = rendering.settings.slider;
+  const minimum = 5;
+  const maximum = 100;
+  const value = Math.max(minimum, Math.min(maximum, brightness));
+  const ratio = value <= 50
+    ? 0.5 * (value - minimum) / (50 - minimum)
+    : 0.5 + 0.5 * (value - 50) / (maximum - 50);
+  const knobX = slider.x + slider.width * ratio;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(98, 336, 272, 84);
+  ctx.save();
+  glow(ctx, '#29AFFF', 12);
+  rounded(ctx, slider.x, slider.y, slider.width, slider.height, slider.radius, slider.track, '#198FD3', 1.5);
+  const fillGradient = ctx.createLinearGradient(slider.x, 0, Math.max(slider.x + 1, knobX), 0);
+  fillGradient.addColorStop(0, slider.fill_start);
+  fillGradient.addColorStop(1, slider.fill_end);
+  rounded(ctx, slider.x + 2, slider.y + 2, Math.max(0, knobX - slider.x - 2), slider.height - 4, slider.radius - 2, fillGradient);
+  ctx.restore();
+  ctx.save();
+  glow(ctx, '#1AA9FF', 16);
+  ctx.fillStyle = slider.accent;
+  ctx.beginPath(); ctx.arc(knobX, slider.y + slider.height / 2, slider.knob_radius, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  centered(ctx, 'Brightness', 233, 400, 16, '#F2F3F7');
+}
+
+function drawSettings(ctx: CanvasRenderingContext2D, images: FirmwareImages, brightness: number, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, pressed: string | null, timeText: string, batteryPercent: number) {
+  drawAsset(ctx, images, 'settings-neutral-exact', 0, 0, W, H);
+  const pressedAssets: Record<string, string> = {
+    'settings-wifi': 'settings-wifi-pressed-exact',
+    'settings-bluetooth': 'settings-bluetooth-pressed-exact',
+    'settings-display': 'settings-display-pressed-exact',
+    'settings-sound': 'settings-sound-pressed-exact',
+  };
+  const pressedAsset = pressed ? pressedAssets[pressed] : undefined;
+  if (pressedAsset) {
+    const bounds: Record<string, [number, number]> = {
+      'settings-wifi-pressed-exact': [72, 127],
+      'settings-bluetooth-pressed-exact': [72, 181],
+      'settings-display-pressed-exact': [72, 235],
+      'settings-sound-pressed-exact': [72, 289],
+    };
+    const [x, y] = bounds[pressedAsset];
+    drawAsset(ctx, images, pressedAsset, x, y, 322, 56);
+  }
+  drawSettingsStatus(ctx, timeText, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent);
+  drawLiveSettingsBrightness(ctx, brightness);
   return;
   /* Reconstructed-UI fallback retained for future editable-native mode. */
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -406,7 +474,7 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
       else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
       else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
-      else if (screen.id === 'device-control-center') drawSettings(ctx, images, brightness, wifiConnected, bluetoothEnabled, pressed, settingsTimeText);
+      else if (screen.id === 'device-control-center') drawSettings(ctx, images, brightness, wifiConnected, cloudConnected, bluetoothEnabled, pressed, settingsTimeText, batteryPercent);
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
       else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);

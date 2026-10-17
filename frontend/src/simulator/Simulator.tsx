@@ -57,7 +57,7 @@ export default function Simulator() {
   const [backgroundMode, setBackgroundMode] = useState(() => stored('background_mode', Number(persistence.settings.background_mode.default)));
   const [spanishLanguage, setSpanishLanguage] = useState(() => stored('spanish', Boolean(persistence.settings.spanish_language.default)));
   const [wifiConnected, setWifiConnected] = useState(true);
-  const [cloudConnected] = useState(false);
+  const [cloudConnected, setCloudConnected] = useState(false);
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
   const [batteryPercent, setBatteryPercent] = useState(82);
   useEffect(() => {
@@ -105,6 +105,11 @@ export default function Simulator() {
     void Promise.all([
       ...Object.entries(assetManifest.assets).map(async ([key, asset]) => [key, await decodeFirmwareAsset(`/firmware-assets/${asset.file}`, asset.width, asset.height)] as const),
       ...referenceManifest.states.map(async (state) => [`reference-${state.name}`, `/firmware-assets/${state.generated_asset.file.split('/').pop()}`] as const),
+      ['settings-neutral-exact', '/firmware-assets/settings-neutral-466.png'] as const,
+      ['settings-wifi-pressed-exact', '/firmware-assets/settings-wifi-pressed-322x56.png'] as const,
+      ['settings-bluetooth-pressed-exact', '/firmware-assets/settings-bluetooth-pressed-322x56.png'] as const,
+      ['settings-display-pressed-exact', '/firmware-assets/settings-display-pressed-322x56.png'] as const,
+      ['settings-sound-pressed-exact', '/firmware-assets/settings-sound-pressed-322x56.png'] as const,
     ]).then((entries) => { if (active) setImages(Object.fromEntries(entries)); }).catch(() => addEvent('asset', 'Firmware asset loading failed; using text fallback.'));
     return () => { active = false; };
   }, []);
@@ -144,7 +149,7 @@ export default function Simulator() {
     const padding = interaction.touch.slider_touch_padding;
     const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
     if (!slider) return;
-    const value = sliderValue(slider, point);
+    const value = slider.id === 'display-brightness' ? Math.max(5, sliderValue(slider, point)) : sliderValue(slider, point);
     if (lastSliderValue.current === value) return;
     lastSliderValue.current = value;
     if (slider.id === 'display-brightness') setBrightness(value);
@@ -181,10 +186,15 @@ export default function Simulator() {
     } else if (gesture === 'tap') {
       if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 148 && point.y < 188) { setLocalPanel('wifi'); return; }
       if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 191 && point.y < 232) { setLocalPanel('bluetooth'); return; }
+      if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 234 && point.y < 275) {
+        const target = document.screens.findIndex((item) => item.id === 'settings-display');
+        if (target >= 0) { setLocalPanel('none'); setScreenIndex(target); }
+        return;
+      }
       const padding = interaction.touch.slider_touch_padding;
       const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
-      if (slider) { const value = sliderValue(slider, point); updateSlider(point); addEvent('slider', `${slider.id}: ${value}%`, { revision: document.revision, component_id: slider.id, type: 'tap', value }); }
-      if (slider?.id === 'display-brightness') setBrightness(sliderValue(slider, point));
+      if (slider) { const value = slider.id === 'display-brightness' ? Math.max(5, sliderValue(slider, point)) : sliderValue(slider, point); updateSlider(point); addEvent('slider', `${slider.id}: ${value}%`, { revision: document.revision, component_id: slider.id, type: 'tap', value }); }
+      if (slider?.id === 'display-brightness') setBrightness(Math.max(5, sliderValue(slider, point)));
       const button = screen.components.find((item): item is SduiButton => item.type === 'button' && point.x >= item.x && point.x < item.x + item.width && point.y >= item.y && point.y < item.y + item.height);
       if (button) buttonAction(button);
     }
@@ -199,7 +209,7 @@ export default function Simulator() {
       <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; setPressed(null); }}>
         <FirmwareCanvas screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
-        <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>Unavailable (browser)</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Enabled (mock)' : 'Disabled (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
+        <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>{cloudConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Connected (mock)' : 'Disconnected (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setCloudConnected((value) => !value)}>Cloud</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>
         <section className="events-card"><div className="panel-heading"><div><p className="kicker">Device events</p><h2>Event log</h2></div><button className="text-button" onClick={() => setEvents([])}>Clear</button></div><div className="event-list">{events.length === 0 ? <span className="muted">No events yet.</span> : events.map((event, index) => <div className="event-row" key={`${event.at}-${index}`}><time>{event.at}</time><strong>{event.kind}</strong><span>{event.detail}</span></div>)}</div></section>
       </aside>
