@@ -13,9 +13,9 @@ from scripts import flash_firmware as flash
 
 
 class FlashFirmwareTests(unittest.TestCase):
-    def make_package(self) -> Path:
+    def make_package(self, name: str = "package") -> Path:
         temp = Path(self.temp_dir.name)
-        package = temp / "package"
+        package = temp / name
         package.mkdir()
         for name, data in {
             "bootloader.bin": b"bootloader",
@@ -101,7 +101,7 @@ class FlashFirmwareTests(unittest.TestCase):
         (package / "SHA256SUMS.txt").write_text("".join(sums))
 
     def test_normal_dry_run_only_selects_three_images_and_uses_current_python(self) -> None:
-        package = self.make_package()
+        package = self.make_package("offset-package")
         output = io.StringIO()
         with mock.patch.object(flash.subprocess, "run") as run, contextlib.redirect_stdout(output):
             self.assertEqual(flash.main(["--package", str(package), "--port", "TEST", "--dry-run"]), 0)
@@ -181,6 +181,22 @@ class FlashFirmwareTests(unittest.TestCase):
         package = self.make_package()
         sums = package / "SHA256SUMS.txt"
         sums.write_text("\n".join(line for line in sums.read_text().splitlines() if not line.endswith("  merged-flash.bin")) + "\n")
+        with self.assertRaises(SystemExit):
+            flash.load_package(package)
+
+    def test_rejects_corrupt_checksum_and_duplicate_update_offset(self) -> None:
+        package = self.make_package()
+        (package / "firmware.bin").write_bytes(b"tampered")
+        with self.assertRaises(SystemExit):
+            flash.load_package(package)
+        package = self.make_package("offset-package")
+        self.rewrite_manifest(
+            package,
+            lambda manifest: (
+                manifest["images"]["firmware.bin"].update(flash_offset="0x8000", end_address="0x8008"),
+                manifest["normal_update"]["images"][2].update(flash_offset="0x8000"),
+            ),
+        )
         with self.assertRaises(SystemExit):
             flash.load_package(package)
 
