@@ -1,0 +1,168 @@
+{
+  "state": "settings",
+  "reference": "shared/assets/settings-neutral-466.png",
+  "capture": "artifacts/parity/phase1-settings-2026-10-17/settings-neutral-capture.png",
+  "dimensions": [
+    466,
+    466
+  ],
+  "profile": {
+    "capture": "raw canvas PNG from canvas.toDataURL('image/png')",
+    "allowed_color_delta": 0,
+    "maximum_mean_error": 0,
+    "maximum_pixels_over_delta_percent": 0
+  },
+  "dynamic_masks": [
+    {
+      "name": "status-shell",
+      "reason": "connected/disconnected status banner shell authority",
+      "x": 137,
+      "y": 39,
+      "width": 195,
+      "height": 38
+    },
+    {
+      "name": "live-clock",
+      "reason": "runtime clock",
+      "x": 216,
+      "y": 45,
+      "width": 49,
+      "height": 26
+    },
+    {
+      "name": "wifi-status",
+      "reason": "Wi-Fi connected/disconnected state",
+      "x": 181,
+      "y": 45,
+      "width": 22,
+      "height": 22
+    },
+    {
+      "name": "cloud-status",
+      "reason": "cloud connected/disconnected state",
+      "x": 264,
+      "y": 45,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "name": "bluetooth-status",
+      "reason": "Bluetooth connected/disconnected; simulator and ESP32 share this visual treatment",
+      "x": 153,
+      "y": 45,
+      "width": 22,
+      "height": 22
+    },
+    {
+      "name": "battery-status",
+      "reason": "live battery percentage",
+      "x": 294,
+      "y": 45,
+      "width": 31,
+      "height": 24
+    },
+    {
+      "name": "brightness-control",
+      "reason": "live brightness fill, knob, and percentage",
+      "x": 82,
+      "y": 340,
+      "width": 304,
+      "height": 78
+    }
+  ],
+  "overall": {
+    "compared_pixels": 186034,
+    "mean_error": 0.36003633744369307,
+    "maximum_color_delta": 255,
+    "pixels_over_delta": 1280,
+    "pixels_over_delta_percent": 0.6880462711117322,
+    "failure_bounding_box": [
+      98,
+      336,
+      370,
+      420
+    ],
+    "passed": false
+  },
+  "regions": {
+    "full-static-frame": {
+      "compared_pixels": 186034,
+      "mean_error": 0.36003633744369307,
+      "maximum_color_delta": 255,
+      "pixels_over_delta": 1280,
+      "pixels_over_delta_percent": 0.6880462711117322,
+      "failure_bounding_box": [
+        98,
+        336,
+        370,
+        420
+      ],
+      "passed": false
+    },
+    "status-strip": {
+      "compared_pixels": 0,
+      "mean_error": 0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "title": {
+      "compared_pixels": 4950,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "wifi-row": {
+      "compared_pixels": 10320,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "bluetooth-row": {
+      "compared_pixels": 10578,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "display-row": {
+      "compared_pixels": 10578,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "sound-row": {
+      "compared_pixels": 10578,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "brightness-slider": {
+      "compared_pixels": 0,
+      "mean_error": 0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0,
+      "failure_bounding_box": null,
+      "passed": true
+    }
+  },
+  "difference": "artifacts/parity/phase1-settings-2026-10-17/settings-neutral-report.json/settings-difference.png",
+  "passed": false
+}

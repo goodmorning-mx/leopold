@@ -1139,8 +1139,13 @@ void processInput(uint32_t now) {
       const int16_t relativeX = min<int16_t>(
           max<int16_t>(point.x - slider->x, 0),
           slider->width);
-      slider->value = static_cast<uint32_t>(relativeX) * slider->maximum /
-                      slider->width;
+      constexpr uint32_t kBrightnessMinimum = 5;
+      constexpr uint32_t kBrightnessMaximum = 100;
+      const uint32_t midpoint = slider->width / 2;
+      slider->value = relativeX <= midpoint
+          ? kBrightnessMinimum + static_cast<uint32_t>(relativeX) * (50 - kBrightnessMinimum) / midpoint
+          : 50 + static_cast<uint32_t>(relativeX - midpoint) * (kBrightnessMaximum - 50) /
+              (slider->width - midpoint);
     }
     if (strcmp(slider->id, "display-brightness") == 0) {
       screen.setBrightnessPercent(slider->value);
@@ -1579,6 +1584,9 @@ void setup() {
   }
   if (!leopold::sky::loadEmbeddedHomeAsset()) {
     Serial.println("Embedded home asset failed to load");
+  }
+  if (!leopold::sky::loadEmbeddedSettingsAsset()) {
+    Serial.println("Embedded neutral Settings asset failed to load");
   }
   screen.showState(leopold::AppState::kBooting);
 
