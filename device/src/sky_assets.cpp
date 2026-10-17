@@ -1,5 +1,6 @@
 #include "sky_assets.h"
 #include "generated_home_asset.h"
+#include "generated_settings_asset.h"
 
 #include <Arduino.h>
 #include <cstdio>
@@ -45,6 +46,11 @@ lv_image_dsc_t kNavigationIcon = {};
 lv_image_dsc_t kWhatsappIcon = {};
 lv_image_dsc_t kSpotifyIcon = {};
 lv_image_dsc_t kSpotifyLargeIcon = {};
+lv_image_dsc_t kSettingsNeutral = {};
+lv_image_dsc_t kSettingsWifiPressed = {};
+lv_image_dsc_t kSettingsBluetoothPressed = {};
+lv_image_dsc_t kSettingsDisplayPressed = {};
+lv_image_dsc_t kSettingsSoundPressed = {};
 
 namespace {
 
@@ -58,6 +64,11 @@ AssetSlot assets[] = {
     {"open-whatsapp", "icon_whatsapp.bin", 72, 72, &kWhatsappIcon},
     {"open-spotify", "icon_spotify.bin", 84, 84, &kSpotifyIcon},
     {"spotify-large", "icon_spotify_large.bin", 97, 100, &kSpotifyLargeIcon},
+    {"settings-neutral", "settings-neutral-466.bin", 466, 466, &kSettingsNeutral},
+    {"settings-wifi-pressed", "settings-wifi-pressed-322x56.bin", 322, 56, &kSettingsWifiPressed},
+    {"settings-bluetooth-pressed", "settings-bluetooth-pressed-322x56.bin", 322, 56, &kSettingsBluetoothPressed},
+    {"settings-display-pressed", "settings-display-pressed-322x56.bin", 322, 56, &kSettingsDisplayPressed},
+    {"settings-sound-pressed", "settings-sound-pressed-322x56.bin", 322, 56, &kSettingsSoundPressed},
 };
 
 }  // namespace
@@ -127,6 +138,10 @@ bool loadEmbeddedHomeAsset() {
   if (!loadCloudAsset("sky_home.bin", kHomeAssetData, kHomeAssetDataSize)) return false;
   embeddedHomeLoaded = true;
   return true;
+}
+
+bool loadEmbeddedSettingsAsset() {
+  return loadCloudAsset("settings-neutral-466.bin", kSettingsAssetData, kSettingsAssetDataSize);
 }
 
 bool allAssetsLoaded() {

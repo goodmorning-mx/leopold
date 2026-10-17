@@ -432,9 +432,31 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
 
-void renderSettings(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
+void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const SharedRenderState& state, const char* pressedComponentId) {
   using namespace generated_ui;
   lv_obj_set_style_bg_color(root, lv_color_black(), 0);
+
+  const lv_image_dsc_t* neutral = resolveImage == nullptr ? nullptr : resolveImage("settings-neutral");
+  if (neutral != nullptr) {
+    lv_obj_t* base = lv_image_create(root);
+    lv_image_set_src(base, neutral);
+    lv_obj_set_pos(base, 0, 0);
+    const char* patchId = nullptr;
+    int16_t patchX = 0;
+    int16_t patchY = 0;
+    if (pressedComponentId != nullptr) {
+      if (strcmp(pressedComponentId, "settings-wifi") == 0) { patchId = "settings-wifi-pressed"; patchX = 72; patchY = 127; }
+      else if (strcmp(pressedComponentId, "settings-bluetooth") == 0) { patchId = "settings-bluetooth-pressed"; patchX = 72; patchY = 181; }
+      else if (strcmp(pressedComponentId, "settings-display") == 0) { patchId = "settings-display-pressed"; patchX = 72; patchY = 235; }
+      else if (strcmp(pressedComponentId, "settings-sound") == 0) { patchId = "settings-sound-pressed"; patchX = 72; patchY = 289; }
+    }
+    const lv_image_dsc_t* patch = patchId == nullptr || resolveImage == nullptr ? nullptr : resolveImage(patchId);
+    if (patch != nullptr) {
+      lv_obj_t* overlay = lv_image_create(root);
+      lv_image_set_src(overlay, patch);
+      lv_obj_set_pos(overlay, patchX, patchY);
+    }
+  }
 
   lv_obj_t* status = makePanel(root, kSettingsStatusX, kSettingsStatusY, kSettingsStatusWidth, kSettingsStatusHeight, kSettingsStatusRadius, lv_color_hex(0x293A50));
   lv_obj_set_style_border_width(status, 1, 0);
@@ -466,9 +488,9 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, const SharedRender
 
   const char* ids[] = {"settings-wifi", "settings-bluetooth", "settings-display", "settings-sound"};
   const char* fallbackLabels[] = {"WiFi", "Bluetooth", "Display", "Sound & Vibration"};
-  for (uint8_t index = 0; index < kSettingsRowCount; ++index) {
+  for (uint8_t index = 0; index < kSettingsRowCount && neutral == nullptr; ++index) {
     const SduiComponent* component = findComponent(screen, ids[index]);
-    const bool active = index == 0 && state.wifiConnected;
+    const bool active = pressedComponentId != nullptr && strcmp(pressedComponentId, ids[index]) == 0;
     const int16_t x = kSettingsRowX[index];
     const int16_t y = kSettingsRowY[index];
     lv_obj_t* row = makePanel(root, x, y, kSettingsRowWidth[index], kSettingsRowHeight[index], 24, lv_color_hex(active ? 0x087EBD : 0x263342));
@@ -491,6 +513,8 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, const SharedRender
     drawChevron(root, x + generated_ui::kSettingsChevronXOffset, y + generated_ui::kSettingsChevronYOffset);
   }
 
+  lv_obj_t* sliderMask = makePanel(root, 98, 336, 272, 84, 0, lv_color_black());
+  lv_obj_set_style_border_width(sliderMask, 0, 0);
   lv_obj_t* slider = lv_slider_create(root);
   lv_obj_set_pos(slider, kSettingsSliderX, kSettingsSliderY);
   lv_obj_set_size(slider, kSettingsSliderWidth, kSettingsSliderHeight);
@@ -597,7 +621,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   lv_obj_set_style_border_width(root, 0, 0);
 
   if (state != nullptr && strcmp(screen.screenId, "device-control-center") == 0) {
-    renderSettings(root, screen, *state);
+    renderSettings(root, screen, resolveImage, *state, pressedComponentId);
     return;
   }
 
