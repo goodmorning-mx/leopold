@@ -60,13 +60,30 @@ certificado raíz público después de verificar la nueva cadena.
 ## Flash a downloaded package
 
 ```bash
+python3 scripts/flash_firmware.py --package <downloaded-package> --port /dev/ttyACM0 --dry-run
 python3 scripts/flash_firmware.py --package <downloaded-package> --port /dev/ttyACM0
 python3 scripts/verify_firmware.py --port /dev/ttyACM0 --commit <source-commit>
 ```
 
-The helper verifies every package checksum and invokes Espressif `esptool`
-using the manifest offsets. It never compiles firmware and contains no
-credentials. Flashing is a separate, explicitly authorized action.
+The normal update writes only the bootloader, partition table, and application
+image. Before writing, it reads the installed partition table and refuses to
+continue if it differs from the package. This compatibility check is required
+before claiming that NVS, Wi-Fi credentials, identity, or other data remain
+usable. The dry run validates the artifact and prints the exact command without
+opening the port.
+
+For a read-only full-flash backup, use the packaged helper's backup-only mode:
+
+```bash
+python3 scripts/flash_firmware.py --backup-only --port /dev/ttyACM0 \
+  --backup /tmp/leopold-full-flash.bin
+```
+
+The merged image is not selected by a normal update. It is reserved for an
+explicit factory reset or blank-device provisioning flow, and factory-reset
+mode creates and verifies a fresh 16 MiB backup before writing. No credentials
+are embedded in the helper; flashing, revision verification, and calibration
+capture remain separate explicitly authorized steps.
 
 Para repetir también el onboarding de cuenta, elimina la vinculación exacta del
 dispositivo en el backend de `dev`. Nunca ejecutes esa operación en producción.

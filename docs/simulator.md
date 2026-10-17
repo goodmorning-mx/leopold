@@ -93,6 +93,7 @@ flashing hardware. If firmware changes are required, wait for the GitHub
 Actions artifact from the same commit:
 
 ```bash
+python3 scripts/flash_firmware.py --package <downloaded-package> --port <authorized-port> --dry-run
 python3 scripts/flash_firmware.py --package <downloaded-package> --port <authorized-port>
 python3 scripts/verify_firmware.py --port <authorized-port> --commit <source-commit>
 ```

@@ -88,6 +88,8 @@ jobs:
         env:
           ARDUINO_CLI_VERSION: 1.2.2
         run: python3 scripts/build_firmware.py
+      - name: Test flashing and packaging safety
+        run: python3 -m unittest discover -s scripts/tests -v
       - name: Package firmware artifact
         env:
           ARDUINO_CLI_VERSION: 1.2.2

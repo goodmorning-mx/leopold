@@ -41,16 +41,55 @@ authorized local configuration flow.
 
 ## Package and flashing
 
-The package contains the application, bootloader, partition table, optional
-`boot_app0.bin`, merged flash image, `manifest.json`, and `SHA256SUMS.txt`.
-The manifest records exact offsets, source commit, UI revision, asset-manifest
-hash, toolchain versions, and both flash and revision-verification commands.
+The package contains the application, bootloader, partition table, merged flash
+image, four self-contained helper scripts, `manifest.json`, and
+`SHA256SUMS.txt`. Manifest schema 2 records exact image ranges and checksums,
+the non-destructive update set, preserved data regions, the destructive factory
+reset image, partition-table verification requirements, and separate update,
+backup, factory-reset, revision-verification, and calibration commands.
 
 ```bash
+python3 scripts/flash_firmware.py --package <package> --port <authorized-port> --dry-run
 python3 scripts/flash_firmware.py --package <package> --port <authorized-port>
 python3 scripts/verify_firmware.py --port <authorized-port> --commit <source-commit>
+```
+
+The default update writes only `bootloader.bin` at `0x0000`, `partitions.bin` at
+`0x8000`, and `firmware.bin` at `0x10000`. It never selects
+`merged-flash.bin`. Before a real write, it reads the installed partition table
+and compares it byte-for-byte with the packaged table. A mismatch stops before
+any write and requires an explicitly authorized partition migration or factory
+reset. Therefore NVS and other data regions are preserved only after that
+compatibility check passes; absence of a whole-flash erase alone is not enough.
+`--dry-run` validates the artifact, prints the exact command and address ranges,
+and explains that the connected-device partition check is required, while
+never contacting a device.
+
+For a read-only full-flash backup, use the backup-only operation. It verifies
+that the resulting file is exactly 16 MiB and writes a SHA-256 sidecar:
+
+```bash
+python3 scripts/flash_firmware.py --backup-only --port <authorized-port> \
+  --backup <path>/leopold-full-flash.bin
+```
+
+The merged image is reserved for blank-device provisioning or an explicitly
+authorized factory-reset provisioning flow. Factory-reset mode always creates
+and verifies a fresh 16 MiB backup before writing:
+
+```bash
+python3 scripts/flash_firmware.py --package <package> \
+  --port <authorized-port> --factory-reset \
+  --backup <path>/leopold-before-factory-reset.bin
 ```
 
 The helper only consumes the downloaded package and invokes Espressif
 `esptool`; it does not compile and it contains no credentials. Flashing remains
 explicitly authorized and is not performed by CI.
+
+After a normal update, run the packaged revision command. Only after revision
+verification should calibration capture be performed with the packaged
+`capture_device_screenshot.py` and `ppm_to_png.py` helpers. If recovery is
+needed, preserve the verified `.bin` backup and its `.sha256` sidecar, then use
+the device-specific recovery procedure to restore it; never treat a merged
+image as an in-place update.
