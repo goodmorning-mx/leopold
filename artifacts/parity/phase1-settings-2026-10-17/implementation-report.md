@@ -25,10 +25,10 @@ Generated neutral asset:
 
 Pressed patch bounds are exact and lossless:
 
-- Wi-Fi `[72,127,322,56]`; PNG `3d2728f78608da7805ee171d8e1038688189fd46b88a42b11d20dc69a1a9364b`; RGB565A8 `1c86ab72c44d4cbd70a2105226f3bd19f13e5f8dacba93d55a115dad0f863467`.
-- Bluetooth `[72,181,322,56]`; PNG `512dc4ccc6ab17fd14a043665fabc061849fa1821b635c842d9503cb5d64fa57`; RGB565A8 `4cb4c72731b7d73c6783c6a1d6322afa84dd15794b4539e33b1b623d8525338c`.
-- Display `[72,235,322,56]`; PNG `4d0300a663f937c271824f1d3a9e2c67d679e49f78e7e175df62576698d06f81`; RGB565A8 `04376aa1e78c680b4f6c5d3b28d41d148076bd6cd988f7b38eb428dd99c44053`.
-- Sound & Vibration `[72,289,322,56]`; PNG `e307fb3e324ef8e1c89189dc3ad9db282890e68724ff044d05c7d2f5ce6f0158`; RGB565A8 `895b28cdc4f519a6b70591cb5cd94c02ca01f87fe5b299e862cd0ed03c5ff70c`.
+- Wi-Fi `[72,127,322,56]`; PNG `033bb83a016402893933bbc0942650c37830fc74006a293e1a6d3cb822a07c3f`; RGB565A8 `1c86ab72c44d4cbd70a2105226f3bd19f13e5f8dacba93d55a115dad0f863467`.
+- Bluetooth `[72,181,322,56]`; PNG `649dffda221615487d70ef420ab60330f4472d52372386688356a5b99aff52c2`; RGB565A8 `4cb4c72731b7d73c6783c6a1d6322afa84dd15794b4539e33b1b623d8525338c`.
+- Display `[72,235,322,56]`; PNG `1d1857aa69e09bb9d6ceeed1393b63aa344106be3d8068d9845c32aa09e71bdf`; RGB565A8 `04376aa1e78c680b4f6c5d3b28d41d148076bd6cd988f7b38eb428dd99c44053`.
+- Sound & Vibration `[72,289,322,56]`; PNG `ad99e50eab0d529f1666006aae5fed19284dd8df05c5ac40b36d6d6af5b6a8dd`; RGB565A8 `895b28cdc4f519a6b70591cb5cd94c02ca01f87fe5b299e862cd0ed03c5ff70c`.
 
 The old permanently blue Wi-Fi base remains preserved as inactive legacy provenance and is not selected for idle rendering.
 
@@ -58,6 +58,6 @@ All ten deterministic simulator captures are now present under `artifacts/parity
 - Frontend typecheck and production build: passed. Vite reported the existing host Node 20.11.0 compatibility warning.
 - `pytest` was unavailable in the system Python; equivalent geometry and firmware package tests were run with the repository's unittest suite.
 - Git diff whitespace check: passed.
-- GitHub Actions and replacement artifact verification are pending the authorized push.
+- The normal push remains blocked by GitHub HTTP 400 during pack transfer; remote branch and PR refs remain at `3dced8d` / merge ref `a79879c`. Therefore GitHub Actions, replacement artifact verification, device backup, firmware update, and post-flash checks were correctly not started.
 
 Nothing was merged, deployed, released, tagged, flashed, or connected to a serial device.
