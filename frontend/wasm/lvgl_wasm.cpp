@@ -12,8 +12,8 @@ static uint16_t framebuffer[kWidth * kHeight];
 static uint16_t drawBuffer[kWidth * kHeight];
 static leopold::SduiScreen screen;
 static char pressedId[leopold::kMaxComponentId + 1];
-static lv_image_dsc_t assets[9];
-static bool assetReady[9];
+static lv_image_dsc_t assets[14];
+static bool assetReady[14];
 static char renderTime[16] = "--:--";
 static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
 
@@ -25,8 +25,13 @@ static void flush(lv_display_t* target, const lv_area_t* area, uint8_t* pixels) 
 }
 
 static int assetIndex(const char* key) {
-  static const char* keys[] = {"home", "flower", "chevron", "open-clock", "open-weather", "open-navigation", "open-whatsapp", "open-spotify", "spotify-large"};
-  for (int index = 0; index < 9; ++index) if (strcmp(keys[index], key) == 0) return index;
+  static const char* keys[] = {
+      "home", "flower", "chevron", "open-clock", "open-weather",
+      "open-navigation", "open-whatsapp", "open-spotify", "spotify-large",
+      "settings-neutral", "settings-wifi-pressed", "settings-bluetooth-pressed",
+      "settings-display-pressed", "settings-sound-pressed",
+  };
+  for (int index = 0; index < 14; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;
 }
 
@@ -50,7 +55,7 @@ void lvgl_wasm_init() {
 }
 
 void lvgl_wasm_set_asset(int index, const uint8_t* data, uint32_t size, uint16_t width, uint16_t height) {
-  if (index < 0 || index >= 9 || data == nullptr || size == 0) return;
+  if (index < 0 || index >= 14 || data == nullptr || size == 0) return;
   assets[index] = {
       .header = {
           .magic = LV_IMAGE_HEADER_MAGIC,

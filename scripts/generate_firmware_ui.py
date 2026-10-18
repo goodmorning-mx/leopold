@@ -63,7 +63,9 @@ usb = rendering["home"]["usb_icon"]
 
 lines = [
     "#pragma once",
+    "#ifndef LEOPOLD_WASM",
     "#include <Arduino.h>",
+    "#endif",
     "#include \"sdui.h\"",
     "",
     "namespace leopold {",
@@ -259,7 +261,9 @@ if not target.exists() or target.read_text(encoding="utf-8") != generated:
 home_asset = (root / "shared" / "assets" / "home-reference-466.bin").read_bytes()
 home_asset_lines = [
     "#pragma once",
+    "#ifndef LEOPOLD_WASM",
     "#include <Arduino.h>",
+    "#endif",
     "",
     "namespace leopold::sky {",
     "const uint8_t kHomeAssetData[] PROGMEM = {",
@@ -279,7 +283,9 @@ if not home_asset_target.exists() or home_asset_target.read_text(encoding="utf-8
 settings_asset = (root / "shared" / "assets" / "settings-neutral-466.bin").read_bytes()
 settings_asset_lines = [
     "#pragma once",
+    "#ifndef LEOPOLD_WASM",
     "#include <Arduino.h>",
+    "#endif",
     "",
     "namespace leopold::sky {",
     "const uint8_t kSettingsAssetData[] PROGMEM = {",
@@ -299,7 +305,9 @@ if not settings_asset_target.exists() or settings_asset_target.read_text(encodin
 display_asset = (root / "shared" / "assets" / "display-reference-466.bin").read_bytes()
 display_asset_lines = [
     "#pragma once",
+    "#ifndef LEOPOLD_WASM",
     "#include <Arduino.h>",
+    "#endif",
     "",
     "namespace leopold::sky {",
     "const uint8_t kDisplayAssetData[] PROGMEM = {",

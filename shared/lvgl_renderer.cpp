@@ -432,89 +432,28 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
 
-void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const SharedRenderState& state, const char* pressedComponentId) {
-  using namespace generated_ui;
-  lv_obj_set_style_bg_color(root, lv_color_black(), 0);
-
-  const lv_image_dsc_t* neutral = resolveImage == nullptr ? nullptr : resolveImage("settings-neutral");
-  if (neutral != nullptr) {
-    lv_obj_t* base = lv_image_create(root);
-    lv_image_set_src(base, neutral);
-    lv_obj_set_pos(base, 0, 0);
-    const char* patchId = nullptr;
-    int16_t patchX = 0;
-    int16_t patchY = 0;
-    if (pressedComponentId != nullptr) {
-      if (strcmp(pressedComponentId, "settings-wifi") == 0) { patchId = "settings-wifi-pressed"; patchX = 72; patchY = 127; }
-      else if (strcmp(pressedComponentId, "settings-bluetooth") == 0) { patchId = "settings-bluetooth-pressed"; patchX = 72; patchY = 181; }
-      else if (strcmp(pressedComponentId, "settings-display") == 0) { patchId = "settings-display-pressed"; patchX = 72; patchY = 235; }
-      else if (strcmp(pressedComponentId, "settings-sound") == 0) { patchId = "settings-sound-pressed"; patchX = 72; patchY = 289; }
-    }
-    const lv_image_dsc_t* patch = patchId == nullptr || resolveImage == nullptr ? nullptr : resolveImage(patchId);
-    if (patch != nullptr) {
-      lv_obj_t* overlay = lv_image_create(root);
-      lv_image_set_src(overlay, patch);
-      lv_obj_set_pos(overlay, patchX, patchY);
-    }
-  }
-
-  lv_obj_t* status = makePanel(root, kSettingsStatusX, kSettingsStatusY, kSettingsStatusWidth, kSettingsStatusHeight, kSettingsStatusRadius, lv_color_hex(0x293A50));
-  lv_obj_set_style_border_width(status, 1, 0);
-  lv_obj_set_style_border_color(status, lv_color_hex(0x9CB3CD), 0);
-  lv_obj_set_style_shadow_width(status, 15, 0);
-  lv_obj_set_style_shadow_opa(status, LV_OPA_70, 0);
-  lv_obj_set_style_shadow_color(status, lv_color_hex(0xA8C9F2), 0);
-
-  lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, lv_color_hex(0xF3F6FA));
-  lv_obj_set_pos(bluetooth, 148, 43);
-  lv_obj_t* wifi = makeLabel(root, LV_SYMBOL_WIFI, &lv_font_montserrat_20, lv_color_hex(0xF3F6FA));
-  lv_obj_set_pos(wifi, 180, 43);
+void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state) {
+  const lv_color_t active = lv_color_hex(0x0DE3FF);
+  const lv_color_t inactive = lv_color_hex(0xF3F6FA);
+  lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, state.bluetoothConnected ? active : inactive);
+  lv_obj_set_pos(bluetooth, 153, 45);
+  lv_obj_t* wifi = makeLabel(root, LV_SYMBOL_WIFI, &lv_font_montserrat_20, state.wifiConnected ? active : inactive);
+  lv_obj_set_pos(wifi, 181, 45);
   lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, lv_color_hex(0xF4F7FC));
-  lv_obj_set_pos(time, 216, 47);
-  drawPairedCircles(root, generated_ui::kSettingsCloudX, generated_ui::kSettingsCloudY, lv_color_hex(0xE6EDF8));
+  lv_obj_set_pos(time, 216, 45);
+  drawPairedCircles(root, 264, 45, state.cloudConnected ? active : inactive);
   char batteryText[8] = {};
   snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
   lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_14, lv_color_hex(0xDFE8F4));
-  lv_obj_set_pos(battery, 301, 48);
+  lv_obj_set_pos(battery, 294, 45);
+}
 
-  lv_obj_t* gear = makePanel(root, kSettingsGearX - kSettingsGearDiameter / 2, kSettingsGearY - kSettingsGearDiameter / 2, kSettingsGearDiameter, kSettingsGearDiameter, kSettingsGearDiameter / 2, lv_color_hex(0xEEF5FF));
-  lv_obj_set_style_shadow_width(gear, 18, 0);
-  lv_obj_set_style_shadow_opa(gear, LV_OPA_90, 0);
-  lv_obj_set_style_shadow_color(gear, lv_color_hex(0xEAF2FF), 0);
-  lv_obj_t* gearGlyph = makeLabel(gear, LV_SYMBOL_SETTINGS, &lv_font_montserrat_22, lv_color_hex(0x66758A));
-  lv_obj_center(gearGlyph);
-  lv_obj_t* title = makeLabel(root, "SETTINGS", &lv_font_montserrat_28, lv_color_hex(0xF6F7FB));
-  lv_obj_set_pos(title, kSettingsTitleX, kSettingsTitleY);
-
-  const char* ids[] = {"settings-wifi", "settings-bluetooth", "settings-display", "settings-sound"};
-  const char* fallbackLabels[] = {"WiFi", "Bluetooth", "Display", "Sound & Vibration"};
-  for (uint8_t index = 0; index < kSettingsRowCount && neutral == nullptr; ++index) {
-    const SduiComponent* component = findComponent(screen, ids[index]);
-    const bool active = pressedComponentId != nullptr && strcmp(pressedComponentId, ids[index]) == 0;
-    const int16_t x = kSettingsRowX[index];
-    const int16_t y = kSettingsRowY[index];
-    lv_obj_t* row = makePanel(root, x, y, kSettingsRowWidth[index], kSettingsRowHeight[index], 24, lv_color_hex(active ? 0x087EBD : 0x263342));
-    lv_obj_set_style_bg_grad_color(row, lv_color_hex(active ? 0x06446F : 0x101823), 0);
-    lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_VER, 0);
-    lv_obj_set_style_border_width(row, active ? 2 : 1, 0);
-    lv_obj_set_style_border_color(row, lv_color_hex(active ? 0x08A8FF : 0x6C7C91), 0);
-    lv_obj_set_style_shadow_width(row, active ? 18 : 11, 0);
-    lv_obj_set_style_shadow_opa(row, LV_OPA_80, 0);
-    lv_obj_set_style_shadow_color(row, lv_color_hex(active ? 0x079BFF : 0xBFD5F5), 0);
-    lv_obj_t* iconCircle = makePanel(root, x + generated_ui::kSettingsBubbleXOffset, y + generated_ui::kSettingsBubbleYOffset, generated_ui::kSettingsBubbleDiameter, generated_ui::kSettingsBubbleDiameter, generated_ui::kSettingsBubbleRadius, lv_color_hex(active ? generated_ui::kSettingsBubbleActiveInner : generated_ui::kSettingsBubbleInner));
-    lv_obj_set_style_bg_grad_color(iconCircle, lv_color_hex(active ? generated_ui::kSettingsBubbleActiveOuter : generated_ui::kSettingsBubbleOuter), 0);
-    lv_obj_set_style_bg_grad_dir(iconCircle, LV_GRAD_DIR_VER, 0);
-    lv_obj_set_style_shadow_width(iconCircle, 18, 0);
-    lv_obj_set_style_shadow_opa(iconCircle, LV_OPA_90, 0);
-    lv_obj_set_style_shadow_color(iconCircle, lv_color_hex(0xE7F0FF), 0);
-    drawSettingsIcon(root, index, x + generated_ui::kSettingsIconCenterXOffset, y + generated_ui::kSettingsIconCenterYOffset / 2, active);
-    lv_obj_t* label = makeLabel(root, component == nullptr ? fallbackLabels[index] : component->text, &lv_font_montserrat_20, lv_color_hex(0xF4F6FA));
-    lv_obj_set_pos(label, x + 63, y + 13);
-    drawChevron(root, x + generated_ui::kSettingsChevronXOffset, y + generated_ui::kSettingsChevronYOffset);
-  }
-
-  lv_obj_t* sliderMask = makePanel(root, 63, 336, 342, 88, 0, lv_color_black());
-  lv_obj_set_style_border_width(sliderMask, 0, 0);
+void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state) {
+  using namespace generated_ui;
+  // This mask owns only the live slider treatment and label. The immutable
+  // base asset remains the owner of every pixel outside this declared region.
+  lv_obj_t* mask = makePanel(root, 63, 336, 342, 88, 0, lv_color_black());
+  lv_obj_set_style_border_width(mask, 0, 0);
   lv_obj_t* slider = lv_slider_create(root);
   lv_obj_set_pos(slider, kSettingsSliderX, kSettingsSliderY);
   lv_obj_set_size(slider, kSettingsSliderWidth, kSettingsSliderHeight);
@@ -534,11 +473,43 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   lv_obj_set_style_radius(slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
   lv_obj_set_style_width(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
   lv_obj_set_style_height(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
-
   lv_obj_t* brightness = makeLabel(root, "Brightness", &lv_font_montserrat_16, lv_color_hex(0xF2F3F7));
   lv_obj_set_width(brightness, 160);
   lv_obj_set_style_text_align(brightness, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_pos(brightness, kSettingsBrightnessLabelX - 80, kSettingsBrightnessLabelY);
+}
+
+void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const SharedRenderState& state, const char* pressedComponentId) {
+  lv_obj_set_style_bg_color(root, lv_color_black(), 0);
+
+  const lv_image_dsc_t* neutral = resolveImage == nullptr ? nullptr : resolveImage("settings-neutral");
+  if (neutral == nullptr) {
+    lv_obj_t* diagnostic = makeLabel(root, "SETTINGS ASSET ERROR", &lv_font_montserrat_20, lv_color_hex(0xFF453A));
+    lv_obj_set_width(diagnostic, 466);
+    lv_obj_set_style_text_align(diagnostic, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(diagnostic, 0, 220);
+    return;
+  }
+  lv_obj_t* base = lv_image_create(root);
+  lv_image_set_src(base, neutral);
+  lv_obj_set_pos(base, 0, 0);
+  const char* patchId = nullptr;
+  int16_t patchX = 0;
+  int16_t patchY = 0;
+  if (pressedComponentId != nullptr) {
+    if (strcmp(pressedComponentId, "settings-wifi") == 0) { patchId = "settings-wifi-pressed"; patchX = 72; patchY = 127; }
+    else if (strcmp(pressedComponentId, "settings-bluetooth") == 0) { patchId = "settings-bluetooth-pressed"; patchX = 72; patchY = 181; }
+    else if (strcmp(pressedComponentId, "settings-display") == 0) { patchId = "settings-display-pressed"; patchX = 72; patchY = 235; }
+    else if (strcmp(pressedComponentId, "settings-sound") == 0) { patchId = "settings-sound-pressed"; patchX = 72; patchY = 289; }
+  }
+  const lv_image_dsc_t* patch = patchId == nullptr || resolveImage == nullptr ? nullptr : resolveImage(patchId);
+  if (patch != nullptr) {
+    lv_obj_t* overlay = lv_image_create(root);
+    lv_image_set_src(overlay, patch);
+    lv_obj_set_pos(overlay, patchX, patchY);
+  }
+  renderSettingsLiveStatus(root, state);
+  renderSettingsLiveBrightness(root, state);
 }
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id) {

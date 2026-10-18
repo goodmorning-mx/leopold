@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { SduiScreen } from './contract';
 import assetManifest from '../shared/asset-manifest.json';
 
-type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean };
+type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean; onFramebufferCapture?: (dataUrl: string) => void };
 type Module = {
   HEAPU8: Uint8Array;
   _lvgl_wasm_init: () => void;
@@ -46,10 +46,16 @@ function callString(module: Module, name: string, values: unknown[]) {
 async function loadAssets(module: Module) {
   if (!assetsLoaded) {
     assetsLoaded = Promise.all(Object.entries(assetManifest.assets).map(async ([key, asset], index) => {
+      const assetIndex = [
+        'home', 'flower', 'chevron', 'open-clock', 'open-weather', 'open-navigation',
+        'open-whatsapp', 'open-spotify', 'spotify-large', 'settings-neutral',
+        'settings-wifi-pressed', 'settings-bluetooth-pressed', 'settings-display-pressed',
+        'settings-sound-pressed',
+      ].indexOf(key);
+      if (assetIndex < 0) return;
       const bytes = new Uint8Array(await (await fetch(`/firmware-assets/${asset.file}`)).arrayBuffer());
       const pointer = module._malloc(bytes.byteLength);
       module.HEAPU8.set(bytes, pointer);
-      const assetIndex = ['home', 'flower', 'chevron', 'open-clock', 'open-weather', 'open-navigation', 'open-whatsapp', 'open-spotify', 'spotify-large'].indexOf(key);
       module._lvgl_wasm_set_asset(assetIndex, pointer, bytes.byteLength, asset.width, asset.height);
     })).then(() => undefined);
   }
@@ -70,7 +76,7 @@ function paint(canvas: HTMLCanvasElement, module: Module) {
   canvas.getContext('2d')?.putImageData(image, 0, 0);
 }
 
-export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing }: Props) {
+export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, onFramebufferCapture }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -98,8 +104,11 @@ export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherF
       callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness, backgroundMode]);
       module._lvgl_wasm_render();
       paint(canvas.current, module);
+      const dataUrl = canvas.current.toDataURL('image/png');
+      canvas.current.dataset.framebufferPng = dataUrl;
+      onFramebufferCapture?.(dataUrl);
     });
     return () => { active = false; };
-  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing]);
+  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, onFramebufferCapture]);
   return <canvas ref={canvas} width={466} height={466} className="firmware-canvas" aria-label="LVGL firmware framebuffer" />;
 }

@@ -37,6 +37,26 @@ def masks(manifest: dict) -> list[tuple[int, int, int, int]]:
     return [(int(item["x"]), int(item["y"]), int(item["width"]), int(item["height"])) for item in state["dynamic_masks"]]
 
 
+def load_framebuffer_asset(path: Path, width: int, height: int) -> Image.Image:
+    """Decode the RGB565A8 bytes exactly as the ESP32/LVGL framebuffer does."""
+    data = path.read_bytes()
+    pixels = width * height
+    if len(data) != pixels * 3:
+        raise SystemExit(f"invalid RGB565A8 asset size for {path}: {len(data)}")
+    rgba = []
+    for index in range(pixels):
+        value = data[index * 2] | (data[index * 2 + 1] << 8)
+        rgba.append((
+            round(((value >> 11) & 0x1F) * 255 / 31),
+            round(((value >> 5) & 0x3F) * 255 / 63),
+            round((value & 0x1F) * 255 / 31),
+            data[pixels * 2 + index],
+        ))
+    image = Image.new("RGBA", (width, height))
+    image.putdata(rgba)
+    return image
+
+
 def in_masks(x: int, y: int, regions: list[tuple[int, int, int, int]]) -> bool:
     return any(left <= x < left + width and top <= y < top + height for left, top, width, height in regions)
 
@@ -105,7 +125,7 @@ def main() -> None:
     images = {name: Image.open(capture_dir / f"{name}.png").convert("RGBA") for name in CAPTURE_NAMES}
     if any(image.size != (466, 466) for image in images.values()):
         raise SystemExit("all Settings captures must be 466x466")
-    neutral = Image.open(ROOT / "shared/assets/settings-neutral-466.png").convert("RGBA")
+    neutral = load_framebuffer_asset(ROOT / "shared/assets/settings-neutral-466.bin", 466, 466)
     reports: dict[str, object] = {}
     for name, image in images.items():
         ignored = list(dynamic)
@@ -114,7 +134,7 @@ def main() -> None:
             report["outside_dynamic_masks"] = compare_outside(neutral, image, dynamic)
         elif name in PRESSED:
             source_name, bounds = PRESSED[name]
-            source = Image.open(ROOT / "shared/assets" / source_name).convert("RGBA")
+            source = load_framebuffer_asset(ROOT / "shared/assets" / source_name.replace(".png", ".bin"), bounds[2], bounds[3])
             ignored.append(bounds)
             report["outside_neutral_and_pressed_masks"] = compare_outside(neutral, image, ignored)
             report["selected_patch"] = patch_compare(source, image, bounds, dynamic)

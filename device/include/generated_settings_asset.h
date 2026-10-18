@@ -1,5 +1,7 @@
 #pragma once
+#ifndef LEOPOLD_WASM
 #include <Arduino.h>
+#endif
 
 namespace leopold::sky {
 const uint8_t kSettingsAssetData[] PROGMEM = {
