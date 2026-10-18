@@ -295,9 +295,18 @@ for offset in range(0, len(settings_asset), 16):
 settings_asset_lines.extend([
     "};",
     "constexpr size_t kSettingsAssetDataSize = sizeof(kSettingsAssetData);",
-    "}  // namespace leopold::sky",
-    "",
 ])
+for name, file in (
+    ("kSettingsStatusBluetoothActiveData", "settings-status-bluetooth-active-22x22.bin"),
+    ("kSettingsStatusWifiActiveData", "settings-status-wifi-active-22x22.bin"),
+    ("kSettingsStatusCloudActiveData", "settings-status-cloud-active-24x24.bin"),
+):
+    payload = (root / "shared" / "assets" / file).read_bytes()
+    settings_asset_lines.append(f"const uint8_t {name}[] PROGMEM = {{")
+    for offset in range(0, len(payload), 16):
+        settings_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in payload[offset : offset + 16]) + ",")
+    settings_asset_lines.extend(["};", f"constexpr size_t {name}Size = sizeof({name});"])
+settings_asset_lines.extend(["}  // namespace leopold::sky", ""])
 settings_asset_generated = "\n".join(settings_asset_lines)
 if not settings_asset_target.exists() or settings_asset_target.read_text(encoding="utf-8") != settings_asset_generated:
     settings_asset_target.write_text(settings_asset_generated, encoding="utf-8")

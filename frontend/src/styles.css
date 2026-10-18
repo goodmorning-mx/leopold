@@ -358,7 +358,6 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 .device-frame { width: min(466px, 100%); aspect-ratio: 1; margin: auto; padding: 0; border: 0; border-radius: 50%; overflow: hidden; background: #000; box-shadow: 0 24px 70px #000; }
 .device-surface { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 50%; background: #000; color: #fff; touch-action: none; user-select: none; }
 .firmware-canvas { display: block; width: 100%; height: 100%; image-rendering: auto; }
-.framebuffer-capture .device-frame, .framebuffer-capture .device-surface { border-radius: 0; box-shadow: none; }
 .device-statusbar { position: absolute; z-index: 2; top: 10px; left: 22px; right: 22px; display: flex; justify-content: space-between; color: #8e8e93; font-size: 9px; letter-spacing: .06em; pointer-events: none; }
 .device-text, .device-indicator, .device-icon-glyph, .device-progress, .device-slider, .device-button { position: absolute; transform: translate(-50%, -50%); }
 .device-text { width: 90%; line-height: 1.05; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }

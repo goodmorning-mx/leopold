@@ -35,6 +35,14 @@ def main() -> None:
         fail("Settings exact source is not 466x466")
     if not settings["source"].get("immutable") or settings["generated_asset"].get("format") != "lossless PNG":
         fail("Settings is not in exact-reference-asset mode")
+    for entry in (settings["source"], settings["generated_asset"], settings["device_asset"]):
+        path = ROOT / "shared" / entry["file"]
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
+            fail(f"Settings source or generated asset checksum mismatch: {path}")
+    for entry in settings.get("active_status_assets", []):
+        path = ROOT / "shared" / entry["asset"]
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
+            fail(f"active Settings status asset checksum mismatch: {path}")
 
     dynamic_masks = {
         item["name"]: (item["x"], item["y"], item["width"], item["height"])
@@ -47,7 +55,7 @@ def main() -> None:
         "cloud-status": (264, 45, 24, 24),
         "bluetooth-status": (153, 45, 22, 22),
         "battery-status": (294, 45, 31, 24),
-        "brightness-control": (63, 336, 342, 88),
+        "brightness-control": (63, 349, 342, 75),
     }
     if dynamic_masks != required_masks:
         fail(f"declared dynamic masks changed: {dynamic_masks}")
@@ -63,7 +71,7 @@ def main() -> None:
         ('"settings-bluetooth-pressed"', "Bluetooth pressed patch"),
         ('"settings-display-pressed"', "Display pressed patch"),
         ('"settings-sound-pressed"', "Sound pressed patch"),
-        ("renderSettingsLiveStatus(root, state);", "live status composition"),
+        ("renderSettingsLiveStatus(root, resolveImage, state);", "live status composition"),
         ("renderSettingsLiveBrightness(root, state);", "live brightness composition"),
     ):
         contains(settings_render, needle, label)
@@ -79,21 +87,26 @@ def main() -> None:
     status = renderer[renderer.index("void renderSettingsLiveStatus"):renderer.index("void renderSettingsLiveBrightness")]
     contains(status, "state.timeText == nullptr ? \"--:--\"", "deterministic missing-clock fallback")
     for token, label in (("153, 45", "Bluetooth overlay position"), ("181, 45", "Wi-Fi overlay position"),
-                         ("216, 45", "clock overlay position"), ("264, 45", "cloud overlay position"),
-                         ("294, 45", "battery overlay position")):
+                         ("217, 50", "clock overlay position"), ("264, 45", "cloud overlay position"),
+                         ("291, 52", "battery overlay position")):
         contains(status, token, label)
+    for token in ("settings-status-bluetooth-active", "settings-status-wifi-active", "settings-status-cloud-active"):
+        contains(status, token, "shared active status asset")
 
     brightness = renderer[renderer.index("void renderSettingsLiveBrightness"):renderer.index("void renderSettings(")]
-    contains(brightness, "makePanel(root, 63, 336, 342, 88", "brightness mask clear")
+    contains(brightness, "makePanel(root, 63, 349, 342, 75", "brightness mask clear")
     for bounds in ((98, 358, 272, 28), (153, 400, 160, 19)):
         if not inside(bounds, dynamic_masks["brightness-control"]):
             fail(f"brightness overlay bounds escape declared mask: {bounds}")
 
     simulator = (ROOT / "frontend/src/simulator/Simulator.tsx").read_text(encoding="utf-8")
     lvgl_canvas = (ROOT / "frontend/src/simulator/FirmwareLvglCanvas.tsx").read_text(encoding="utf-8")
+    legacy_canvas = (ROOT / "frontend/src/simulator/FirmwareCanvas.tsx").read_text(encoding="utf-8")
     wasm = (ROOT / "frontend/wasm/lvgl_wasm.cpp").read_text(encoding="utf-8")
     build = (ROOT / "scripts/build_lvgl_wasm.py").read_text(encoding="utf-8")
-    contains(simulator, "framebufferCaptureMode ? <FirmwareLvglCanvas", "browser acceptance LVGL/WASM path")
+    contains(simulator, "framebufferCaptureMode || (screen.id === 'device-control-center' && localPanel === 'none') ? <FirmwareLvglCanvas", "normal and capture Settings LVGL/WASM path")
+    if "function drawSettings(" in legacy_canvas:
+        fail("a second Settings renderer remains in the legacy browser canvas")
     contains(lvgl_canvas, "settings-neutral", "browser exact Settings asset mapping")
     contains(wasm, '"settings-neutral"', "WASM exact Settings asset mapping")
     contains(build, "shared/lvgl_renderer.cpp", "WASM shared renderer source")
@@ -101,7 +114,9 @@ def main() -> None:
     embedded = ROOT / "device/include/generated_settings_asset.h"
     if not embedded.is_file():
         fail("embedded Settings exact asset is unavailable")
-    values = re.findall(r"0x([0-9A-Fa-f]{2})", embedded.read_text(encoding="utf-8"))
+    embedded_source = embedded.read_text(encoding="utf-8")
+    neutral_block = embedded_source.split("const uint8_t kSettingsAssetData[] PROGMEM = {", 1)[1].split("};", 1)[0]
+    values = re.findall(r"0x([0-9A-Fa-f]{2})", neutral_block)
     embedded_bytes = bytes(int(value, 16) for value in values)
     canonical = ROOT / "shared/assets/settings-neutral-466.bin"
     if embedded_bytes != canonical.read_bytes():
@@ -109,6 +124,13 @@ def main() -> None:
     expected_sha = settings["device_asset"]["sha256"]
     if hashlib.sha256(embedded_bytes).hexdigest() != expected_sha:
         fail("embedded Settings exact asset checksum does not match manifest")
+    for entry, symbol in zip(settings.get("active_status_assets", []), (
+        "kSettingsStatusBluetoothActiveData", "kSettingsStatusWifiActiveData", "kSettingsStatusCloudActiveData",
+    )):
+        block = embedded_source.split(f"const uint8_t {symbol}[] PROGMEM = {{", 1)[1].split("};", 1)[0]
+        payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", block))
+        if payload != (ROOT / "shared" / entry["asset"]).read_bytes():
+            fail(f"embedded active Settings status asset differs from canonical: {symbol}")
 
     for relative in (
         "shared/assets/settings-neutral-466.png",

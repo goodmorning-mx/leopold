@@ -113,16 +113,22 @@
       ],
       "generated_asset": {
         "file": "assets/settings-neutral-466.png",
-        "sha256": "391c361fd5dc73548e9bc8912d5e29e72382ac26688ad3b75eb2350daa19c7cd",
+        "sha256": "db5283ff36db9600172343bfc889a993b6527ecc1dcfaa551761bf1d860a7156",
         "width": 466,
         "height": 466,
-        "format": "lossless PNG"
+        "format": "lossless PNG",
+        "derivation": "scripts/prepare_settings_live_asset.py clears only the live clock and battery glyph slots from the immutable source"
       },
       "device_asset": {
         "file": "assets/settings-neutral-466.bin",
-        "sha256": "5516678f7e55f1fa5dfbcc3ecf0b03c6f904e129ba497e2637c8c090201ea939",
+        "sha256": "bc0c193634a7e50904bb436d05af050553b33e8cc25916077eae3c699fc19f3b",
         "format": "RGB565A8 derived from generated_asset"
       },
+      "active_status_assets": [
+        {"state": "bluetooth-connected", "asset": "assets/settings-status-bluetooth-active-22x22.bin", "sha256": "458de4ada47441e153357c0973fcef9b9fed16067098602c06447b55aeb51d66", "bounds": [153, 45, 22, 22]},
+        {"state": "wifi-connected", "asset": "assets/settings-status-wifi-active-22x22.bin", "sha256": "0df3874e88cad51190e949a60c88e6fdff2b6c397b6099e243560a9bd90546cb", "bounds": [181, 45, 22, 22]},
+        {"state": "cloud-connected", "asset": "assets/settings-status-cloud-active-24x24.bin", "sha256": "3b65660ad7877ac9b343503125fbebeacb3add2fdb61ebba27ee1bdf7f79e95a", "bounds": [264, 45, 24, 24]}
+      ],
       "pressed_states": [
         {"state": "wifi-pressed", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "sha256": "04a475b5e33bfc8754e5e4e1bd5fd7447f94cc9093ed13bbd68f71d62726db1e", "asset": "assets/settings-wifi-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 127, 322, 56]},
         {"state": "bluetooth-pressed", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "sha256": "3936c14adcdeb6b6ebcb31306d6d139690a45276748bfecfcadfbdaf24372459", "asset": "assets/settings-bluetooth-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 181, 322, 56]},
@@ -183,9 +189,9 @@
           "name": "brightness-control",
           "reason": "live brightness fill, knob, and percentage",
           "x": 63,
-          "y": 336,
+          "y": 349,
           "width": 342,
-          "height": 88
+          "height": 75
         }
       ],
       "regions": {

@@ -432,49 +432,69 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
 
-void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state) {
-  const lv_color_t active = lv_color_hex(0x0DE3FF);
-  const lv_color_t inactive = lv_color_hex(0xF3F6FA);
-  lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, state.bluetoothConnected ? active : inactive);
-  lv_obj_set_pos(bluetooth, 153, 45);
-  lv_obj_t* wifi = makeLabel(root, LV_SYMBOL_WIFI, &lv_font_montserrat_20, state.wifiConnected ? active : inactive);
-  lv_obj_set_pos(wifi, 181, 45);
+void renderSettingsLiveStatus(lv_obj_t* root, SharedImageResolver resolveImage, const SharedRenderState& state) {
+  // The immutable banner already owns its neutral icons. Active variants are
+  // exact-position crops derived from that same artwork, so no glyph is drawn
+  // twice and the browser/device select identical pixels for each live state.
+  const auto activeIcon = [root, resolveImage](bool active, const char* id, int16_t x, int16_t y) {
+    const lv_image_dsc_t* asset = active && resolveImage != nullptr ? resolveImage(id) : nullptr;
+    if (asset == nullptr) return;
+    lv_obj_t* overlay = lv_image_create(root);
+    lv_image_set_src(overlay, asset);
+    lv_obj_set_pos(overlay, x, y);
+  };
+  activeIcon(state.bluetoothConnected, "settings-status-bluetooth-active", 153, 45);
+  activeIcon(state.wifiConnected, "settings-status-wifi-active", 181, 45);
+  activeIcon(state.cloudConnected, "settings-status-cloud-active", 264, 45);
   lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, lv_color_hex(0xF4F7FC));
-  lv_obj_set_pos(time, 216, 45);
-  drawPairedCircles(root, 264, 45, state.cloudConnected ? active : inactive);
+  lv_obj_set_style_text_letter_space(time, -2, 0);
+  lv_obj_set_pos(time, 217, 50);
   char batteryText[8] = {};
   snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
-  lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_14, lv_color_hex(0xDFE8F4));
-  lv_obj_set_pos(battery, 294, 45);
+  lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_12, lv_color_hex(0xDFE8F4));
+  lv_obj_set_pos(battery, 291, 52);
 }
 
 void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state) {
   using namespace generated_ui;
   // This mask owns only the live slider treatment and label. The immutable
   // base asset remains the owner of every pixel outside this declared region.
-  lv_obj_t* mask = makePanel(root, 63, 336, 342, 88, 0, lv_color_black());
+  // The Sound & Vibration capsule and its glow extend below its nominal row.
+  // Start the live-control clear below them so the slider cannot clip the row.
+  lv_obj_t* mask = makePanel(root, 63, 349, 342, 75, 0, lv_color_black());
   lv_obj_set_style_border_width(mask, 0, 0);
   lv_obj_t* slider = lv_slider_create(root);
   lv_obj_set_pos(slider, kSettingsSliderX, kSettingsSliderY);
   lv_obj_set_size(slider, kSettingsSliderWidth, kSettingsSliderHeight);
-  lv_slider_set_range(slider, 5, 100);
-  lv_slider_set_value(slider, state.brightnessPercent, LV_ANIM_OFF);
+  lv_slider_set_range(slider, 0, 100);
+  // The reference centers 50% on the track while the usable brightness
+  // range starts at 5%. Match the shared settings_geometry mapping.
+  const int16_t level = state.brightnessPercent < 5 ? 5 : state.brightnessPercent > 100 ? 100 : state.brightnessPercent;
+  const int16_t displayValue = level <= 50 ? (level - 5) * 50 / 45 : level;
+  lv_slider_set_value(slider, displayValue, LV_ANIM_OFF);
   lv_obj_remove_flag(slider, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_set_style_radius(slider, kSettingsSliderRadius, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderTrack), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(slider, color565(kSettingsSliderTrack), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(slider, 2, LV_PART_MAIN);
+  lv_obj_set_style_border_color(slider, lv_color_hex(0x68B9F5), LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(slider, 14, LV_PART_MAIN);
+  lv_obj_set_style_shadow_color(slider, lv_color_hex(0x249FEA), LV_PART_MAIN);
+  lv_obj_set_style_shadow_opa(slider, LV_OPA_70, LV_PART_MAIN);
   lv_obj_set_style_radius(slider, kSettingsSliderRadius, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderFillStart), LV_PART_INDICATOR);
-  lv_obj_set_style_bg_grad_color(slider, lv_color_hex(kSettingsSliderFillEnd), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(slider, color565(kSettingsSliderFillStart), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_grad_color(slider, color565(kSettingsSliderFillEnd), LV_PART_INDICATOR);
   lv_obj_set_style_bg_grad_dir(slider, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderAccent), LV_PART_KNOB);
+  lv_obj_set_style_bg_color(slider, color565(kSettingsSliderAccent), LV_PART_KNOB);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_radius(slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
   // LVGL's default theme adds DPI-scaled padding to LV_PART_KNOB. The browser
-  // renderer disables that theme, so clear it here to keep the shared slider
-  // knob at the same track-derived diameter on device and in WASM.
-  lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
+  // renderer disables that theme, so use an explicit 3 px on both targets.
+  lv_obj_set_style_pad_all(slider, 3, LV_PART_KNOB);
+  lv_obj_set_style_shadow_width(slider, 10, LV_PART_KNOB);
+  lv_obj_set_style_shadow_color(slider, lv_color_hex(0x168CF5), LV_PART_KNOB);
+  lv_obj_set_style_shadow_opa(slider, LV_OPA_60, LV_PART_KNOB);
   lv_obj_set_style_width(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
   lv_obj_set_style_height(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
   lv_obj_t* brightness = makeLabel(root, "Brightness", &lv_font_montserrat_16, lv_color_hex(0xF2F3F7));
@@ -512,7 +532,7 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
     lv_image_set_src(overlay, patch);
     lv_obj_set_pos(overlay, patchX, patchY);
   }
-  renderSettingsLiveStatus(root, state);
+  renderSettingsLiveStatus(root, resolveImage, state);
   renderSettingsLiveBrightness(root, state);
 }
 

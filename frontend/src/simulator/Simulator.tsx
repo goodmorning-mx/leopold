@@ -43,6 +43,7 @@ export default function Simulator() {
   const referenceState = query.get('reference');
   const framebufferCaptureMode = query.get('capture') === '1';
   const referenceSettingsMode = framebufferCaptureMode && referenceState === 'settings';
+  const startSettingsMode = referenceSettingsMode || query.get('screen') === 'settings';
   const captureState = framebufferCaptureMode ? query.get('capture-state') : null;
   const capturePressedByState: Record<string, string> = {
     'wifi-pressed': 'settings-wifi',
@@ -55,27 +56,27 @@ export default function Simulator() {
   const captureConnected = captureState === 'connected' ? true : captureState === 'disconnected' ? false : null;
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
   const [screenIndex, setScreenIndex] = useState(() => {
-    const initialScreen = referenceSettingsMode ? 'device-control-center' : 'sky-home';
+    const initialScreen = startSettingsMode ? 'device-control-center' : 'sky-home';
     const initialIndex = sampleDocument.screens.findIndex((item) => item.id === initialScreen);
     return initialIndex >= 0 ? initialIndex : 0;
   });
   const [clock24, setClock24] = useState(() => stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
   const [weatherFahrenheit, setWeatherFahrenheit] = useState(() => stored('weather_f', Boolean(persistence.settings.weather_fahrenheit.default)));
-  const [brightness, setBrightness] = useState(() => captureBrightness ?? (referenceSettingsMode ? 50 : stored('brightness', Number(persistence.settings.brightness.default))));
+  const [brightness, setBrightness] = useState(() => captureBrightness ?? (startSettingsMode ? 50 : stored('brightness', Number(persistence.settings.brightness.default))));
   const [playing, setPlaying] = useState(false);
   const [localPanel, setLocalPanel] = useState('none');
   const [pressed, setPressed] = useState<string | null>(capturePressed);
   const [backgroundMode, setBackgroundMode] = useState(() => stored('background_mode', Number(persistence.settings.background_mode.default)));
   const [spanishLanguage, setSpanishLanguage] = useState(() => stored('spanish', Boolean(persistence.settings.spanish_language.default)));
-  const [wifiConnected, setWifiConnected] = useState(captureConnected ?? true);
+  const [wifiConnected, setWifiConnected] = useState(captureConnected ?? false);
   const [cloudConnected, setCloudConnected] = useState(captureConnected ?? false);
-  const [bluetoothEnabled, setBluetoothEnabled] = useState(captureConnected ?? true);
+  const [bluetoothEnabled, setBluetoothEnabled] = useState(captureConnected ?? false);
   const [batteryPercent, setBatteryPercent] = useState(82);
   useEffect(() => {
-    if (framebufferCaptureMode || calibrationMode) return;
+    if (framebufferCaptureMode || calibrationMode || startSettingsMode) return;
     const homeIndex = sampleDocument.screens.findIndex((item) => item.id === 'sky-home');
     if (homeIndex >= 0) setScreenIndex(homeIndex);
-  }, [framebufferCaptureMode]);
+  }, [framebufferCaptureMode, startSettingsMode]);
   const [now, setNow] = useState(() => new Date());
   const [etag, setEtag] = useState('"mock-ui-12"');
   const [pollCount, setPollCount] = useState(0);
@@ -88,6 +89,7 @@ export default function Simulator() {
   const [images, setImages] = useState<FirmwareImages>({});
   const pointer = useRef<{ x: number; y: number; at: number } | null>(null);
   const lastSliderValue = useRef<number | null>(null);
+  const sliderDrag = useRef(false);
   const screen = document.screens[screenIndex] ?? document.screens[0];
   const screenId = screen?.id ?? '';
   useEffect(() => {
@@ -102,9 +104,23 @@ export default function Simulator() {
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [captureUrl]);
   function downloadFramebuffer() {
-    const dataUrl = captureDownloadUrl || captureUrl || window.document.querySelector<HTMLCanvasElement>('.firmware-canvas')?.dataset.framebufferPng;
-    if (!dataUrl) return;
-    window.document.querySelector<HTMLAnchorElement>('.raw-framebuffer-download')?.click();
+    const canvas = window.document.querySelector<HTMLCanvasElement>('.firmware-canvas');
+    const link = window.document.querySelector<HTMLAnchorElement>('.raw-framebuffer-download');
+    if (!link) return;
+    if (canvas) {
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const objectUrl = URL.createObjectURL(blob);
+        link.href = objectUrl;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      }, 'image/png');
+      return;
+    }
+    if (captureDownloadUrl || captureUrl) {
+      link.href = captureDownloadUrl || captureUrl;
+      link.click();
+    }
   }
   useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:brightness`, String(brightness)); }, [brightness]);
   useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:clock_24`, String(clock24)); }, [clock24]);
@@ -171,6 +187,8 @@ export default function Simulator() {
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointFor(event); pointer.current = { ...point, at: Date.now() }; lastSliderValue.current = null;
+    const padding = interaction.touch.slider_touch_padding;
+    sliderDrag.current = screen.components.some((item) => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
     setPressed(button?.id ?? null);
     updateSlider(point);
@@ -186,6 +204,7 @@ export default function Simulator() {
     const start = pointer.current; pointer.current = null; if (!start) return;
     setPressed(null);
     const point = pointFor(event); const gesture = classifyGesture(start, { ...point, at: Date.now() });
+    if (sliderDrag.current) { sliderDrag.current = false; updateSlider(point); return; }
     addEvent('gesture', `${gesture} (${point.x}, ${point.y})`);
     if (gesture === 'swipe-left') { setLocalPanel('none'); setScreenIndex((index) => (index + 1) % document.screens.length); }
     else if (gesture === 'swipe-right') { setLocalPanel('none'); setScreenIndex((index) => (index + document.screens.length - 1) % document.screens.length); }
@@ -216,9 +235,9 @@ export default function Simulator() {
 
   return <main className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
     <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Browser rendering of the firmware source at commit {firmwareReference}. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
-    {captureUrl ? <img className="raw-framebuffer-preview" src={captureUrl} alt="Raw framebuffer export" /> : null}<div className="simulator-grid">
-      <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; setPressed(null); }}>
-        {framebufferCaptureMode ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
+    <div className="simulator-grid">
+      <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; sliderDrag.current = false; setPressed(null); }}>
+        {framebufferCaptureMode || (screen.id === 'device-control-center' && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
         <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>{cloudConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Connected (mock)' : 'Disconnected (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setCloudConnected((value) => !value)}>Cloud</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>

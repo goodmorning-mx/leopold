@@ -111,6 +111,28 @@ def write_difference(neutral: Image.Image, capture: Image.Image, ignored: list[t
     output.save(path, format="PNG")
 
 
+def brightness_diagnostic(image: Image.Image, value: int) -> dict[str, object]:
+    """Check the live knob position and reject the former green/blue palette."""
+    pixels = image.convert("RGB").load()
+    knob_pixels = [
+        x for x in range(75, 391)
+        if pixels[x, 355][0] < 90 and pixels[x, 355][1] > 130 and pixels[x, 355][2] > 170
+    ]
+    center = (min(knob_pixels) + max(knob_pixels)) / 2 if knob_pixels else None
+    expected = brightness_knob_x(value)
+    fill = pixels[110, 372] if value >= 50 else pixels[150, 372]
+    palette_passed = fill[2] > fill[1] > fill[0]
+    passed = center is not None and abs(center - expected) <= 3 and palette_passed
+    return {
+        "value": value,
+        "expected_knob_x": expected,
+        "observed_knob_x": center,
+        "fill_sample_rgb": list(fill),
+        "palette_passed": palette_passed,
+        "passed": passed,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("capture_dir", type=Path)
@@ -139,10 +161,10 @@ def main() -> None:
             report["outside_neutral_and_pressed_masks"] = compare_outside(neutral, image, ignored)
             report["selected_patch"] = patch_compare(source, image, bounds, dynamic)
         elif "brightness" in name:
-            ignored.append((63, 336, 342, 88))
+            ignored.append((63, 349, 342, 75))
             report["outside_brightness_mask"] = compare_outside(neutral, image, ignored)
             value = int(name.rsplit("-", 1)[1])
-            report["brightness"] = {"value": value, "expected_knob_x": brightness_knob_x(value), "geometry_passed": value in (5, 50, 100)}
+            report["brightness"] = brightness_diagnostic(image, value)
         else:
             ignored.append((137, 39, 195, 38))
             report["outside_status_masks"] = compare_outside(neutral, image, ignored)
