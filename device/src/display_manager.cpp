@@ -656,6 +656,7 @@ void DisplayManager::drawComponent(const SduiComponent& component) {
 void DisplayManager::setBrightnessPercent(uint8_t percent) {
   brightnessPercent_ = constrain(
       percent, generated_ui::kBrightnessMinimum, generated_ui::kBrightnessMaximum);
+  sharedRenderState_.brightnessPercent = brightnessPercent_;
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   displayPreferences.putUChar("brightness", brightnessPercent_);
 }
