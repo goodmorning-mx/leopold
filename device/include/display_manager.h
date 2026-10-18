@@ -29,6 +29,7 @@ class DisplayManager {
   void renderSduiScreen(const SduiDocument& document);
   bool setPressedButton(const char* id);
   bool clearPressedButton();
+  void setTouchTraceEnabled(bool enabled);
   void setBrightnessPercent(uint8_t percent);
   uint8_t brightnessPercent() const;
   void cycleBackground();
@@ -133,6 +134,7 @@ class DisplayManager {
   char timeText_[16] = "--:--";
   SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0, 1};
   char pressedButtonId_[kMaxComponentId + 1] = {};
+  bool touchTraceEnabled_ = false;
 };
 
 }  // namespace leopold

@@ -209,6 +209,17 @@ printf 'LEOPOLD_CALIBRATION_EXIT\n' > "$PORT"
 RGB565-derived PPM data; `ppm_to_png.py` creates a lossless PNG. The explicit
 commands return the device to its prior UI and do not flash or modify firmware.
 
+### Phase 1 touch diagnostic (requires a newly built, separately authorized firmware flash)
+
+The current running firmware does not support touch tracing. A diagnostic build
+can enable rate-limited USB logs with `LEOPOLD_TOUCH_TRACE ON` and disable them
+with `LEOPOLD_TOUCH_TRACE OFF`. The trace reports controller read results,
+contacts and coordinates, touch down/up classification, Settings hit targets,
+pressed-state changes, and pressed-patch asset resolution. It is disabled by
+default and does not synthesize touch events or alter hit testing. Capture the
+trace while holding one Settings row, then disable it before normal use. Do not
+send these commands to the current firmware and infer a result from silence.
+
 El monitor muestra:
 
 - versión de firmware;

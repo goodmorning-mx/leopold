@@ -928,7 +928,17 @@ void processInput(uint32_t now) {
       localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
     const SduiComponent* pressed =
         findButtonAt(currentUi.active(), point.x, point.y);
+    if (touch.traceEnabled()) {
+      static uint32_t lastHitTraceAt = 0;
+      if (now - lastHitTraceAt >= 250) {
+        Serial.printf("TOUCH_TRACE hit screen=%s x=%u y=%u button=%s\n",
+                      currentUi.active().screenId, point.x, point.y,
+                      pressed == nullptr ? "none" : pressed->id);
+        lastHitTraceAt = now;
+      }
+    }
     if (pressed != nullptr && screen.setPressedButton(pressed->id)) {
+      if (touch.traceEnabled()) Serial.printf("TOUCH_TRACE render pressed=%s\n", pressed->id);
       screen.renderSduiScreen(currentUi);
     }
   } else if (hasGesture && gesture != TouchGesture::kDrag &&
@@ -1264,6 +1274,14 @@ void processUsbCommands() {
       usbCommand[usbCommandLength] = '\0';
       if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE ON") == 0) {
+        touch.setTraceEnabled(true);
+        screen.setTouchTraceEnabled(true);
+        Serial.println("LEOPOLD_TOUCH_TRACE_OK on");
+      } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE OFF") == 0) {
+        touch.setTraceEnabled(false);
+        screen.setTouchTraceEnabled(false);
+        Serial.println("LEOPOLD_TOUCH_TRACE_OK off");
       } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION") == 0) {
         screen.showCalibration();
         Serial.printf("LEOPOLD_CALIBRATION_OK %s\n", screen.calibrationMode() ? "on" : "unavailable");

@@ -1637,18 +1637,39 @@ void DisplayManager::renderSdui(const SduiDocument& document) {
 bool DisplayManager::setPressedButton(const char* id) {
   const char* next = id == nullptr ? "" : id;
   if (strcmp(pressedButtonId_, next) == 0) return false;
+  if (touchTraceEnabled_) {
+    Serial.printf("TOUCH_TRACE pressed old=%s new=%s\n", pressedButtonId_, next);
+  }
   strlcpy(pressedButtonId_, next, sizeof(pressedButtonId_));
   return true;
 }
 
 bool DisplayManager::clearPressedButton() {
   if (pressedButtonId_[0] == '\0') return false;
+  if (touchTraceEnabled_) Serial.printf("TOUCH_TRACE pressed old=%s new=none\n", pressedButtonId_);
   pressedButtonId_[0] = '\0';
   return true;
 }
 
+void DisplayManager::setTouchTraceEnabled(bool enabled) {
+  touchTraceEnabled_ = enabled;
+}
+
 void DisplayManager::renderSduiScreen(const SduiDocument& document) {
   const SduiScreen& active = document.active();
+  if (touchTraceEnabled_ && strcmp(active.screenId, "device-control-center") == 0 &&
+      pressedButtonId_[0] != '\0') {
+    const char* patch = nullptr;
+    if (strcmp(pressedButtonId_, "settings-wifi") == 0) patch = "settings-wifi-pressed";
+    else if (strcmp(pressedButtonId_, "settings-bluetooth") == 0) patch = "settings-bluetooth-pressed";
+    else if (strcmp(pressedButtonId_, "settings-display") == 0) patch = "settings-display-pressed";
+    else if (strcmp(pressedButtonId_, "settings-sound") == 0) patch = "settings-sound-pressed";
+    const lv_image_dsc_t* asset = patch == nullptr ? nullptr : sky::resolveAsset(patch);
+    Serial.printf("TOUCH_TRACE render screen=%s pressed=%s patch=%s asset=%s bytes=%lu\n",
+                  active.screenId, pressedButtonId_, patch == nullptr ? "none" : patch,
+                  asset == nullptr ? "missing" : "resolved",
+                  asset == nullptr ? 0UL : static_cast<unsigned long>(asset->data_size));
+  }
   if (strcmp(active.screenId, "youtube-feed") == 0) {
     buildLvglYoutubeFeed(active);
     return;

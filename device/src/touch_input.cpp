@@ -21,6 +21,26 @@ bool respondsAt(uint8_t address) {
 
 }  // namespace
 
+void TouchInput::setTraceEnabled(bool enabled) {
+  traceEnabled_ = enabled;
+  lastTraceAt_ = 0;
+  lastTraceResult_[0] = '\0';
+}
+
+bool TouchInput::traceEnabled() const {
+  return traceEnabled_;
+}
+
+void TouchInput::traceSample(const char* result, uint8_t contacts, uint16_t x, uint16_t y) {
+  if (!traceEnabled_) return;
+  const uint32_t now = millis();
+  if (strcmp(lastTraceResult_, result) == 0 && now - lastTraceAt_ < 250) return;
+  lastTraceAt_ = now;
+  strlcpy(lastTraceResult_, result, sizeof(lastTraceResult_));
+  Serial.printf("TOUCH_TRACE sample result=%s detail=%u x=%u y=%u\n",
+                result, contacts, x, y);
+}
+
 void TouchInput::begin() {
   if (!touchBus.begin(
       board::kTouchSda,
@@ -57,6 +77,7 @@ bool TouchInput::pollGesture(
     if (!wasDown_) {
       touchStart_ = current;
       touchStartedAt_ = now;
+      if (traceEnabled_) Serial.printf("TOUCH_TRACE down x=%u y=%u\n", current.x, current.y);
     }
     touchLast_ = current;
     wasDown_ = true;
@@ -114,21 +135,29 @@ bool TouchInput::pollGesture(
   }
   lastGestureAt_ = now;
   point = touchLast_;
+  if (traceEnabled_) {
+    Serial.printf("TOUCH_TRACE up gesture=%u x=%u y=%u duration_ms=%lu dx=%d dy=%d\n",
+                  static_cast<unsigned>(gesture), point.x, point.y,
+                  static_cast<unsigned long>(gestureDuration), deltaX, deltaY);
+  }
   return true;
 }
 
 bool TouchInput::read(TouchPoint& point) {
   if (address_ == 0) {
+    traceSample("no_controller", 0, 0, 0);
     return false;
   }
   touchBus.beginTransmission(address_);
   touchBus.write(0x02);
-  if (touchBus.endTransmission(true) != 0) {
+  const uint8_t writeStatus = touchBus.endTransmission(true);
+  if (writeStatus != 0) {
+    traceSample("register_write_error", writeStatus, 0, 0);
     return false;
   }
-  if (touchBus.requestFrom(
-          address_,
-          static_cast<uint8_t>(5)) != 5) {
+  const uint8_t received = touchBus.requestFrom(address_, static_cast<uint8_t>(5));
+  if (received != 5) {
+    traceSample("short_read", received, 0, 0);
     return false;
   }
 
@@ -138,12 +167,15 @@ bool TouchInput::read(TouchPoint& point) {
   const uint8_t yHigh = touchBus.read();
   const uint8_t yLow = touchBus.read();
   if (points == 0) {
+    traceSample("zero_contacts", 0, 0, 0);
     return false;
   }
 
   point.x = ((xHigh & 0x0F) << 8) | xLow;
   point.y = ((yHigh & 0x0F) << 8) | yLow;
-  return point.x < board::kScreenWidth && point.y < board::kScreenHeight;
+  const bool inBounds = point.x < board::kScreenWidth && point.y < board::kScreenHeight;
+  traceSample(inBounds ? "contact" : "out_of_bounds", points, point.x, point.y);
+  return inBounds;
 }
 
 }  // namespace leopold

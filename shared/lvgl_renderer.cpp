@@ -471,6 +471,10 @@ void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state
   lv_obj_set_style_bg_color(slider, lv_color_hex(kSettingsSliderAccent), LV_PART_KNOB);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_radius(slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
+  // LVGL's default theme adds DPI-scaled padding to LV_PART_KNOB. The browser
+  // renderer disables that theme, so clear it here to keep the shared slider
+  // knob at the same track-derived diameter on device and in WASM.
+  lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_width(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
   lv_obj_set_style_height(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
   lv_obj_t* brightness = makeLabel(root, "Brightness", &lv_font_montserrat_16, lv_color_hex(0xF2F3F7));
