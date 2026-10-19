@@ -870,6 +870,47 @@ bool isComputerControl(const char* componentId) {
       strcmp(componentId, "computer-screenshot") == 0;
 }
 
+const SduiComponent* findSettingsButtonAt(
+    const SduiScreen& screen,
+    int16_t x,
+    int16_t y) {
+  if (strcmp(screen.screenId, "device-control-center") != 0) return nullptr;
+  for (uint8_t index = 0; index < generated_ui::kSettingsInteractionRowCount; ++index) {
+    const generated_ui::SettingsRowBounds& bounds = generated_ui::kSettingsRowBounds[index];
+    if (x < bounds.x || x >= bounds.x + bounds.width ||
+        y < bounds.y || y >= bounds.y + bounds.height) continue;
+    for (uint8_t componentIndex = 0;
+         componentIndex < screen.componentCount;
+         ++componentIndex) {
+      const SduiComponent& component = screen.components[componentIndex];
+      if (component.type == ComponentType::kButton &&
+          strcmp(component.id, bounds.id) == 0) return &component;
+    }
+  }
+  return nullptr;
+}
+
+bool handleSettingsTap(const SduiComponent& button, uint32_t now) {
+  if (strcmp(button.id, "settings-wifi") == 0) {
+    localPanel = LocalPanel::kWifi;
+    showLocalConnectivityPanel(now);
+    Serial.println("Wi-Fi details opened");
+    return true;
+  }
+  if (strcmp(button.id, "settings-bluetooth") == 0) {
+    localPanel = LocalPanel::kBluetooth;
+    showLocalConnectivityPanel(now);
+    Serial.println("Bluetooth details opened");
+    return true;
+  }
+  if (strcmp(button.id, "settings-display") == 0 ||
+      strcmp(button.id, "settings-sound") == 0) {
+    Serial.printf("Settings row has no destination: %s\n", button.id);
+    return true;
+  }
+  return false;
+}
+
 void sendComputerControlOverUsb(const char* componentId) {
   if (!isComputerControl(componentId)) return;
   Serial.printf("LEOPOLD_CMD:%s\n", componentId);
@@ -927,7 +968,9 @@ void processInput(uint32_t now) {
   if (hasGesture && gesture == TouchGesture::kDrag && hasUi &&
       localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
     const SduiComponent* pressed =
-        findButtonAt(currentUi.active(), point.x, point.y);
+        strcmp(currentUi.active().screenId, "device-control-center") == 0
+            ? findSettingsButtonAt(currentUi.active(), point.x, point.y)
+            : findButtonAt(currentUi.active(), point.x, point.y);
     if (touch.traceEnabled()) {
       static uint32_t lastHitTraceAt = 0;
       if (now - lastHitTraceAt >= 250) {
@@ -1091,23 +1134,10 @@ void processInput(uint32_t now) {
                point.x <= 88 && point.y <= 94))) {
     openLocalScreen("open-home");
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
-             ((point.x >= 72 && point.x <= 170 &&
-               point.y >= 120 && point.y <= 218) ||
-              (point.x >= 180 && point.x <= 278 &&
-               point.y >= 120 && point.y <= 218) ||
-              (point.x >= 124 && point.x <= 222 &&
-               point.y >= 224 && point.y <= 322))) {
-    localPanel = point.y >= 224
-        ? LocalPanel::kCloud
-        : (point.x >= 180 ? LocalPanel::kBluetooth : LocalPanel::kWifi);
-    showLocalConnectivityPanel(now);
-    Serial.println(
-        localPanel == LocalPanel::kWifi
-            ? "Wi-Fi details opened"
-            : (localPanel == LocalPanel::kBluetooth
-                   ? "Bluetooth details opened"
-                   : "Cloud details opened"));
+             strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+    const SduiComponent* button =
+        findSettingsButtonAt(currentUi.active(), point.x, point.y);
+    if (button != nullptr) handleSettingsTap(*button, now);
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
              strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
     const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);

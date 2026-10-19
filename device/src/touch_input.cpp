@@ -77,6 +77,8 @@ bool TouchInput::pollGesture(
     if (!wasDown_) {
       touchStart_ = current;
       touchStartedAt_ = now;
+      // Make every new contact eligible for an immediate held-state sample.
+      lastDragAt_ = now - generated_ui::kDragIntervalMs;
       if (traceEnabled_) Serial.printf("TOUCH_TRACE down x=%u y=%u\n", current.x, current.y);
     }
     touchLast_ = current;

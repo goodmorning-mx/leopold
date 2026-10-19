@@ -116,3 +116,52 @@ state artwork and live masks/owners, implement shared navigation and press
 states, add the Display live clock and control overlays, and obtain physical
 calibration evidence. Do not start Phase 2, Wi-Fi credential redesign, BLE,
 cloud caching, or GoodMorning infrastructure work.
+
+## October 18 physical evidence update — 2026-10-18
+
+This dated addendum preserves the Phase 0 and Phase 1 evidence captured on
+October 18. It does not rewrite the earlier audit and does not promote missing
+captures to passes.
+
+- **Phase 0 calibration: passed with circular-panel-mask note.** The raw
+  466 × 466 framebuffer matched the shared border, corner markers, grid,
+  crosshair, and concentric circles at `(233,233)` with radii 50/100/150/200.
+  The straight-on photo review confirmed the lit circular panel; its circular
+  mask hides the square framebuffer corners, as expected. Evidence and numeric
+  comparison remain under
+  `artifacts/device-captures/phase1-calibration-2026-10-18/`.
+- **Post-flash 50% brightness capture: passed.** The accepted capture is
+  `artifacts/device-captures/phase1-settings-physical-2026-10-18/settings-brightness-50-fixed.png`,
+  with its report and difference image in the matching
+  `brightness-50-fixed-comparison/` directory.
+- **Final 50% recapture: failed.** The final capture measured the brightness
+  knob at 237.5 px rather than the 234 px target. It remains recorded as a
+  failure in `settings-brightness-50-final.png` and its
+  `brightness-50-final-comparison/` report.
+- **5% and 100% brightness captures: missing.** The user performed the states,
+  but no fresh framebuffer was captured during those pauses; they remain
+  missing, not passed.
+- **Settings rows: failed in the latest physical run.** Wi-Fi, Bluetooth,
+  Display, and Sound & Vibration all failed to show pressed feedback or
+  navigate. This is physical evidence from the current device session; the
+  simulator's held-state checks and any historical physical captures do not
+  override it.
+
+The next software revision must diagnose touch-controller reads, raw
+coordinates, gesture classification, shared hit testing, pressed rendering,
+asset selection, and release navigation. Physical row behavior remains
+unverified until that revision is flashed and captured in a later authorized
+device session.
+
+## October 18 touch-path diagnosis — 2026-10-18
+
+The software audit found the first actionable loss after raw touch reads: the
+device's Settings press and release path was not using the shared row bounds.
+Held feedback depended on a periodic drag sample whose timing was not reset at
+the start of a new contact, and release handling used ad hoc coordinate bands
+that did not represent the four shared rows. Wi-Fi and Bluetooth had panel
+actions; Display and Sound & Vibration had no destination. The focused fix now
+generates device hit bounds from `shared/interaction.json`, resets the first
+contact's held-state sample timing, and makes the two undefined destinations
+explicit in both simulator and device behavior. This is a software diagnosis,
+not physical proof; the device must still be flashed and recaptured later.

@@ -84,6 +84,16 @@ lines = [
     f"constexpr uint8_t kBrightnessMinimum = {interaction['behaviour']['brightness_minimum']};",
     f"constexpr uint8_t kBrightnessMaximum = {interaction['behaviour']['brightness_maximum']};",
     f"constexpr uint8_t kDefaultBrightness = {persistence['settings']['brightness']['default']};",
+    "struct SettingsRowBounds { const char* id; int16_t x; int16_t y; int16_t width; int16_t height; };",
+    "constexpr SettingsRowBounds kSettingsRowBounds[] = {",
+]
+for row in interaction["touch"]["settings_row_bounds"]:
+    lines.append(
+        f'    {{"{row["id"]}", {row["x"]}, {row["y"]}, {row["width"]}, {row["height"]}}},'
+    )
+lines.extend([
+    "};",
+    "constexpr uint8_t kSettingsInteractionRowCount = sizeof(kSettingsRowBounds) / sizeof(kSettingsRowBounds[0]);",
     f"constexpr int16_t kCalibrationWidth = {calibration['width']};",
     f"constexpr int16_t kCalibrationHeight = {calibration['height']};",
     f"constexpr uint16_t kCalibrationBackground = {rgb565(calibration['background'])};",
@@ -228,7 +238,7 @@ lines = [
     "  component.x = x; component.y = y; component.width = width; component.height = height; component.value = value; component.maximum = 100; component.color = SduiParser::rgb565(color);",
     "}",
     "inline void appendFallbackScreens(SduiDocument& document, const SduiScreen* spotifyOverride) {",
-]
+])
 
 for screen in document["screens"]:
     if screen["id"] == "spotify-player":

@@ -214,12 +214,15 @@ export default function Simulator() {
       if (point.x <= 116 && point.y <= 108) setLocalPanel(localPanel === 'wifi-networks' || localPanel === 'bluetooth-devices' ? (localPanel === 'wifi-networks' ? 'wifi' : 'bluetooth') : 'none');
       else if ((localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') && point.y >= 356) setLocalPanel(localPanel === 'wifi' ? 'wifi-networks' : localPanel === 'bluetooth' ? 'bluetooth-devices' : 'cloud');
     } else if (gesture === 'tap') {
-      if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 148 && point.y < 188) { setLocalPanel('wifi'); return; }
-      if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 191 && point.y < 232) { setLocalPanel('bluetooth'); return; }
-      if (screenId === 'device-control-center' && point.x >= 106 && point.x <= 364 && point.y >= 234 && point.y < 275) {
-        const target = document.screens.findIndex((item) => item.id === 'settings-display');
-        if (target >= 0) { setLocalPanel('none'); setScreenIndex(target); }
-        return;
+      if (screenId === 'device-control-center') {
+        const settingsButton = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
+        const action = settingsButton ? interaction.behaviour.settings_row_actions[settingsButton.id as keyof typeof interaction.behaviour.settings_row_actions] : undefined;
+        if (action === 'wifi-panel') { setLocalPanel('wifi'); return; }
+        if (action === 'bluetooth-panel') { setLocalPanel('bluetooth'); return; }
+        if (settingsButton && action === 'undefined') {
+          addEvent('navigation', `${settingsButton.label}: no destination defined`, { component_id: settingsButton.id });
+          return;
+        }
       }
       const padding = interaction.touch.slider_touch_padding;
       const slider = screen.components.find((item): item is SduiSlider => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
