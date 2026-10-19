@@ -17,6 +17,11 @@ STATES = {
     "settings-display": ("settings-display-pressed.png", 235),
     "settings-sound": ("settings-sound-pressed.png", 289),
 }
+BANNER_ASSETS = {
+    "bluetooth": ("settings-status-bluetooth-active-22x22.bin", (153, 45, 22, 22)),
+    "wifi": ("settings-status-wifi-active-22x22.bin", (181, 45, 22, 22)),
+    "cloud": ("settings-status-cloud-active-24x24.bin", (264, 45, 24, 24)),
+}
 
 
 def compare(a: Image.Image, b: Image.Image, bounds: tuple[int, int, int, int]) -> dict[str, object]:
@@ -94,11 +99,17 @@ def main() -> None:
             "chevron_against_derived_mask": compare_component(chevron, capture, neutral, (355, y, 39, 56)),
             "profile": profile["rows"][row_id],
         }
+    connected = Image.open(args.capture_dir / "settings-connected.png").convert("RGB")
+    banner: dict[str, object] = {}
+    for name, (filename, bounds) in BANNER_ASSETS.items():
+        asset = load_framebuffer_asset(ROOT / "shared/assets" / filename, bounds[2], bounds[3])
+        banner[name] = compare_component(asset, connected, neutral, bounds)
+        banner[name]["profile"] = profile["banner"][name]
     result = {"profile": str((ROOT / "shared/settings-acceptance-profile.json").relative_to(ROOT)), "captures": rows, "passed": all(
         item["outside_row_mask"]["passed"] and item["row_interior_against_neutral"]["passed"] and
         item["icon_against_derived_mask"]["passed"] and item["chevron_against_derived_mask"]["passed"]
         for item in rows.values()
-    )}
+    ) and all(item["passed"] for item in banner.values()), "banner": banner}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps({"report": str(args.output), "passed": result["passed"]}))

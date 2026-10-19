@@ -69,7 +69,7 @@ def main() -> None:
         ('"SETTINGS ASSET ERROR"', "missing-asset diagnostic"),
         ("selectedRowId", "shared selected-row state"),
         ("drawSelectedSettingsRow(root, selectedIndex, resolveImage)", "bounded selected-row treatment"),
-        ("renderSettingsLiveStatus(root, state);", "live status composition"),
+        ("renderSettingsLiveStatus(root, state, resolveImage);", "live status composition"),
         ("renderSettingsLiveBrightness(root, state);", "live brightness composition"),
     ):
         contains(settings_render, needle, label)
@@ -124,6 +124,12 @@ def main() -> None:
         contains(renderer, key, f"shared bounded component asset {key}")
         contains(lvgl_canvas, key, f"browser bounded component asset {key}")
         contains(wasm, key, f"WASM bounded component asset {key}")
+    for key in (
+        "settings-status-bluetooth-active", "settings-status-wifi-active", "settings-status-cloud-active",
+    ):
+        contains(renderer, key, f"shared bounded status asset {key}")
+        contains(lvgl_canvas, key, f"browser bounded status asset {key}")
+        contains(wasm, key, f"WASM bounded status asset {key}")
     contains(wasm, '"settings-neutral"', "WASM exact Settings asset mapping")
     contains(build, "shared/lvgl_renderer.cpp", "WASM shared renderer source")
 

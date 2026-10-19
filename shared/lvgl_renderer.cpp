@@ -477,12 +477,20 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
 
-void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state) {
+void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage) {
   // Keep the banner shell and its live text in the neutral base. Each active
   // value paints only its own bounded glyph with the shared active palette.
   const lv_color_t active = lv_color_hex(generated_ui::kSettingsIconActiveColor);
   const lv_color_t innerGlow = lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow);
-  if (state.bluetoothConnected) {
+  const auto drawStatusAsset = [root, resolveImage](const char* key, int16_t x, int16_t y) {
+    const lv_image_dsc_t* image = resolveImage == nullptr ? nullptr : resolveImage(key);
+    if (image == nullptr) return false;
+    lv_obj_t* object = lv_image_create(root);
+    lv_image_set_src(object, image);
+    lv_obj_set_pos(object, x, y);
+    return true;
+  };
+  if (state.bluetoothConnected && !drawStatusAsset("settings-status-bluetooth-active", 153, 45)) {
     // Clip the glyph to its 22x22 component bounds so the banner shell and
     // neighboring values cannot change when Bluetooth changes.
     lv_obj_t* bluetoothBounds = lv_obj_create(root);
@@ -493,7 +501,7 @@ void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state) {
     lv_obj_t* bluetooth = makeLabel(bluetoothBounds, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, active);
     lv_obj_set_pos(bluetooth, 0, 0);
   }
-  if (state.wifiConnected) {
+  if (state.wifiConnected && !drawStatusAsset("settings-status-wifi-active", 181, 45)) {
     const int16_t centerX = 192;
     const int16_t centerY = 56;
     const int16_t radii[] = {10, 6};
@@ -513,7 +521,9 @@ void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state) {
     }
     lv_obj_t* dot = makePanel(root, 190, 61, 4, 4, 2, active);
   }
-  if (state.cloudConnected) drawPairedCircles(root, 264, 45, active, innerGlow);
+  if (state.cloudConnected && !drawStatusAsset("settings-status-cloud-active", 264, 45)) {
+    drawPairedCircles(root, 264, 45, active, innerGlow);
+  }
   lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, lv_color_hex(0xF4F7FC));
   lv_obj_set_style_text_letter_space(time, -2, 0);
   lv_obj_set_pos(time, 217, 50);
@@ -593,7 +603,7 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
     else if (strcmp(selectedRowId, "settings-sound") == 0) selectedIndex = 3;
   }
   if (selectedIndex < 4) drawSelectedSettingsRow(root, selectedIndex, resolveImage);
-  renderSettingsLiveStatus(root, state);
+  renderSettingsLiveStatus(root, state, resolveImage);
   renderSettingsLiveBrightness(root, state);
 }
 
