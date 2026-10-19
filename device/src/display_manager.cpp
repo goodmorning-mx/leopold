@@ -1660,16 +1660,8 @@ void DisplayManager::renderSduiScreen(const SduiDocument& document) {
   const SduiScreen& active = document.active();
   if (touchTraceEnabled_ && strcmp(active.screenId, "device-control-center") == 0 &&
       pressedButtonId_[0] != '\0') {
-    const char* patch = nullptr;
-    if (strcmp(pressedButtonId_, "settings-wifi") == 0) patch = "settings-wifi-pressed";
-    else if (strcmp(pressedButtonId_, "settings-bluetooth") == 0) patch = "settings-bluetooth-pressed";
-    else if (strcmp(pressedButtonId_, "settings-display") == 0) patch = "settings-display-pressed";
-    else if (strcmp(pressedButtonId_, "settings-sound") == 0) patch = "settings-sound-pressed";
-    const lv_image_dsc_t* asset = patch == nullptr ? nullptr : sky::resolveAsset(patch);
-    Serial.printf("TOUCH_TRACE render screen=%s pressed=%s patch=%s asset=%s bytes=%lu\n",
-                  active.screenId, pressedButtonId_, patch == nullptr ? "none" : patch,
-                  asset == nullptr ? "missing" : "resolved",
-                  asset == nullptr ? 0UL : static_cast<unsigned long>(asset->data_size));
+    Serial.printf("TOUCH_TRACE render screen=%s selectedRowId=%s bounded-treatment=shared\n",
+                  active.screenId, pressedButtonId_);
   }
   if (strcmp(active.screenId, "youtube-feed") == 0) {
     buildLvglYoutubeFeed(active);

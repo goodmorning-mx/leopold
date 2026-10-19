@@ -28,9 +28,7 @@ static int assetIndex(const char* key) {
   static const char* keys[] = {
       "home", "flower", "chevron", "open-clock", "open-weather",
       "open-navigation", "open-whatsapp", "open-spotify", "spotify-large",
-      "settings-neutral", "settings-wifi-pressed", "settings-bluetooth-pressed",
-      "settings-display-pressed", "settings-sound-pressed",
-      "settings-status-bluetooth-active", "settings-status-wifi-active", "settings-status-cloud-active",
+      "settings-neutral", "settings-status-bluetooth-active", "settings-status-wifi-active", "settings-status-cloud-active",
   };
   for (int index = 0; index < 17; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;

@@ -67,14 +67,20 @@ def main() -> None:
     for needle, label in (
         ('resolveImage("settings-neutral")', "exact neutral asset lookup"),
         ('"SETTINGS ASSET ERROR"', "missing-asset diagnostic"),
-        ('"settings-wifi-pressed"', "Wi-Fi pressed patch"),
-        ('"settings-bluetooth-pressed"', "Bluetooth pressed patch"),
-        ('"settings-display-pressed"', "Display pressed patch"),
-        ('"settings-sound-pressed"', "Sound pressed patch"),
-        ("renderSettingsLiveStatus(root, resolveImage, state);", "live status composition"),
+        ("selectedRowId", "shared selected-row state"),
+        ("drawSelectedSettingsRow(root, selectedIndex)", "bounded selected-row treatment"),
+        ("renderSettingsLiveStatus(root, state);", "live status composition"),
         ("renderSettingsLiveBrightness(root, state);", "live brightness composition"),
     ):
         contains(settings_render, needle, label)
+    for forbidden, label in (
+        ('"settings-wifi-pressed"', "Wi-Fi full-row pressed crop"),
+        ('"settings-bluetooth-pressed"', "Bluetooth full-row pressed crop"),
+        ('"settings-display-pressed"', "Display full-row pressed crop"),
+        ('"settings-sound-pressed"', "Sound full-row pressed crop"),
+    ):
+        if forbidden in settings_render:
+            fail(f"{label} remains in runtime Settings composition")
     for forbidden, label in (
         ("drawGear(", "native Settings gear redraw"),
         ("kSettingsTitle", "native Settings title redraw"),
@@ -86,12 +92,13 @@ def main() -> None:
 
     status = renderer[renderer.index("void renderSettingsLiveStatus"):renderer.index("void renderSettingsLiveBrightness")]
     contains(status, "state.timeText == nullptr ? \"--:--\"", "deterministic missing-clock fallback")
-    for token, label in (("153, 45", "Bluetooth overlay position"), ("181, 45", "Wi-Fi overlay position"),
+    for token, label in (("153, 45", "Bluetooth overlay position"), ("centerX = 192", "Wi-Fi overlay position"),
                          ("217, 50", "clock overlay position"), ("264, 45", "cloud overlay position"),
                          ("291, 52", "battery overlay position")):
         contains(status, token, label)
-    for token in ("settings-status-bluetooth-active", "settings-status-wifi-active", "settings-status-cloud-active"):
-        contains(status, token, "shared active status asset")
+    for token, label in (("generated_ui::kSettingsIconActiveColor", "shared active status color"),
+                         ("generated_ui::kSettingsIconActiveInnerGlow", "shared status inner glow")):
+        contains(status, token, label)
 
     brightness = renderer[renderer.index("void renderSettingsLiveBrightness"):renderer.index("void renderSettings(")]
     contains(brightness, "makePanel(root, 63, 349, 342, 75", "brightness mask clear")

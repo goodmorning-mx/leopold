@@ -230,14 +230,14 @@ void drawX(lv_obj_t* parent, lv_color_t color, int16_t size = 32) {
   }
 }
 
-void drawPairedCircles(lv_obj_t* root, int16_t x, int16_t y, lv_color_t color) {
-  const auto disc = [root, color](int16_t left, int16_t top, int16_t size) {
+void drawPairedCircles(lv_obj_t* root, int16_t x, int16_t y, lv_color_t color, lv_color_t glow) {
+  const auto disc = [root, color, glow](int16_t left, int16_t top, int16_t size) {
     lv_obj_t* object = makePanel(root, left, top, size, size, size / 2, color);
     lv_obj_set_style_border_width(object, 1, 0);
     lv_obj_set_style_border_color(object, lv_color_hex(0xF3F6FA), 0);
     lv_obj_set_style_shadow_width(object, generated_ui::kSettingsCloudGlowBlur, 0);
     lv_obj_set_style_shadow_opa(object, LV_OPA_80, 0);
-    lv_obj_set_style_shadow_color(object, lv_color_hex(0xA9C9F4), 0);
+    lv_obj_set_style_shadow_color(object, glow, 0);
   };
   disc(x, y + 2, 14);
   disc(x + 8, y + 5, 12);
@@ -276,11 +276,6 @@ void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t 
     lv_obj_set_style_line_color(object, color, 0);
     lv_obj_set_style_line_width(object, static_cast<int16_t>(std::lround(width * generated_ui::kSettingsIconScale)), 0);
     lv_obj_set_style_line_rounded(object, true, 0);
-    if (active) {
-      lv_obj_set_style_shadow_width(object, 2, 0);
-      lv_obj_set_style_shadow_color(object, lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow), 0);
-      lv_obj_set_style_shadow_opa(object, LV_OPA_80, 0);
-    }
   };
   const auto point = [centerX, centerY](float dx, float dy) -> lv_point_precise_t {
     return {static_cast<int16_t>(std::lround(centerX + dx * generated_ui::kSettingsIconScale)), static_cast<int16_t>(std::lround(centerY + dy * generated_ui::kSettingsIconScale))};
@@ -329,6 +324,25 @@ void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t 
     sound[i] = point(std::cos(angle) * 11.0f, std::sin(angle) * 11.0f);
   }
   line(speaker, 7, 3); line(sound, 13, 3);
+}
+
+void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index) {
+  const int16_t y = static_cast<int16_t>(127 + index * 54);
+  const lv_color_t active = lv_color_hex(generated_ui::kSettingsIconActiveColor);
+  const lv_color_t innerGlow = lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow);
+  lv_obj_t* border = makePanel(root, 72, y, 322, 56, 28, lv_color_black());
+  lv_obj_set_style_bg_opa(border, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(border, 2, 0);
+  lv_obj_set_style_border_color(border, active, 0);
+  lv_obj_set_style_shadow_width(border, 0, 0);
+  lv_obj_set_style_shadow_opa(border, LV_OPA_TRANSP, 0);
+  lv_obj_t* inset = makePanel(root, 74, static_cast<int16_t>(y + 2), 318, 52, 26, lv_color_black());
+  lv_obj_set_style_bg_opa(inset, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(inset, 1, 0);
+  lv_obj_set_style_border_color(inset, innerGlow, 0);
+  lv_obj_set_style_border_opa(inset, LV_OPA_90, 0);
+  drawSettingsIcon(root, index, 100, static_cast<int16_t>(y + 28), true);
+  drawChevron(root, 365, static_cast<int16_t>(y + 19), true);
 }
 
 void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
@@ -438,25 +452,48 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   lv_obj_set_size(wifiDot, 4, 4); lv_obj_set_pos(wifiDot, wifiCenterX - 2, top ? 41 : 228);
   lv_obj_set_style_radius(wifiDot, LV_RADIUS_CIRCLE, 0); lv_obj_set_style_bg_color(wifiDot, wifiColor, 0); lv_obj_set_style_bg_opa(wifiDot, LV_OPA_COVER, 0); lv_obj_set_style_border_width(wifiDot, 0, 0);
   const lv_color_t cloudColor = state.cloudConnected ? active : gray;
-  drawPairedCircles(root, cloudX, top ? 31 : 216, cloudColor);
+  drawPairedCircles(root, cloudX, top ? 31 : 216, cloudColor, lv_color_hex(0xA9C9F4));
 }
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
 
-void renderSettingsLiveStatus(lv_obj_t* root, SharedImageResolver resolveImage, const SharedRenderState& state) {
-  // The immutable banner already owns its neutral icons. Active variants are
-  // exact-position crops derived from that same artwork, so no glyph is drawn
-  // twice and the browser/device select identical pixels for each live state.
-  const auto activeIcon = [root, resolveImage](bool active, const char* id, int16_t x, int16_t y) {
-    const lv_image_dsc_t* asset = active && resolveImage != nullptr ? resolveImage(id) : nullptr;
-    if (asset == nullptr) return;
-    lv_obj_t* overlay = lv_image_create(root);
-    lv_image_set_src(overlay, asset);
-    lv_obj_set_pos(overlay, x, y);
-  };
-  activeIcon(state.bluetoothConnected, "settings-status-bluetooth-active", 153, 45);
-  activeIcon(state.wifiConnected, "settings-status-wifi-active", 181, 45);
-  activeIcon(state.cloudConnected, "settings-status-cloud-active", 264, 45);
+void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state) {
+  // Keep the banner shell and its live text in the neutral base. Each active
+  // value paints only its own bounded glyph with the shared active palette.
+  const lv_color_t active = lv_color_hex(generated_ui::kSettingsIconActiveColor);
+  const lv_color_t innerGlow = lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow);
+  if (state.bluetoothConnected) {
+    // Clip the glyph to its 22x22 component bounds so the banner shell and
+    // neighboring values cannot change when Bluetooth changes.
+    lv_obj_t* bluetoothBounds = lv_obj_create(root);
+    lv_obj_set_size(bluetoothBounds, 22, 22);
+    lv_obj_set_pos(bluetoothBounds, 153, 45);
+    lv_obj_set_style_bg_opa(bluetoothBounds, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(bluetoothBounds, 0, 0);
+    lv_obj_t* bluetooth = makeLabel(bluetoothBounds, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, active);
+    lv_obj_set_pos(bluetooth, 0, 0);
+  }
+  if (state.wifiConnected) {
+    const int16_t centerX = 192;
+    const int16_t centerY = 56;
+    const int16_t radii[] = {10, 6};
+    for (int16_t radius : radii) {
+      static lv_point_precise_t points[13];
+      for (int index = 0; index <= 12; ++index) {
+        const double radians = (225.0 + (90.0 * index / 12.0)) * 3.14159265358979323846 / 180.0;
+        points[index].x = static_cast<int16_t>(std::lround(centerX + std::cos(radians) * radius));
+        points[index].y = static_cast<int16_t>(std::lround(centerY + std::sin(radians) * radius));
+      }
+      lv_obj_t* arc = lv_line_create(root);
+      lv_line_set_points(arc, points, 13);
+      lv_obj_set_size(arc, 466, 466);
+      lv_obj_set_style_line_color(arc, active, 0);
+      lv_obj_set_style_line_width(arc, 2, 0);
+      lv_obj_set_style_line_rounded(arc, true, 0);
+    }
+    lv_obj_t* dot = makePanel(root, 190, 61, 4, 4, 2, active);
+  }
+  if (state.cloudConnected) drawPairedCircles(root, 264, 45, active, innerGlow);
   lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, lv_color_hex(0xF4F7FC));
   lv_obj_set_style_text_letter_space(time, -2, 0);
   lv_obj_set_pos(time, 217, 50);
@@ -514,7 +551,7 @@ void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state
   lv_obj_set_pos(brightness, kSettingsBrightnessLabelX - 80, kSettingsBrightnessLabelY);
 }
 
-void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const SharedRenderState& state, const char* pressedComponentId) {
+void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const SharedRenderState& state, const char* selectedRowId) {
   lv_obj_set_style_bg_color(root, lv_color_black(), 0);
 
   const lv_image_dsc_t* neutral = resolveImage == nullptr ? nullptr : resolveImage("settings-neutral");
@@ -528,26 +565,15 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   lv_obj_t* base = lv_image_create(root);
   lv_image_set_src(base, neutral);
   lv_obj_set_pos(base, 0, 0);
-  // Settings is one shared neutral screen plus a selected-row crop. The crop
-  // is deliberately limited to the held row: its approved artwork changes
-  // only the border/glow, icon, and chevron in the shared active palette;
-  // the label remains the neutral white label. Never replace the full screen.
-  const char* patchId = nullptr;
-  int16_t patchX = 0;
-  int16_t patchY = 0;
-  if (pressedComponentId != nullptr) {
-    if (strcmp(pressedComponentId, "settings-wifi") == 0) { patchId = "settings-wifi-pressed"; patchX = 72; patchY = 127; }
-    else if (strcmp(pressedComponentId, "settings-bluetooth") == 0) { patchId = "settings-bluetooth-pressed"; patchX = 72; patchY = 181; }
-    else if (strcmp(pressedComponentId, "settings-display") == 0) { patchId = "settings-display-pressed"; patchX = 72; patchY = 235; }
-    else if (strcmp(pressedComponentId, "settings-sound") == 0) { patchId = "settings-sound-pressed"; patchX = 72; patchY = 289; }
+  uint8_t selectedIndex = 255;
+  if (selectedRowId != nullptr) {
+    if (strcmp(selectedRowId, "settings-wifi") == 0) selectedIndex = 0;
+    else if (strcmp(selectedRowId, "settings-bluetooth") == 0) selectedIndex = 1;
+    else if (strcmp(selectedRowId, "settings-display") == 0) selectedIndex = 2;
+    else if (strcmp(selectedRowId, "settings-sound") == 0) selectedIndex = 3;
   }
-  const lv_image_dsc_t* patch = patchId == nullptr || resolveImage == nullptr ? nullptr : resolveImage(patchId);
-  if (patch != nullptr) {
-    lv_obj_t* overlay = lv_image_create(root);
-    lv_image_set_src(overlay, patch);
-    lv_obj_set_pos(overlay, patchX, patchY);
-  }
-  renderSettingsLiveStatus(root, resolveImage, state);
+  if (selectedIndex < 4) drawSelectedSettingsRow(root, selectedIndex);
+  renderSettingsLiveStatus(root, state);
   renderSettingsLiveBrightness(root, state);
 }
 
@@ -623,7 +649,7 @@ void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver
 
 }  // namespace
 
-void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* pressedComponentId, const SharedRenderState* state) {
+void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* selectedRowId, const SharedRenderState* state) {
   lv_obj_clean(root);
   lv_obj_remove_flag(root, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_bg_color(root, color565(screen.background), 0);
@@ -631,12 +657,12 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   lv_obj_set_style_border_width(root, 0, 0);
 
   if (state != nullptr && strcmp(screen.screenId, "device-control-center") == 0) {
-    renderSettings(root, screen, resolveImage, *state, pressedComponentId);
+    renderSettings(root, screen, resolveImage, *state, selectedRowId);
     return;
   }
 
   if (strcmp(screen.screenId, "spotify-player") == 0) {
-    renderSpotify(root, screen, resolveImage, pressedComponentId);
+    renderSpotify(root, screen, resolveImage, selectedRowId);
     return;
   }
 
@@ -680,8 +706,8 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
       }
     } else if (component.type == ComponentType::kButton) {
       lv_obj_t* button = home
-          ? makeHomeButton(root, component, pressedComponentId)
-          : makeButton(root, component, pressedComponentId);
+          ? makeHomeButton(root, component, selectedRowId)
+          : makeButton(root, component, selectedRowId);
       const lv_image_dsc_t* source = resolveImage == nullptr ? nullptr : resolveImage(component.id);
       if (strcmp(component.icon, "x") == 0) {
         lv_obj_t* placeholder = makeLabel(button, "X", &lv_font_montserrat_28, color565(component.color));
