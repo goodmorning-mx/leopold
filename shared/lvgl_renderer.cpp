@@ -28,7 +28,8 @@ constexpr int16_t kSettingsIconCenterXOffset = 27;
 constexpr int16_t kSettingsIconCenterYOffset = 49;
 constexpr float kSettingsIconScale = 1.15f;
 constexpr uint32_t kSettingsIconColor = 0xFFFFFF;
-constexpr uint32_t kSettingsIconActiveColor = 0x0DE3FF;
+constexpr uint32_t kSettingsIconActiveColor = 0x00D2FF;
+constexpr uint32_t kSettingsIconActiveInnerGlow = 0x0084C8;
 constexpr int16_t kSettingsChevronXOffset = 293;
 constexpr int16_t kSettingsChevronYOffset = 19;
 constexpr int16_t kSettingsChevronMidX = 7;
@@ -249,27 +250,37 @@ void drawGear(lv_obj_t* parent, lv_color_t color) {
   lv_obj_center(gear);
 }
 
-void drawChevron(lv_obj_t* parent, int16_t x, int16_t y) {
+void drawChevron(lv_obj_t* parent, int16_t x, int16_t y, bool active) {
   static lv_point_precise_t points[] = {{0, 0}, {generated_ui::kSettingsChevronMidX, generated_ui::kSettingsChevronMidY}, {0, generated_ui::kSettingsChevronEndY}};
   lv_obj_t* line = lv_line_create(parent);
   lv_line_set_points(line, points, 3);
   lv_obj_set_pos(line, x, y);
   lv_obj_set_size(line, 10, 18);
-  lv_obj_set_style_line_color(line, lv_color_hex(0xD5E3FA), 0);
+  lv_obj_set_style_line_color(line, lv_color_hex(active ? generated_ui::kSettingsIconActiveColor : 0xD5E3FA), 0);
   lv_obj_set_style_line_width(line, generated_ui::kSettingsChevronStroke, 0);
   lv_obj_set_style_line_rounded(line, true, 0);
+  if (active) {
+    lv_obj_set_style_shadow_width(line, 2, 0);
+    lv_obj_set_style_shadow_color(line, lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow), 0);
+    lv_obj_set_style_shadow_opa(line, LV_OPA_80, 0);
+  }
 }
 
 void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t centerY, bool active) {
   constexpr float pi = 3.14159265358979323846f;
   const lv_color_t color = lv_color_hex(active ? generated_ui::kSettingsIconActiveColor : generated_ui::kSettingsIconColor);
-  const auto line = [parent, color](const lv_point_precise_t* points, uint32_t count, int16_t width = 3) {
+  const auto line = [parent, color, active](const lv_point_precise_t* points, uint32_t count, int16_t width = 3) {
     lv_obj_t* object = lv_line_create(parent);
     lv_line_set_points(object, points, count);
     lv_obj_set_size(object, 466, 466);
     lv_obj_set_style_line_color(object, color, 0);
     lv_obj_set_style_line_width(object, static_cast<int16_t>(std::lround(width * generated_ui::kSettingsIconScale)), 0);
     lv_obj_set_style_line_rounded(object, true, 0);
+    if (active) {
+      lv_obj_set_style_shadow_width(object, 2, 0);
+      lv_obj_set_style_shadow_color(object, lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow), 0);
+      lv_obj_set_style_shadow_opa(object, LV_OPA_80, 0);
+    }
   };
   const auto point = [centerX, centerY](float dx, float dy) -> lv_point_precise_t {
     return {static_cast<int16_t>(std::lround(centerX + dx * generated_ui::kSettingsIconScale)), static_cast<int16_t>(std::lround(centerY + dy * generated_ui::kSettingsIconScale))};
@@ -517,6 +528,10 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   lv_obj_t* base = lv_image_create(root);
   lv_image_set_src(base, neutral);
   lv_obj_set_pos(base, 0, 0);
+  // Settings is one shared neutral screen plus a selected-row crop. The crop
+  // is deliberately limited to the held row: its approved artwork changes
+  // only the border/glow, icon, and chevron in the shared active palette;
+  // the label remains the neutral white label. Never replace the full screen.
   const char* patchId = nullptr;
   int16_t patchX = 0;
   int16_t patchY = 0;

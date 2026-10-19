@@ -30,7 +30,7 @@
     "status_cloud": {"x": 277, "y": 48, "large_center": [7, 9], "large_radius": 7, "small_center": [14, 11], "small_radius": 6, "dot_center": [14, 2], "dot_radius": 2, "glow_blur": 4},
     "title": {"gear_x": 166, "gear_y": 102, "gear_diameter": 40, "text_x": 196, "text_y": 92, "font_size": 25},
     "icon_bubble": {"x_offset": 2, "y_offset": -1, "diameter": 50, "radius": 25, "gradient_inner": "#D5E2F3", "gradient_outer": "#91A3BF", "active_gradient_inner": "#C7E5FF", "active_gradient_outer": "#0B5B9B", "glow": "#E7F0FF", "glow_blur": 18},
-    "icon_center": {"x_offset": 27, "y_offset": 24.5, "scale": 1.15, "stroke": 2.8, "color": "#FFFFFF", "active_color": "#0DE3FF"},
+    "icon_center": {"x_offset": 27, "y_offset": 24.5, "scale": 1.15, "stroke": 2.8, "color": "#FFFFFF", "active_color": "#00D2FF", "active_inner_glow": "#0084C8"},
     "chevron": {"x_offset": 293, "y_offset": 19, "points": [[0, 0], [6, 6], [0, 12]], "stroke": 3, "color": "#D5E3FA", "glow": "#D5E3FA", "glow_blur": 2},
     "rows": [
       {"id": "settings-wifi", "x": 73, "y": 130, "width": 320, "height": 49, "active": true, "label": "WiFi", "icon": "wifi"},

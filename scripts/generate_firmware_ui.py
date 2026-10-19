@@ -147,6 +147,7 @@ lines.extend([
     f"constexpr float kSettingsIconScale = {settings_center['scale']:.2f}f;",
     f"constexpr uint32_t kSettingsIconColor = 0x{settings_center['color'].replace('#', '')};",
     f"constexpr uint32_t kSettingsIconActiveColor = 0x{settings_center['active_color'].replace('#', '')};",
+    f"constexpr uint32_t kSettingsIconActiveInnerGlow = 0x{settings_center['active_inner_glow'].replace('#', '')};",
     f"constexpr int16_t kSettingsChevronXOffset = {settings_chevron['x_offset']};",
     f"constexpr int16_t kSettingsChevronYOffset = {settings_chevron['y_offset']};",
     f"constexpr int16_t kSettingsChevronMidX = {settings_chevron['points'][1][0]};",
