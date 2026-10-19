@@ -22,6 +22,14 @@ extern lv_image_dsc_t kSettingsWifiPressed;
 extern lv_image_dsc_t kSettingsBluetoothPressed;
 extern lv_image_dsc_t kSettingsDisplayPressed;
 extern lv_image_dsc_t kSettingsSoundPressed;
+extern lv_image_dsc_t kSettingsWifiPressedIconMask;
+extern lv_image_dsc_t kSettingsWifiPressedChevronMask;
+extern lv_image_dsc_t kSettingsBluetoothPressedIconMask;
+extern lv_image_dsc_t kSettingsBluetoothPressedChevronMask;
+extern lv_image_dsc_t kSettingsDisplayPressedIconMask;
+extern lv_image_dsc_t kSettingsDisplayPressedChevronMask;
+extern lv_image_dsc_t kSettingsSoundPressedIconMask;
+extern lv_image_dsc_t kSettingsSoundPressedChevronMask;
 
 // Legacy SD loader retained for diagnostics; normal boot loads every asset
 // from GoodMorning Cloud so the device cannot render stale local bytes.

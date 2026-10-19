@@ -54,6 +54,14 @@ lv_image_dsc_t kSettingsWifiPressed = {};
 lv_image_dsc_t kSettingsBluetoothPressed = {};
 lv_image_dsc_t kSettingsDisplayPressed = {};
 lv_image_dsc_t kSettingsSoundPressed = {};
+lv_image_dsc_t kSettingsWifiPressedIconMask = {};
+lv_image_dsc_t kSettingsWifiPressedChevronMask = {};
+lv_image_dsc_t kSettingsBluetoothPressedIconMask = {};
+lv_image_dsc_t kSettingsBluetoothPressedChevronMask = {};
+lv_image_dsc_t kSettingsDisplayPressedIconMask = {};
+lv_image_dsc_t kSettingsDisplayPressedChevronMask = {};
+lv_image_dsc_t kSettingsSoundPressedIconMask = {};
+lv_image_dsc_t kSettingsSoundPressedChevronMask = {};
 
 namespace {
 
@@ -75,6 +83,14 @@ AssetSlot assets[] = {
     {"settings-bluetooth-pressed", "settings-bluetooth-pressed-322x56.bin", 322, 56, &kSettingsBluetoothPressed},
     {"settings-display-pressed", "settings-display-pressed-322x56.bin", 322, 56, &kSettingsDisplayPressed},
     {"settings-sound-pressed", "settings-sound-pressed-322x56.bin", 322, 56, &kSettingsSoundPressed},
+    {"settings-wifi-pressed-icon-mask", "settings-wifi-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsWifiPressedIconMask},
+    {"settings-wifi-pressed-chevron-mask", "settings-wifi-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsWifiPressedChevronMask},
+    {"settings-bluetooth-pressed-icon-mask", "settings-bluetooth-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsBluetoothPressedIconMask},
+    {"settings-bluetooth-pressed-chevron-mask", "settings-bluetooth-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsBluetoothPressedChevronMask},
+    {"settings-display-pressed-icon-mask", "settings-display-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsDisplayPressedIconMask},
+    {"settings-display-pressed-chevron-mask", "settings-display-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsDisplayPressedChevronMask},
+    {"settings-sound-pressed-icon-mask", "settings-sound-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsSoundPressedIconMask},
+    {"settings-sound-pressed-chevron-mask", "settings-sound-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsSoundPressedChevronMask},
 };
 
 }  // namespace

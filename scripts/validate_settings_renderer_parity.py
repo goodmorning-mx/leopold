@@ -68,7 +68,7 @@ def main() -> None:
         ('resolveImage("settings-neutral")', "exact neutral asset lookup"),
         ('"SETTINGS ASSET ERROR"', "missing-asset diagnostic"),
         ("selectedRowId", "shared selected-row state"),
-        ("drawSelectedSettingsRow(root, selectedIndex)", "bounded selected-row treatment"),
+        ("drawSelectedSettingsRow(root, selectedIndex, resolveImage)", "bounded selected-row treatment"),
         ("renderSettingsLiveStatus(root, state);", "live status composition"),
         ("renderSettingsLiveBrightness(root, state);", "live brightness composition"),
     ):
@@ -115,6 +115,15 @@ def main() -> None:
     if "function drawSettings(" in legacy_canvas:
         fail("a second Settings renderer remains in the legacy browser canvas")
     contains(lvgl_canvas, "settings-neutral", "browser exact Settings asset mapping")
+    for key in (
+        "settings-wifi-pressed-icon-mask", "settings-wifi-pressed-chevron-mask",
+        "settings-bluetooth-pressed-icon-mask", "settings-bluetooth-pressed-chevron-mask",
+        "settings-display-pressed-icon-mask", "settings-display-pressed-chevron-mask",
+        "settings-sound-pressed-icon-mask", "settings-sound-pressed-chevron-mask",
+    ):
+        contains(renderer, key, f"shared bounded component asset {key}")
+        contains(lvgl_canvas, key, f"browser bounded component asset {key}")
+        contains(wasm, key, f"WASM bounded component asset {key}")
     contains(wasm, '"settings-neutral"', "WASM exact Settings asset mapping")
     contains(build, "shared/lvgl_renderer.cpp", "WASM shared renderer source")
 

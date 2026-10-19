@@ -326,7 +326,7 @@ void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t 
   line(speaker, 7, 3); line(sound, 13, 3);
 }
 
-void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index) {
+void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index, SharedImageResolver resolveImage) {
   const int16_t y = static_cast<int16_t>(127 + index * 54);
   const lv_color_t active = lv_color_hex(generated_ui::kSettingsIconActiveColor);
   const lv_color_t innerGlow = lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow);
@@ -341,8 +341,28 @@ void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index) {
   lv_obj_set_style_border_width(inset, 1, 0);
   lv_obj_set_style_border_color(inset, innerGlow, 0);
   lv_obj_set_style_border_opa(inset, LV_OPA_90, 0);
-  drawSettingsIcon(root, index, 100, static_cast<int16_t>(y + 28), true);
-  drawChevron(root, 365, static_cast<int16_t>(y + 19), true);
+  // The neutral artwork bakes white glyphs into the icon and chevron. These
+  // derived transparent masks contain only the approved changed pixels for
+  // those two bounded components; the row body and label remain untouched.
+  static const char* iconKeys[] = {
+      "settings-wifi-pressed-icon-mask", "settings-bluetooth-pressed-icon-mask",
+      "settings-display-pressed-icon-mask", "settings-sound-pressed-icon-mask"};
+  static const char* chevronKeys[] = {
+      "settings-wifi-pressed-chevron-mask", "settings-bluetooth-pressed-chevron-mask",
+      "settings-display-pressed-chevron-mask", "settings-sound-pressed-chevron-mask"};
+  const lv_image_dsc_t* iconMask = resolveImage == nullptr ? nullptr : resolveImage(iconKeys[index]);
+  const lv_image_dsc_t* chevronMask = resolveImage == nullptr ? nullptr : resolveImage(chevronKeys[index]);
+  if (iconMask != nullptr && chevronMask != nullptr) {
+    lv_obj_t* icon = lv_image_create(root);
+    lv_image_set_src(icon, iconMask);
+    lv_obj_set_pos(icon, 72, y);
+    lv_obj_t* chevron = lv_image_create(root);
+    lv_image_set_src(chevron, chevronMask);
+    lv_obj_set_pos(chevron, 355, y);
+  } else {
+    drawSettingsIcon(root, index, 100, static_cast<int16_t>(y + 28), true);
+    drawChevron(root, 365, static_cast<int16_t>(y + 19), true);
+  }
 }
 
 void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderState& state) {
@@ -572,7 +592,7 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
     else if (strcmp(selectedRowId, "settings-display") == 0) selectedIndex = 2;
     else if (strcmp(selectedRowId, "settings-sound") == 0) selectedIndex = 3;
   }
-  if (selectedIndex < 4) drawSelectedSettingsRow(root, selectedIndex);
+  if (selectedIndex < 4) drawSelectedSettingsRow(root, selectedIndex, resolveImage);
   renderSettingsLiveStatus(root, state);
   renderSettingsLiveBrightness(root, state);
 }

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "mode": "reconstructed-ui-component-profile",
+  "framebuffer": [466, 466],
+  "clock_mask": [211, 48, 68, 31],
+  "rows": {
+    "settings-wifi": {"y": 127, "icon_mask": [72, 127, 61, 56], "chevron_mask": [355, 127, 39, 56], "interior_mask": [133, 135, 222, 40], "row_mask": [72, 127, 322, 56]},
+    "settings-bluetooth": {"y": 181, "icon_mask": [72, 181, 61, 56], "chevron_mask": [355, 181, 39, 56], "interior_mask": [133, 189, 222, 40], "row_mask": [72, 181, 322, 56]},
+    "settings-display": {"y": 235, "icon_mask": [72, 235, 61, 56], "chevron_mask": [355, 235, 39, 56], "interior_mask": [133, 243, 222, 40], "row_mask": [72, 235, 322, 56]},
+    "settings-sound": {"y": 289, "icon_mask": [72, 289, 61, 56], "chevron_mask": [355, 289, 39, 56], "interior_mask": [133, 297, 222, 40], "row_mask": [72, 289, 322, 56]}
+  },
+  "requirements": {
+    "outside_row_mask": {"max_pixels_over_delta": 0, "max_channel_delta": 0},
+    "row_interior_against_neutral": {"max_pixels_over_delta": 0, "max_channel_delta": 0},
+    "icon_and_chevron_against_derived_masks": {"max_pixels_over_delta": 0, "max_channel_delta": 0},
+    "banner_outside_status_masks": {"max_pixels_over_delta": 0, "max_channel_delta": 0}
+  },
+  "palette": {"active": "#00D2FF", "inner_glow": "#0084C8", "label": "#FFFFFF"}
+}

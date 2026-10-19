@@ -12,8 +12,8 @@ static uint16_t framebuffer[kWidth * kHeight];
 static uint16_t drawBuffer[kWidth * kHeight];
 static leopold::SduiScreen screen;
 static char pressedId[leopold::kMaxComponentId + 1];
-static lv_image_dsc_t assets[17];
-static bool assetReady[17];
+static lv_image_dsc_t assets[21];
+static bool assetReady[21];
 static char renderTime[16] = "--:--";
 static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
 
@@ -28,9 +28,14 @@ static int assetIndex(const char* key) {
   static const char* keys[] = {
       "home", "flower", "chevron", "open-clock", "open-weather",
       "open-navigation", "open-whatsapp", "open-spotify", "spotify-large",
-      "settings-neutral", "settings-status-bluetooth-active", "settings-status-wifi-active", "settings-status-cloud-active",
+      "settings-neutral", "settings-wifi-pressed-icon-mask", "settings-wifi-pressed-chevron-mask",
+      "settings-bluetooth-pressed-icon-mask", "settings-bluetooth-pressed-chevron-mask",
+      "settings-display-pressed-icon-mask", "settings-display-pressed-chevron-mask",
+      "settings-sound-pressed-icon-mask", "settings-sound-pressed-chevron-mask",
+      "settings-status-bluetooth-active",
+      "settings-status-wifi-active", "settings-status-cloud-active",
   };
-  for (int index = 0; index < 17; ++index) if (strcmp(keys[index], key) == 0) return index;
+  for (int index = 0; index < 21; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;
 }
 
@@ -54,7 +59,7 @@ void lvgl_wasm_init() {
 }
 
 void lvgl_wasm_set_asset(int index, const uint8_t* data, uint32_t size, uint16_t width, uint16_t height) {
-  if (index < 0 || index >= 17 || data == nullptr || size == 0) return;
+  if (index < 0 || index >= 21 || data == nullptr || size == 0) return;
   assets[index] = {
       .header = {
           .magic = LV_IMAGE_HEADER_MAGIC,
