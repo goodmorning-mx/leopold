@@ -980,8 +980,9 @@ void processInput(uint32_t now) {
         lastHitTraceAt = now;
       }
     }
-    if (pressed != nullptr && screen.setPressedButton(pressed->id)) {
-      if (touch.traceEnabled()) Serial.printf("TOUCH_TRACE render pressed=%s\n", pressed->id);
+    const char* pressedId = pressed == nullptr ? nullptr : pressed->id;
+    if (screen.setPressedButton(pressedId)) {
+      if (touch.traceEnabled()) Serial.printf("TOUCH_TRACE render pressed=%s\n", pressedId == nullptr ? "none" : pressedId);
       screen.renderSduiScreen(currentUi);
     }
   } else if (hasGesture && gesture != TouchGesture::kDrag &&

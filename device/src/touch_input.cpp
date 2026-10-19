@@ -45,7 +45,7 @@ void TouchInput::begin() {
   if (!touchBus.begin(
       board::kTouchSda,
       board::kTouchScl,
-      300000)) {
+      100000)) {
     Serial.println("Touch I2C initialization failed");
     return;
   }
@@ -152,12 +152,15 @@ bool TouchInput::read(TouchPoint& point) {
   }
   touchBus.beginTransmission(address_);
   touchBus.write(0x02);
-  const uint8_t writeStatus = touchBus.endTransmission(true);
+  // Keep the register pointer transaction together with the following read.
+  // The FT3x68 on this board is reliable at standard-mode I2C speed but can
+  // NACK the faster bus during normal touch polling.
+  const uint8_t writeStatus = touchBus.endTransmission(false);
   if (writeStatus != 0) {
     traceSample("register_write_error", writeStatus, 0, 0);
     return false;
   }
-  const uint8_t received = touchBus.requestFrom(address_, static_cast<uint8_t>(5));
+  const uint8_t received = touchBus.requestFrom(address_, static_cast<uint8_t>(5), true);
   if (received != 5) {
     traceSample("short_read", received, 0, 0);
     return false;
