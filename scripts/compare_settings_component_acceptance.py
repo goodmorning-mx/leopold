@@ -77,6 +77,25 @@ def compare_component(mask: Image.Image, capture: Image.Image, neutral: Image.Im
     return {"bounds": list(bounds), "compared_pixels": sum(pm[x, y][3] != 0 for y in range(height) for x in range(width)), "pixels_over_delta": changed, "maximum_channel_delta": maximum, "passed": changed == 0}
 
 
+def transparent_edge(mask: Image.Image) -> dict[str, object]:
+    alpha = mask.convert("RGBA").getchannel("A")
+    edge = [alpha.getpixel((x, y)) for x in range(alpha.width) for y in range(alpha.height) if x in (0, alpha.width - 1) or y in (0, alpha.height - 1)]
+    opaque = sum(value != 0 for value in edge)
+    return {"edge_pixels": len(edge), "opaque_edge_pixels": opaque, "passed": opaque == 0}
+
+
+def compare_seams(neutral: Image.Image, capture: Image.Image, regions: list[tuple[int, int, int, int]]) -> dict[str, object]:
+    pixels = neutral.load(), capture.load()
+    changed = maximum = 0
+    for left, top, width, height in regions:
+        for y in range(top, top + height):
+            for x in range(left, left + width):
+                delta = max(abs(pixels[0][x, y][channel] - pixels[1][x, y][channel]) for channel in range(3))
+                maximum = max(maximum, delta)
+                changed += delta != 0
+    return {"regions": [list(region) for region in regions], "compared_pixels": sum(w * h for _, _, w, h in regions), "pixels_over_delta": changed, "maximum_channel_delta": maximum, "passed": changed == 0}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("capture_dir", type=Path)
@@ -97,6 +116,9 @@ def main() -> None:
             "row_interior_against_neutral": compare(neutral, capture, (133, y + 8, 222, 40)),
             "icon_against_derived_mask": compare_component(icon, capture, neutral, (72, y, 61, 56)),
             "chevron_against_derived_mask": compare_component(chevron, capture, neutral, (355, y, 39, 56)),
+            "icon_mask_edge": transparent_edge(icon),
+            "chevron_mask_edge": transparent_edge(chevron),
+            "seam_boundaries": compare_seams(neutral, capture, [(132, y + 6, 4, 44), (353, y + 6, 4, 44)]),
             "profile": profile["rows"][row_id],
         }
     connected = Image.open(args.capture_dir / "settings-connected.png").convert("RGB")
@@ -104,12 +126,14 @@ def main() -> None:
     for name, (filename, bounds) in BANNER_ASSETS.items():
         asset = load_framebuffer_asset(ROOT / "shared/assets" / filename, bounds[2], bounds[3])
         banner[name] = compare_component(asset, connected, neutral, bounds)
+        banner[name]["mask_edge"] = transparent_edge(asset)
         banner[name]["profile"] = profile["banner"][name]
     result = {"profile": str((ROOT / "shared/settings-acceptance-profile.json").relative_to(ROOT)), "captures": rows, "passed": all(
         item["outside_row_mask"]["passed"] and item["row_interior_against_neutral"]["passed"] and
         item["icon_against_derived_mask"]["passed"] and item["chevron_against_derived_mask"]["passed"]
+        and item["icon_mask_edge"]["passed"] and item["chevron_mask_edge"]["passed"] and item["seam_boundaries"]["passed"]
         for item in rows.values()
-    ) and all(item["passed"] for item in banner.values()), "banner": banner}
+    ) and all(item["passed"] and item["mask_edge"]["passed"] for item in banner.values()), "banner": banner}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps({"report": str(args.output), "passed": result["passed"]}))
