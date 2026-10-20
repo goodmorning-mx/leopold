@@ -218,19 +218,20 @@ class FlashFirmwareTests(unittest.TestCase):
             flash.load_package(package)
 
     def test_rejects_wrong_schema_chip_offsets_and_ranges(self) -> None:
-        package = self.make_package()
-        self.rewrite_manifest(package, lambda manifest: manifest.update(schema_version=1))
-        with self.assertRaises(SystemExit):
-            flash.load_package(package)
-        self.rewrite_manifest(package, lambda manifest: manifest.update(schema_version=3, chip="esp32"))
-        with self.assertRaises(SystemExit):
-            flash.load_package(package)
-        self.rewrite_manifest(package, lambda manifest: manifest["images"]["firmware.bin"].update(flash_offset="not-an-offset"))
-        with self.assertRaises(SystemExit):
-            flash.load_package(package)
-        self.rewrite_manifest(package, lambda manifest: manifest["images"]["merged-flash.bin"].update(end_address="0x1000001"))
-        with self.assertRaises(SystemExit):
-            flash.load_package(package)
+        cases = [
+            (lambda m: m.update(schema_version=1), "unsupported manifest schema_version"),
+            (lambda m: m.update(chip="esp32"), "unexpected chip"),
+            (lambda m: m["images"]["firmware.bin"].update(flash_offset="not-an-offset"), "not a valid numeric offset"),
+            (lambda m: m["images"]["merged-flash.bin"].update(end_address="0x1000001"), "range is invalid or out of flash"),
+        ]
+        for index, (mutate, reason) in enumerate(cases):
+            with self.subTest(reason=reason):
+                # Each rejection must exercise its own defect, not inherit a
+                # wrong-chip failure that masks every later assertion.
+                package = self.make_package(f"malformed-{index}")
+                self.rewrite_manifest(package, mutate)
+                with self.assertRaisesRegex(SystemExit, reason):
+                    flash.load_package(package)
 
     def test_rejects_missing_binary_and_overlapping_ranges(self) -> None:
         package = self.make_package()
