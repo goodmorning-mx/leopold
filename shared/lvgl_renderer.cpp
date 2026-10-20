@@ -578,6 +578,8 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   lv_obj_set_style_bg_color(root, lv_color_black(), 0);
 
   const lv_image_dsc_t* neutral = resolveImage == nullptr ? nullptr : resolveImage("settings-neutral");
+  const lv_image_dsc_t* gears = resolveImage == nullptr ? nullptr : resolveImage("settings-gears-base");
+  if (gears != nullptr) neutral = gears;
   if (neutral == nullptr) {
     lv_obj_t* diagnostic = makeLabel(root, "SETTINGS ASSET ERROR", &lv_font_montserrat_20, lv_color_hex(0xFF453A));
     lv_obj_set_width(diagnostic, 466);

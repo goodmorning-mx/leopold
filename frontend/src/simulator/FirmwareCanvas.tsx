@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { SduiComponent, SduiScreen, SduiText } from './contract';
 import typography from '../shared/typography.json';
+import interaction from '../shared/interaction.json';
 import rendering from '../shared/rendering.json';
 import calibrationContract from '../shared/calibration.json';
 import referenceManifest from '../shared/reference-manifest.json';
@@ -8,6 +9,9 @@ import referenceManifest from '../shared/reference-manifest.json';
 export type FirmwareImages = Record<string, string>;
 
 type Props = {
+  demoWifiName: string;
+  demoPendingWifi: string;
+  demoSavedWifi: string[];
   screen: SduiScreen;
   images: FirmwareImages;
   clock24: boolean;
@@ -259,33 +263,33 @@ function drawCalibration(ctx: CanvasRenderingContext2D) {
   calibration.circles.radii.forEach((radius) => { ctx.beginPath(); ctx.arc(W / 2, H / 2, radius, 0, Math.PI * 2); ctx.stroke(); });
 }
 
-function drawBack(ctx: CanvasRenderingContext2D, x = 28, y = 43, w = 74, h = 48) {
+function drawBack(ctx: CanvasRenderingContext2D, x = interaction.local_panels.back.x, y = interaction.local_panels.back.y, w = interaction.local_panels.back.width, h = interaction.local_panels.back.height) {
   rounded(ctx, x, y, w, h, h / 2, '#1C1C1E'); centered(ctx, '‹', x + w / 2, y + 8, 32);
 }
 
-function drawConnectivity(ctx: CanvasRenderingContext2D, localPanel: string) {
+function drawConnectivity(ctx: CanvasRenderingContext2D, localPanel: string, connected: boolean, networkName: string) {
   const wifi = localPanel === 'wifi';
   const bluetooth = localPanel === 'bluetooth';
   const title = wifi ? 'Wi-Fi' : bluetooth ? 'Bluetooth' : 'GoodMorning Cloud';
   drawBack(ctx);
   centered(ctx, title, 233, 51, 24);
-  const accent = (wifi || bluetooth) ? '#30D158' : '#30D158';
+  const accent = connected ? '#30D158' : '#0A84FF';
   rounded(ctx, 149, wifi || bluetooth ? 112 : 119, 168, 168, 84, '#1C1C1E', accent, 5);
   centered(ctx, wifi ? '⌁' : bluetooth ? 'ᛒ' : '↥', 233, wifi || bluetooth ? 158 : 165, 36, accent);
-  centered(ctx, wifi ? 'Conectado' : bluetooth ? 'Listo para buscar' : 'Conectado', 233, wifi || bluetooth ? 207 : 214, 20);
-  centered(ctx, wifi ? 'Leopold Wi-Fi  |  -42 dBm' : bluetooth ? 'Accesorios Bluetooth Low Energy' : 'Leopold esta conectado al servidor', 233, 307, 14, '#D1D1D6');
-  centered(ctx, wifi ? 'La conexion se recupera automaticamente' : bluetooth ? '' : 'Heartbeats y UI remota activos', 233, 333, 12, '#8E8E93');
+  centered(ctx, wifi ? (connected ? 'Connected (mock)' : 'Offline (mock)') : bluetooth ? 'Listo para buscar' : 'Conectado', 233, wifi || bluetooth ? 207 : 214, 20);
+  centered(ctx, wifi ? (connected ? `${networkName} | -42 dBm (mock)` : 'Choose a demo network') : bluetooth ? 'Accesorios Bluetooth Low Energy' : 'Leopold esta conectado al servidor', 233, 307, 14, '#D1D1D6');
+  centered(ctx, wifi ? 'Simulator only — no device connection' : bluetooth ? '' : 'Heartbeats y UI remota activos', 233, 333, 12, '#8E8E93');
   rounded(ctx, wifi ? 47 : 82, 372, wifi ? 174 : 302, 62, 31, '#0A84FF');
   centered(ctx, wifi ? 'Reintentar' : bluetooth ? 'Buscar dispositivos' : 'Reintentar', wifi ? 134 : 233, 393, 16);
   if (wifi) { rounded(ctx, 245, 372, 174, 62, 31, '#2C2C2E'); centered(ctx, 'Cambiar red', 332, 393, 16); }
 }
 
-function drawNetworkList(ctx: CanvasRenderingContext2D, bluetooth: boolean) {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); drawBack(ctx, 28, 35, 62, 46);
+function drawNetworkList(ctx: CanvasRenderingContext2D, bluetooth: boolean, saved: string[]) {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); drawBack(ctx);
   centered(ctx, bluetooth ? 'Bluetooth' : 'Elegir Wi-Fi', 233, 43, 24);
-  centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Redes disponibles', 233, 80, 12, '#8E8E93');
+  centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Demo networks — no real scan', 233, 80, 12, '#8E8E93');
   const names = bluetooth ? ['Leopold Companion', 'MacBook Pro'] : ['Leopold Wi-Fi', 'GoodMorning Guest', 'Casa'];
-  names.forEach((name, index) => { const y = 111 + index * 57; rounded(ctx, 34, y, 398, 49, 17, '#1C1C1E'); centered(ctx, bluetooth ? 'ᛒ' : '⌁', 66, y + 14, 20, '#0A84FF'); text(ctx, name, 88, y + 14, 16); text(ctx, bluetooth ? '-42' : index === 0 ? '••••' : 'Abierta', 382, y + 17, 12, '#8E8E93', 'right'); });
+  names.forEach((name, index) => { const y = 111 + index * 57; rounded(ctx, 34, y, 398, 49, 17, '#1C1C1E'); centered(ctx, bluetooth ? 'ᛒ' : '⌁', 66, y + 14, 20, '#0A84FF'); text(ctx, name, 88, y + 14, 16); text(ctx, bluetooth ? '-42' : saved.includes(name) ? 'Saved' : index === 1 ? 'Open' : 'Secured', 382, y + 17, 12, '#8E8E93', 'right'); });
   rounded(ctx, 111, 410, 244, 45, 23, '#2C2C2E'); centered(ctx, bluetooth ? 'Buscar otra vez' : 'Buscar otra vez', 233, 424, 14);
 }
 
@@ -331,7 +335,7 @@ function drawYoutube(ctx: CanvasRenderingContext2D, screen: SduiScreen) {
   rounded(ctx, 139, 381, 188, 54, 27, '#FF453A'); centered(ctx, 'Actualizar', 233, 397, 16);
 }
 
-export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture }: Props) {
+export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSavedWifi, screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
@@ -339,9 +343,18 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
     const render = () => {
       ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
       if (calibration) drawCalibration(ctx);
-      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel);
-      else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false);
-      else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true);
+      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName);
+      else if (localPanel === 'wifi-password') {
+        drawBack(ctx);
+        centered(ctx, 'Demo Wi-Fi', 233, 55, 24);
+        centered(ctx, demoPendingWifi, 233, 130, 20);
+        centered(ctx, 'No real password is needed here.', 233, 200, 16);
+        centered(ctx, 'Enter real passwords only on Leopold.', 233, 235, 14, '#A0ACB9');
+        rounded(ctx, 111, 360, 244, 60, 26, '#0A84FF');
+        centered(ctx, 'Connect demo network', 233, 380, 16);
+      }
+      else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false, demoSavedWifi);
+      else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true, []);
       else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
@@ -369,6 +382,6 @@ export default function FirmwareCanvas({ screen, images, clock24, weatherFahrenh
       redrawTimers = [100, 300, 700].map((delay) => window.setTimeout(render, delay));
     });
     return () => { cancelled = true; redrawTimers.forEach((timer) => window.clearTimeout(timer)); };
-  }, [screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture]);
+  }, [demoWifiName, demoPendingWifi, demoSavedWifi, screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }

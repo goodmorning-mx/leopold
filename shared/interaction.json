@@ -26,6 +26,7 @@
       "settings-sound": [72, 289, 322, 56]
     }
   },
+  "local_panels": {"back": {"x": 90, "y": 60, "width": 62, "height": 46}, "wifi_password_field": {"x": 34, "y": 110, "width": 398, "height": 44}},
   "behaviour": {
     "swipe_up_screen": "sky-home",
     "clock_long_press_action": "toggle-clock-format",

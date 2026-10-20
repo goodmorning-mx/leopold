@@ -17,6 +17,9 @@ class WifiPortal {
   void reconnectNow(uint32_t now);
   void startConfiguration(uint32_t now);
   void prepareForScan();
+  void cancelSelection(uint32_t now);
+  bool connectSavedNetwork(const char* networkName, uint32_t now);
+  bool hasSavedNetwork(const char* networkName) const;
   void connectToNetwork(
       const char* networkName,
       const char* password,
@@ -35,14 +38,23 @@ class WifiPortal {
   void startPortal(uint32_t now);
   void loadBackupNetworks();
   void saveBackupNetworks();
+  void importPortalNetworks();
   void tryNextBackupNetwork(uint32_t now);
   void rememberNetwork(const char* networkName, const char* password);
 
   WiFiManager manager_;
+  // WiFiManagerParameter retains these pointers for the lifetime of the portal.
+  char backupSsidId_[kBackupNetworkCount][24] = {};
+  char backupPasswordId_[kBackupNetworkCount][24] = {};
+  char backupSsidLabel_[kBackupNetworkCount][40] = {};
+  char backupPasswordLabel_[kBackupNetworkCount][40] = {};
   WiFiManagerParameter* backupSsid_[kBackupNetworkCount] = {};
   WiFiManagerParameter* backupPassword_[kBackupNetworkCount] = {};
   SavedNetwork backupNetworks_[kBackupNetworkCount];
   uint8_t nextBackupNetwork_ = 0;
+  SavedNetwork pendingNetwork_;
+  bool pendingConnection_ = false;
+  bool manualSelection_ = false;
   char accessPointName_[24] = {};
   char setupToken_[33] = {};
   char setupUrl_[256] = {};

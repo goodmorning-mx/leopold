@@ -121,8 +121,8 @@ def load_capture(path: Path) -> Image.Image:
         return image.convert("RGB")
 
 
-def evaluate(capture_dir: Path, root: Path = ROOT) -> dict[str, object]:
-    neutral = load_framebuffer_asset(root / "shared/assets/settings-neutral-466.bin", 466, 466).convert("RGB")
+def evaluate(capture_dir: Path, root: Path = ROOT, base_asset: str = "settings-neutral-466.bin") -> dict[str, object]:
+    neutral = load_framebuffer_asset(root / "shared/assets" / base_asset, 466, 466).convert("RGB")
     profile = json.loads((root / "shared/settings-acceptance-profile.json").read_text())
     manifest = json.loads((root / "shared/reference-manifest.json").read_text())
     settings_state = next(state for state in manifest["states"] if state["name"] == "settings")
@@ -155,7 +155,7 @@ def evaluate(capture_dir: Path, root: Path = ROOT) -> dict[str, object]:
         banner[name] = compare_component(asset, connected, neutral, bounds)
         banner[name]["mask_edge"] = transparent_edge(asset)
         banner[name]["profile"] = profile["banner"][name]
-    result = {"profile": "shared/settings-acceptance-profile.json", "seam_profile": profile["seam_boundaries"], "captures": rows, "passed": all(
+    result = {"neutral_base_asset": f"shared/assets/{base_asset}", "profile": "shared/settings-acceptance-profile.json", "seam_profile": profile["seam_boundaries"], "captures": rows, "passed": all(
         item["outside_row_mask"]["passed"] and item["row_interior_against_neutral"]["passed"] and
         item["icon_against_derived_mask"]["passed"] and item["chevron_against_derived_mask"]["passed"]
         and item["icon_mask_edge"]["passed"] and item["chevron_mask_edge"]["passed"] and item["seam_boundaries"]["passed"]
@@ -168,8 +168,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("capture_dir", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--base-asset", default="settings-neutral-466.bin")
     args = parser.parse_args()
-    result = evaluate(args.capture_dir)
+    result = evaluate(args.capture_dir, base_asset=args.base_asset)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps({"report": str(args.output), "passed": result["passed"]}))

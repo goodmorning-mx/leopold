@@ -99,6 +99,12 @@
     },
     {
       "name": "settings",
+      "background_composition": {
+        "manifest": "references/settings-gears-2026-10-20/composition.json",
+        "sha256": "43bafc1742376afdb4d9c6a19a57e8a2732e4e5b22ccec99aeadbf24c6d36004",
+        "runtime_asset_key": "settings-gears-base",
+        "original_reference_role": "immutable component geometry/artwork; black backdrop superseded only by latest explicit user request"
+      },
       "screen": "device-control-center",
       "source": {
         "file": "references/phase1-settings/settings-neutral-466.png",

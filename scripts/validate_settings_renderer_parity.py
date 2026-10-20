@@ -164,6 +164,28 @@ def main() -> None:
         if not (ROOT / relative).is_file():
             fail(f"required exact asset is unavailable: {relative}")
 
+    composition_entry = settings.get("background_composition")
+    if composition_entry:
+        composition_path = ROOT / "shared" / composition_entry["manifest"]
+        if hashlib.sha256(composition_path.read_bytes()).hexdigest() != composition_entry["sha256"]:
+            fail("background composition provenance differs")
+        composition = json.loads(composition_path.read_text())
+        for entry, name, checksum in (
+            (composition["source"], "file", "sha256"),
+            (composition["output"], "png", "png_sha256"),
+            (composition["output"], "device_asset", "device_asset_sha256"),
+        ):
+            asset = ROOT / "shared" / entry[name]
+            if hashlib.sha256(asset.read_bytes()).hexdigest() != entry[checksum]:
+                fail(f"background composition input/output differs: {asset}")
+        for source, label in ((settings_render, "shared renderer"), (lvgl_canvas, "browser asset mapping"),
+                              (wasm, "WASM mapping")):
+            contains(source, "settings-gears-base", label + " background")
+        block = embedded_source.split("const uint8_t kSettingsGearsAssetData[] PROGMEM = {", 1)[1].split("};", 1)[0]
+        payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", block))
+        if payload != (ROOT / "shared" / composition["output"]["device_asset"]).read_bytes():
+            fail("embedded Settings background differs from shared device asset")
+
     print("Settings renderer parity valid: exact asset, shared LVGL/WASM path, bounded live overlays, embedded asset")
 
 

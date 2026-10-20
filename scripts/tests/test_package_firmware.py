@@ -39,7 +39,7 @@ class PackageFirmwareTests(unittest.TestCase):
             self.assertEqual(manifest["schema_version"], 3)
             self.assertTrue(manifest["normal_update"]["requires_verified_full_flash_backup"])
             self.assertIn("--backup NEW_BACKUP_PATH", manifest["commands"]["update_command"])
-            self.assertIn("--ui-revision 12", manifest["commands"]["verify_command"])
+            self.assertIn(f"--ui-revision {manifest['ui_revision']}", manifest["commands"]["verify_command"])
             self.assertEqual(manifest["normal_update"]["images"], [
                 {"name": "bootloader.bin", "flash_offset": "0x0000"},
                 {"name": "partitions.bin", "flash_offset": "0x8000"},

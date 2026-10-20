@@ -70,6 +70,14 @@ lines = [
     "",
     "namespace leopold {",
     "namespace generated_ui {",
+    f"constexpr int16_t kWifiPasswordFieldX = {interaction['local_panels']['wifi_password_field']['x']};",
+    f"constexpr int16_t kWifiPasswordFieldY = {interaction['local_panels']['wifi_password_field']['y']};",
+    f"constexpr int16_t kWifiPasswordFieldWidth = {interaction['local_panels']['wifi_password_field']['width']};",
+    f"constexpr int16_t kWifiPasswordFieldHeight = {interaction['local_panels']['wifi_password_field']['height']};",
+    f"constexpr int16_t kConnectivityBackX = {interaction['local_panels']['back']['x']};",
+    f"constexpr int16_t kConnectivityBackY = {interaction['local_panels']['back']['y']};",
+    f"constexpr int16_t kConnectivityBackWidth = {interaction['local_panels']['back']['width']};",
+    f"constexpr int16_t kConnectivityBackHeight = {interaction['local_panels']['back']['height']};",
     f"constexpr uint32_t kUiRevision = {document['revision']};",
     f"constexpr int16_t kSwipeUpDistance = {interaction['touch']['swipe_up_distance']};",
     f"constexpr int16_t kSwipeHorizontalDistance = {interaction['touch']['swipe_horizontal_distance']};",
@@ -308,6 +316,7 @@ settings_asset_lines.extend([
     "constexpr size_t kSettingsAssetDataSize = sizeof(kSettingsAssetData);",
 ])
 for name, file in (
+    ("kSettingsGearsAssetData", "settings-gears-base-466.bin"),
     ("kSettingsStatusBluetoothActiveData", "settings-status-bluetooth-active-22x22.bin"),
     ("kSettingsStatusWifiActiveData", "settings-status-wifi-active-22x22.bin"),
     ("kSettingsStatusCloudActiveData", "settings-status-cloud-active-24x24.bin"),

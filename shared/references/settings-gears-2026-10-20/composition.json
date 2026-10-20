@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "approval": "User requested this JPEG as Settings background on 2026-10-20; original component reference images remain immutable.",
+  "state": "device-control-center; all existing root Settings states",
+  "source": {
+    "file": "references/settings-gears-2026-10-20/source.jpeg",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "sha256": "e3083d23222806a8ff2936ba04e6893463397b487d26d92ddcfa5bbeb26a1875",
+    "immutable": true
+  },
+  "composition": {
+    "method": "Full image, LANCZOS 1024x1024 to466x466 without crop; existing neutral artwork over background using opaque protected control regions and 12px Gaussian scrim (doubled and clipped).",
+    "script": "scripts/prepare_settings_gears_asset.py",
+    "protected_inclusive_boxes": [
+      [
+        67,
+        121,
+        400,
+        351
+      ],
+      [
+        132,
+        34,
+        337,
+        82
+      ],
+      [
+        141,
+        81,
+        319,
+        124
+      ],
+      [
+        63,
+        349,
+        405,
+        424
+      ]
+    ],
+    "unchanged_control_reference": "references/phase1-settings/settings-neutral-466.png"
+  },
+  "output": {
+    "png": "assets/settings-gears-base-466.png",
+    "png_sha256": "4e62f977f82341fe2065cbd7c1069603fe3fa26ed9c32ecf4a41b5190b858792",
+    "device_asset": "assets/settings-gears-base-466.bin",
+    "device_asset_sha256": "3268542d39a13fd404f4303d2876ecb8d449edf54b36a1712d53e0fdef41d3eb",
+    "dimensions": [
+      466,
+      466
+    ],
+    "format": "rgb565a8",
+    "runtime_manifest_key": "settings-gears-base"
+  },
+  "consumers": {
+    "simulator": "FirmwareLvglCanvas -> shared/lvgl_renderer.cpp",
+    "backend": "backend/assets/settings-gears-base-466.bin",
+    "device": "sky_assets.cpp; generated_settings_asset.h fallback, same shared renderer"
+  }
+}

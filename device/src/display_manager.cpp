@@ -933,7 +933,7 @@ void DisplayManager::buildLvglConnectivityDetails(
     const char* secondaryDetail) {
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 28, 43, 74, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_24, lv_color_white());
   lv_obj_center(backIcon);
@@ -1053,7 +1053,7 @@ void DisplayManager::showBluetoothDetails(
     const char* peripheralName) {
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 28, 43, 74, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_24, lv_color_white());
   lv_obj_center(backIcon);
@@ -1098,7 +1098,7 @@ void DisplayManager::showBluetoothDevices(
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 28, 35, 62, 46, 23, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 23, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
   lv_obj_center(backIcon);
@@ -1149,7 +1149,7 @@ void DisplayManager::showWifiNetworks(
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 28, 35, 62, 46, 23, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 23, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
   lv_obj_center(backIcon);
@@ -1207,7 +1207,7 @@ void DisplayManager::showWifiPassword(
       "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "1234567890"};
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 25, 42, 64, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);
@@ -1218,7 +1218,7 @@ void DisplayManager::showWifiPassword(
   lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 31);
 
   lv_obj_t* field = createRoundPanel(
-      root, 34, 83, 398, 61, 18, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kWifiPasswordFieldX, generated_ui::kWifiPasswordFieldY, generated_ui::kWifiPasswordFieldWidth, generated_ui::kWifiPasswordFieldHeight, 18, lv_color_hex(0x1C1C1E));
   char masked[65] = {};
   const uint8_t dots = min<uint8_t>(passwordLength, 32);
   memset(masked, '*', dots);
@@ -1309,7 +1309,7 @@ void DisplayManager::showWifiConnecting(
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
   lv_obj_t* back = createRoundPanel(
-      root, 25, 42, 64, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);

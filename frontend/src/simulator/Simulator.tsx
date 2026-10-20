@@ -10,7 +10,7 @@ import assetManifest from '../shared/asset-manifest.json';
 import referenceManifest from '../shared/reference-manifest.json';
 
 type EventLog = { at: string; kind: string; detail: string; payload?: string };
-const firmwareReference = 'firmware-v0.8.2';
+const firmwareReference = `local preview · UI ${sampleDocument.revision}`;
 
 function stored<T extends number | boolean>(key: string, fallback: T): T {
   const value = window.localStorage.getItem(`display:${key}`);
@@ -68,6 +68,9 @@ export default function Simulator() {
   const [pressed, setPressed] = useState<string | null>(capturePressed);
   const [backgroundMode, setBackgroundMode] = useState(() => stored('background_mode', Number(persistence.settings.background_mode.default)));
   const [spanishLanguage, setSpanishLanguage] = useState(() => stored('spanish', Boolean(persistence.settings.spanish_language.default)));
+  const [demoWifiName, setDemoWifiName] = useState('Leopold Wi-Fi');
+  const [demoSavedWifi, setDemoSavedWifi] = useState<string[]>([]);
+  const [demoPendingWifi, setDemoPendingWifi] = useState('');
   const [wifiConnected, setWifiConnected] = useState(captureConnected ?? false);
   const [cloudConnected, setCloudConnected] = useState(captureConnected ?? false);
   const [bluetoothEnabled, setBluetoothEnabled] = useState(captureConnected ?? false);
@@ -78,9 +81,9 @@ export default function Simulator() {
     if (homeIndex >= 0) setScreenIndex(homeIndex);
   }, [framebufferCaptureMode, startSettingsMode]);
   const [now, setNow] = useState(() => new Date());
-  const [etag, setEtag] = useState('"mock-ui-12"');
+  const [etag, setEtag] = useState(`"mock-ui-${sampleDocument.revision}"`);
   const [pollCount, setPollCount] = useState(0);
-  const [events, setEvents] = useState<EventLog[]>([{ at: new Date().toLocaleTimeString(), kind: 'boot', detail: 'Mock firmware booted; UI revision 12 loaded.', payload: '{"revision":12}' }]);
+  const [events, setEvents] = useState<EventLog[]>([{ at: new Date().toLocaleTimeString(), kind: 'boot', detail: `Mock firmware booted; UI revision ${sampleDocument.revision} loaded.`, payload: JSON.stringify({ revision: sampleDocument.revision }) }]);
   const [json, setJson] = useState(() => JSON.stringify(sampleDocument, null, 2));
   const [jsonMessage, setJsonMessage] = useState('');
   const [captureUrl, setCaptureUrl] = useState('');
@@ -188,16 +191,16 @@ export default function Simulator() {
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointFor(event); pointer.current = { ...point, at: Date.now() }; lastSliderValue.current = null;
     const padding = interaction.touch.slider_touch_padding;
-    sliderDrag.current = screen.components.some((item) => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
+    sliderDrag.current = localPanel === 'none' && screen.components.some((item) => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
-    setPressed(button?.id ?? null);
+    setPressed(localPanel === 'none' ? button?.id ?? null : null);
     updateSlider(point);
   }
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!pointer.current) return;
     const point = pointFor(event);
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
-    setPressed(button?.id ?? null);
+    setPressed(localPanel === 'none' ? button?.id ?? null : null);
     updateSlider(point);
   }
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
@@ -211,8 +214,36 @@ export default function Simulator() {
     else if (gesture === 'swipe-up') { const home = document.screens.findIndex((item) => item.id === interaction.behaviour.swipe_up_screen); setLocalPanel('none'); setScreenIndex(home >= 0 ? home : 0); }
     else if (gesture === 'long-press' && screenId === 'sky-clock') { setClock24((value) => !value); addEvent('state', `Clock format: ${clock24 ? '12-hour' : '24-hour'}`); }
     else if (gesture === 'tap' && localPanel !== 'none') {
-      if (point.x <= 116 && point.y <= 108) setLocalPanel(localPanel === 'wifi-networks' || localPanel === 'bluetooth-devices' ? (localPanel === 'wifi-networks' ? 'wifi' : 'bluetooth') : 'none');
-      else if ((localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') && point.y >= 356) setLocalPanel(localPanel === 'wifi' ? 'wifi-networks' : localPanel === 'bluetooth' ? 'bluetooth-devices' : 'cloud');
+      const back = containsPoint(interaction.local_panels.back, point);
+      const connectDemo = (name: string) => {
+        setDemoWifiName(name); setWifiConnected(true); setCloudConnected(false);
+        setDemoSavedWifi((saved) => [name, ...saved.filter((item) => item !== name)].slice(0, 3));
+        setDemoPendingWifi(''); setLocalPanel('wifi');
+        addEvent('mock-wifi', 'Simulated connection; device network not accessed');
+      };
+      if (back) {
+        setLocalPanel(localPanel === 'wifi-networks' ? 'wifi' : localPanel === 'wifi-password' ? 'wifi-networks' : localPanel === 'bluetooth-devices' ? 'bluetooth' : 'none');
+        setDemoPendingWifi('');
+      } else if (localPanel === 'wifi' && point.y >= 372 && point.y <= 434) {
+        if (point.x >= 245 && point.x <= 419) setLocalPanel('wifi-networks');
+        else if (point.x >= 47 && point.x <= 221) {
+          if (demoSavedWifi.length) connectDemo(demoSavedWifi[0]);
+          else { setLocalPanel('wifi-networks'); addEvent('mock-wifi', 'No saved demo network; choose a network'); }
+        }
+      } else if (localPanel === 'wifi-networks' && point.x >= 34 && point.x <= 432 && point.y >= 111 && point.y < 282) {
+        const row = Math.floor((point.y - 111) / 57);
+        if ((point.y - 111) % 57 < 49) {
+          const name = ['Leopold Wi-Fi', 'GoodMorning Guest', 'Casa'][row];
+          if (row === 1 || demoSavedWifi.includes(name)) connectDemo(name);
+          else { setDemoPendingWifi(name); setLocalPanel('wifi-password'); }
+        }
+      } else if (localPanel === 'wifi-password' && point.x >= 111 && point.x <= 355 && point.y >= 360 && point.y <= 420) {
+        connectDemo(demoPendingWifi);
+      } else if (localPanel === 'wifi-networks' && point.y >= 410 && point.y <= 455) {
+        addEvent('mock-wifi', 'Demo scan refreshed; no real networks scanned');
+      } else if ((localPanel === 'cloud' || localPanel === 'bluetooth') && point.y >= 356) {
+        setLocalPanel(localPanel === 'bluetooth' ? 'bluetooth-devices' : 'cloud');
+      }
     } else if (gesture === 'tap') {
       if (screenId === 'device-control-center') {
         const settingsButton = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
@@ -237,10 +268,10 @@ export default function Simulator() {
   const status = useMemo(() => `${screenIndex + 1} / ${document.screens.length}`, [document.screens.length, screenIndex]);
 
   return <main className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
-    <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Browser rendering of the firmware source at commit {firmwareReference}. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
+    <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Local working-copy preview using the shared firmware renderer. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
     <div className="simulator-grid">
       <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; sliderDrag.current = false; setPressed(null); }}>
-        {framebufferCaptureMode || (screen.id === 'device-control-center' && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
+        {framebufferCaptureMode || (screen.id === 'device-control-center' && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
         <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>{cloudConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Connected (mock)' : 'Disconnected (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setCloudConnected((value) => !value)}>Cloud</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>

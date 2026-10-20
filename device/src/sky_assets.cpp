@@ -47,6 +47,7 @@ lv_image_dsc_t kWhatsappIcon = {};
 lv_image_dsc_t kSpotifyIcon = {};
 lv_image_dsc_t kSpotifyLargeIcon = {};
 lv_image_dsc_t kSettingsNeutral = {};
+lv_image_dsc_t kSettingsGears = {};
 lv_image_dsc_t kSettingsStatusBluetoothActive = {};
 lv_image_dsc_t kSettingsStatusWifiActive = {};
 lv_image_dsc_t kSettingsStatusCloudActive = {};
@@ -76,6 +77,7 @@ AssetSlot assets[] = {
     {"open-whatsapp", "icon_whatsapp.bin", 72, 72, &kWhatsappIcon},
     {"open-spotify", "icon_spotify.bin", 84, 84, &kSpotifyIcon},
     {"spotify-large", "icon_spotify_large.bin", 97, 100, &kSpotifyLargeIcon},
+    {"settings-gears-base", "settings-gears-base-466.bin", 466, 466, &kSettingsGears},
     {"settings-neutral", "settings-neutral-466.bin", 466, 466, &kSettingsNeutral},
     {"settings-status-bluetooth-active", "settings-status-bluetooth-active-22x22.bin", 22, 22, &kSettingsStatusBluetoothActive},
     {"settings-status-wifi-active", "settings-status-wifi-active-22x22.bin", 22, 22, &kSettingsStatusWifiActive},
@@ -165,11 +167,12 @@ bool loadEmbeddedHomeAsset() {
 }
 
 bool loadEmbeddedSettingsAsset() {
+  const bool gears = loadCloudAsset("settings-gears-base-466.bin", kSettingsGearsAssetData, kSettingsGearsAssetDataSize);
   const bool neutral = loadCloudAsset("settings-neutral-466.bin", kSettingsAssetData, kSettingsAssetDataSize);
   const bool bluetooth = loadCloudAsset("settings-status-bluetooth-active-22x22.bin", kSettingsStatusBluetoothActiveData, kSettingsStatusBluetoothActiveDataSize);
   const bool wifi = loadCloudAsset("settings-status-wifi-active-22x22.bin", kSettingsStatusWifiActiveData, kSettingsStatusWifiActiveDataSize);
   const bool cloud = loadCloudAsset("settings-status-cloud-active-24x24.bin", kSettingsStatusCloudActiveData, kSettingsStatusCloudActiveDataSize);
-  return neutral && bluetooth && wifi && cloud;
+  return gears && neutral && bluetooth && wifi && cloud;
 }
 
 bool allAssetsLoaded() {

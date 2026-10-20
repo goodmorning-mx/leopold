@@ -125,11 +125,13 @@ LocalPanel localPanel = LocalPanel::kNone;
 WifiNetworkChoice wifiNetworks[kVisibleWifiNetworks];
 uint8_t wifiNetworkCount = 0;
 String selectedWifiName;
+String failedWifiName;
 String selectedWifiPassword;
 int8_t wifiKeyGroup = -1;
 bool wifiUppercase = false;
 uint32_t wifiSelectionStartedAt = 0;
 bool wifiScanRunning = false;
+uint32_t wifiScanStartedAt = 0;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
 char usbCommand[160] = {};
@@ -235,6 +237,13 @@ void beginBluetoothScan() {
   Serial.println(started ? "BLE scan started" : "BLE scan could not start");
 }
 
+bool isConnectivityBack(const TouchPoint& point) {
+  return point.x >= generated_ui::kConnectivityBackX &&
+      point.x < generated_ui::kConnectivityBackX + generated_ui::kConnectivityBackWidth &&
+      point.y >= generated_ui::kConnectivityBackY &&
+      point.y < generated_ui::kConnectivityBackY + generated_ui::kConnectivityBackHeight;
+}
+
 void renderWifiNetworks(const char* message = nullptr) {
   const char* names[kVisibleWifiNetworks] = {};
   int32_t signals[kVisibleWifiNetworks] = {};
@@ -249,8 +258,10 @@ void renderWifiNetworks(const char* message = nullptr) {
 }
 
 void beginWifiScan() {
+  if (wifiScanRunning) return;
   wifi.prepareForScan();
   WiFi.scanDelete();
+  wifiScanStartedAt = millis();
   wifiNetworkCount = 0;
   wifiScanRunning = WiFi.scanNetworks(true, true) == WIFI_SCAN_RUNNING;
   localPanel = LocalPanel::kWifiNetworks;
@@ -965,6 +976,15 @@ void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
+  if (hasGesture && (gesture == TouchGesture::kSwipeUp ||
+      gesture == TouchGesture::kSwipeLeft || gesture == TouchGesture::kSwipeRight) &&
+      localPanel != LocalPanel::kNone) {
+    wifi.cancelSelection(now);
+    wifiScanRunning = false;
+    WiFi.scanDelete();
+    selectedWifiPassword = String();
+    localPanel = LocalPanel::kNone;
+  }
   if (hasGesture && gesture == TouchGesture::kDrag && hasUi &&
       localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
     const SduiComponent* pressed =
@@ -1005,7 +1025,7 @@ void processInput(uint32_t now) {
     Serial.println("Clock format toggled");
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kBluetoothDevices) {
-    if (point.x <= 100 && point.y <= 92) {
+    if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kBluetooth;
       showLocalConnectivityPanel(now);
     } else if (point.y >= 400) {
@@ -1022,19 +1042,26 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kWifiNetworks) {
-    if (point.x <= 100 && point.y <= 92) {
+    if (isConnectivityBack(point)) {
+      wifi.cancelSelection(now);
+      wifiScanRunning = false;
+      WiFi.scanDelete();
       localPanel = LocalPanel::kWifi;
       showLocalConnectivityPanel(now);
     } else if (point.y >= 400) {
       beginWifiScan();
-    } else if (point.y >= 105 && point.y < 400) {
+    } else if (point.x >= 34 && point.x <= 432 && point.y >= 111 && point.y < 396) {
       const uint8_t index = (point.y - 111) / 57;
-      if (index < wifiNetworkCount) {
+      if ((point.y - 111) % 57 < 49 && index < wifiNetworkCount) {
         selectedWifiName = wifiNetworks[index].name;
         selectedWifiPassword = String();
         wifiKeyGroup = -1;
         wifiUppercase = false;
-        if (wifiNetworks[index].secured) {
+        if (selectedWifiName != failedWifiName && wifi.connectSavedNetwork(selectedWifiName.c_str(), now)) {
+          localPanel = LocalPanel::kWifiConnecting;
+          wifiSelectionStartedAt = now;
+          screen.showWifiConnecting(selectedWifiName.c_str(), "Connecting to saved network...");
+        } else if (wifiNetworks[index].secured) {
           localPanel = LocalPanel::kWifiPassword;
           renderWifiPassword();
         } else {
@@ -1049,7 +1076,7 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiPassword) {
-    if (point.x <= 88 && point.y <= 76) {
+    if (isConnectivityBack(point)) {
       if (wifiKeyGroup >= 0) {
         wifiKeyGroup = -1;
         renderWifiPassword();
@@ -1057,7 +1084,9 @@ void processInput(uint32_t now) {
         localPanel = LocalPanel::kWifiNetworks;
         renderWifiNetworks();
       }
-    } else if (point.y >= 75 && point.y <= 151 && point.x >= 340) {
+    } else if (point.y >= generated_ui::kWifiPasswordFieldY &&
+               point.y < generated_ui::kWifiPasswordFieldY + generated_ui::kWifiPasswordFieldHeight &&
+               point.x >= 340 && point.x < generated_ui::kWifiPasswordFieldX + generated_ui::kWifiPasswordFieldWidth) {
       if (!selectedWifiPassword.isEmpty()) {
         selectedWifiPassword.remove(selectedWifiPassword.length() - 1);
         renderWifiPassword();
@@ -1100,15 +1129,15 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiConnecting) {
-    if (point.x <= 100 && point.y <= 92) {
-      WiFi.disconnect(false, false);
+    if (isConnectivityBack(point)) {
+      wifi.cancelSelection(now);
       localPanel = LocalPanel::kWifiNetworks;
       renderWifiNetworks("Conexion cancelada");
       Serial.println("On-device Wi-Fi connection cancelled");
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel != LocalPanel::kNone) {
-    if (point.x <= 116 && point.y <= 108) {
+    if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kNone;
       screen.renderSduiScreen(currentUi);
       lastIndicatorAt = 0;
@@ -1119,6 +1148,7 @@ void processInput(uint32_t now) {
           wifi.reconnectNow(now);
         } else {
           beginWifiScan();
+          return; // Keep the scan list; do not repaint the details panel over it.
         }
       } else if (localPanel == LocalPanel::kCloud && wifi.connected()) {
         cloudConnected = false;
@@ -1392,18 +1422,26 @@ void processNetwork(uint32_t now) {
     const int16_t scanResult = WiFi.scanComplete();
     if (wifiScanRunning && scanResult >= 0) {
       wifiScanRunning = false;
-      wifiNetworkCount = min<uint8_t>(scanResult, kVisibleWifiNetworks);
-      for (uint8_t index = 0; index < wifiNetworkCount; ++index) {
-        wifiNetworks[index].name = WiFi.SSID(index);
-        wifiNetworks[index].rssi = WiFi.RSSI(index);
-        wifiNetworks[index].secured =
-            WiFi.encryptionType(index) != WIFI_AUTH_OPEN;
+      wifiNetworkCount = 0;
+      // Arduino's scan is RSSI-sorted. Keep the strongest instance of each SSID.
+      for (int16_t result = 0; result < scanResult && wifiNetworkCount < kVisibleWifiNetworks; ++result) {
+        const String name = WiFi.SSID(result);
+        if (name.isEmpty()) continue;
+        bool duplicate = false;
+        for (uint8_t index = 0; index < wifiNetworkCount; ++index) {
+          if (wifiNetworks[index].name == name) duplicate = true;
+        }
+        if (duplicate) continue;
+        wifiNetworks[wifiNetworkCount].name = name;
+        wifiNetworks[wifiNetworkCount].rssi = WiFi.RSSI(result);
+        wifiNetworks[wifiNetworkCount].secured = WiFi.encryptionType(result) != WIFI_AUTH_OPEN;
+        ++wifiNetworkCount;
       }
       WiFi.scanDelete();
       renderWifiNetworks(
           wifiNetworkCount == 0 ? "No encontramos redes" : nullptr);
       Serial.printf("On-device Wi-Fi scan found %u networks\n", wifiNetworkCount);
-    } else if (wifiScanRunning && scanResult == WIFI_SCAN_FAILED) {
+    } else if (wifiScanRunning && (scanResult == WIFI_SCAN_FAILED || now - wifiScanStartedAt >= 30000)) {
       wifiScanRunning = false;
       renderWifiNetworks("La busqueda fallo. Intenta otra vez");
     }
@@ -1413,8 +1451,10 @@ void processNetwork(uint32_t now) {
     return;
   }
   if (localPanel == LocalPanel::kWifiConnecting) {
-    if (WiFi.status() == WL_CONNECTED) {
+    wifi.loop(now); // Confirm success before storing the candidate credentials.
+    if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == selectedWifiName) {
       wifiWasConnected = true;
+      failedWifiName = String();
       cloudConnected = false;
       cloudFailures = 0;
       nextCloudAttemptAt = now;
@@ -1424,6 +1464,8 @@ void processNetwork(uint32_t now) {
       Serial.printf("On-device Wi-Fi connected: %s\n", WiFi.SSID().c_str());
     } else if (now - wifiSelectionStartedAt >= kWifiSelectionTimeoutMs ||
                WiFi.status() == WL_CONNECT_FAILED) {
+      failedWifiName = selectedWifiName;
+      wifi.cancelSelection(now);
       localPanel = LocalPanel::kWifiNetworks;
       renderWifiNetworks("No se pudo conectar. Revisa la contrasena");
       Serial.println("On-device Wi-Fi connection failed");
