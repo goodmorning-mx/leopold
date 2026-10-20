@@ -14,6 +14,13 @@ int main(){
   int before=WiFi.disconnects;portal.prepareForScan();
   assert(WiFi.disconnects==before && WiFi.state==WL_CONNECTED);
   assert(testNvs["wifi-backups:ssid0"]=="working");
+  // Disconnected/in-flight station attempts stop; credentials/NVS stay intact.
+  WiFi.state=WL_DISCONNECTED;before=WiFi.disconnects;
+  auto preserved=testNvs;auto driver=WiFi.persistedSsid;
+  portal.prepareForScan();assert(WiFi.disconnects==before+1);
+  assert(testNvs==preserved && WiFi.persistedSsid==driver && !WiFi.autoReconnect);
+  portal.startConfiguration(500);assert(portal.portalActive());
+  portal.prepareForScan();assert(!portal.portalActive());
   portal.loop(100000); assert(!portal.portalActive()); // no recovery while choosing
   portal.connectToNetwork("candidate","synthetic-new",1000);
   assert(!portal.hasSavedNetwork("candidate"));

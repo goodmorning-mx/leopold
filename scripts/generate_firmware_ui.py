@@ -93,6 +93,9 @@ lines = [
     f"constexpr uint8_t kBrightnessMaximum = {interaction['behaviour']['brightness_maximum']};",
     f"constexpr uint8_t kDefaultBrightness = {persistence['settings']['brightness']['default']};",
     "struct SettingsRowBounds { const char* id; int16_t x; int16_t y; int16_t width; int16_t height; };",
+    f"constexpr bool kSettingsReleaseTap = {str('tap' in interaction['behaviour']['settings_release']['gestures']).lower()};",
+    f"constexpr bool kSettingsReleaseLongPress = {str('long-press' in interaction['behaviour']['settings_release']['gestures']).lower()};",
+    f"constexpr bool kSettingsReleaseNeutral = {str('release' in interaction['behaviour']['settings_release']['gestures']).lower()};",
     "constexpr SettingsRowBounds kSettingsRowBounds[] = {",
 ]
 for row in interaction["touch"]["settings_row_bounds"]:

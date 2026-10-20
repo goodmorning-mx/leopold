@@ -75,6 +75,7 @@ bool TouchInput::pollGesture(
   const bool down = read(current);
   if (down) {
     if (!wasDown_) {
+      ++contactId_;
       touchStart_ = current;
       touchStartedAt_ = now;
       // Make every new contact eligible for an immediate held-state sample.
@@ -97,7 +98,9 @@ bool TouchInput::pollGesture(
   }
   wasDown_ = false;
   if (now - lastGestureAt_ < 180) {
-    return false;
+    gesture = TouchGesture::kCancel;
+    point = touchLast_;
+    return true; // Always release captured widgets, even when activation is debounced.
   }
 
   const int16_t deltaX =

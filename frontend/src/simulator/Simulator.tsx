@@ -90,6 +90,7 @@ export default function Simulator() {
   const [captureDownloadUrl, setCaptureDownloadUrl] = useState('');
   const calibrationMode = query.get('calibration') === '1';
   const [images, setImages] = useState<FirmwareImages>({});
+  const settingsContact = useRef<{ row: string | null; cancelled: boolean }>({ row: null, cancelled: true });
   const pointer = useRef<{ x: number; y: number; at: number } | null>(null);
   const lastSliderValue = useRef<number | null>(null);
   const sliderDrag = useRef(false);
@@ -193,6 +194,7 @@ export default function Simulator() {
     const padding = interaction.touch.slider_touch_padding;
     sliderDrag.current = localPanel === 'none' && screen.components.some((item) => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
+    settingsContact.current = { row: button?.id ?? null, cancelled: !button };
     setPressed(localPanel === 'none' ? button?.id ?? null : null);
     updateSlider(point);
   }
@@ -200,7 +202,10 @@ export default function Simulator() {
     if (!pointer.current) return;
     const point = pointFor(event);
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
-    setPressed(localPanel === 'none' ? button?.id ?? null : null);
+    if (screenId === 'device-control-center') {
+      if (button?.id !== settingsContact.current.row) settingsContact.current.cancelled = true;
+      setPressed(settingsContact.current.cancelled ? null : settingsContact.current.row);
+    } else setPressed(localPanel === 'none' ? button?.id ?? null : null);
     updateSlider(point);
   }
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
@@ -244,9 +249,10 @@ export default function Simulator() {
       } else if ((localPanel === 'cloud' || localPanel === 'bluetooth') && point.y >= 356) {
         setLocalPanel(localPanel === 'bluetooth' ? 'bluetooth-devices' : 'cloud');
       }
-    } else if (gesture === 'tap') {
+    } else if (gesture === 'tap' || (screenId === 'device-control-center' && localPanel === 'none' && interaction.behaviour.settings_release.gestures.includes(gesture))) {
       if (screenId === 'device-control-center') {
         const settingsButton = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
+        if (settingsContact.current.cancelled || settingsButton?.id !== settingsContact.current.row) return;
         const action = settingsButton ? interaction.behaviour.settings_row_actions[settingsButton.id as keyof typeof interaction.behaviour.settings_row_actions] : undefined;
         if (action === 'wifi-panel') { setLocalPanel('wifi'); return; }
         if (action === 'bluetooth-panel') { setLocalPanel('bluetooth'); return; }

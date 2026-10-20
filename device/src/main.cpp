@@ -20,6 +20,8 @@
 #include "weather_client.h"
 #include "generated_firmware_ui.h"
 #include "wifi_portal.h"
+#include "wifi_scan.h"
+#include "settings_contact.h"
 #include "sky_assets.h"
 
 namespace {
@@ -130,8 +132,7 @@ String selectedWifiPassword;
 int8_t wifiKeyGroup = -1;
 bool wifiUppercase = false;
 uint32_t wifiSelectionStartedAt = 0;
-bool wifiScanRunning = false;
-uint32_t wifiScanStartedAt = 0;
+WifiScan wifiScan;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
 char usbCommand[160] = {};
@@ -254,19 +255,16 @@ void renderWifiNetworks(const char* message = nullptr) {
     secured[index] = wifiNetworks[index].secured;
   }
   screen.showWifiNetworks(
-      names, signals, secured, wifiNetworkCount, wifiScanRunning, message);
+      names, signals, secured, wifiNetworkCount, wifiScan.searching(), message);
 }
 
 void beginWifiScan() {
-  if (wifiScanRunning) return;
-  wifi.prepareForScan();
-  WiFi.scanDelete();
-  wifiScanStartedAt = millis();
+  if (wifiScan.busy()) return;
   wifiNetworkCount = 0;
-  wifiScanRunning = WiFi.scanNetworks(true, true) == WIFI_SCAN_RUNNING;
+  wifiScan.begin();
   localPanel = LocalPanel::kWifiNetworks;
-  renderWifiNetworks(wifiScanRunning ? nullptr : "No se pudo iniciar la busqueda");
-  Serial.println("On-device Wi-Fi scan started");
+  renderWifiNetworks();
+  Serial.println("On-device Wi-Fi scan requested");
 }
 
 void renderWifiPassword() {
@@ -976,21 +974,40 @@ void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
+  static SettingsContact settingsContact;
+  static uint32_t settingsContactId = 0;
+  const char* releasedSettingsRow = nullptr;
+  if (hasUi && localPanel == LocalPanel::kNone &&
+      strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+    const TouchPoint sample = touch.lastPoint();
+    const SduiComponent* row = findSettingsButtonAt(currentUi.active(), sample.x, sample.y);
+    const char* rowId = row ? row->id : nullptr;
+    if (touch.contactDown()) {
+      if (settingsContactId != touch.contactId()) {
+        settingsContactId = touch.contactId();
+        settingsContact.begin(rowId);
+      }
+      settingsContact.move(rowId);
+      if (screen.setPressedButton(settingsContact.selected())) screen.renderSduiScreen(currentUi);
+    } else if (hasGesture) {
+      releasedSettingsRow = settingsContact.release(rowId,
+          (gesture == TouchGesture::kTap && generated_ui::kSettingsReleaseTap) ||
+          (gesture == TouchGesture::kLongPress && generated_ui::kSettingsReleaseLongPress) ||
+          (gesture == TouchGesture::kRelease && generated_ui::kSettingsReleaseNeutral));
+    }
+  }
   if (hasGesture && (gesture == TouchGesture::kSwipeUp ||
       gesture == TouchGesture::kSwipeLeft || gesture == TouchGesture::kSwipeRight) &&
       localPanel != LocalPanel::kNone) {
     wifi.cancelSelection(now);
-    wifiScanRunning = false;
-    WiFi.scanDelete();
+    wifiScan.cancel();
     selectedWifiPassword = String();
     localPanel = LocalPanel::kNone;
   }
   if (hasGesture && gesture == TouchGesture::kDrag && hasUi &&
-      localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
-    const SduiComponent* pressed =
-        strcmp(currentUi.active().screenId, "device-control-center") == 0
-            ? findSettingsButtonAt(currentUi.active(), point.x, point.y)
-            : findButtonAt(currentUi.active(), point.x, point.y);
+      localPanel == LocalPanel::kNone && capturedSlider == nullptr &&
+      strcmp(currentUi.active().screenId, "device-control-center") != 0) {
+    const SduiComponent* pressed = findButtonAt(currentUi.active(), point.x, point.y);
     if (touch.traceEnabled()) {
       static uint32_t lastHitTraceAt = 0;
       if (now - lastHitTraceAt >= 250) {
@@ -1044,8 +1061,7 @@ void processInput(uint32_t now) {
       localPanel == LocalPanel::kWifiNetworks) {
     if (isConnectivityBack(point)) {
       wifi.cancelSelection(now);
-      wifiScanRunning = false;
-      WiFi.scanDelete();
+      wifiScan.cancel();
       localPanel = LocalPanel::kWifi;
       showLocalConnectivityPanel(now);
     } else if (point.y >= 400) {
@@ -1164,11 +1180,12 @@ void processInput(uint32_t now) {
              ((strcmp(currentUi.active().screenId, "spotify-player") == 0 &&
                point.x <= 88 && point.y <= 94))) {
     openLocalScreen("open-home");
-  } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-control-center") == 0) {
-    const SduiComponent* button =
-        findSettingsButtonAt(currentUi.active(), point.x, point.y);
-    if (button != nullptr) handleSettingsTap(*button, now);
+  } else if (hasGesture && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
+             localPanel == LocalPanel::kNone) {
+    const SduiComponent* button = findSettingsButtonAt(currentUi.active(), point.x, point.y);
+    if (releasedSettingsRow && button && strcmp(releasedSettingsRow, button->id) == 0)
+      handleSettingsTap(*button, now);
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
              strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
     const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);
@@ -1276,7 +1293,9 @@ void processInput(uint32_t now) {
         currentUi.active().screenId,
         currentUi.activeScreen + 1,
         currentUi.screenCount);
-  } else if (gesture == TouchGesture::kTap && hasUi) {
+  } else if (gesture == TouchGesture::kTap && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") != 0) {
+    // Settings releases were consumed above, including cancelled contacts.
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button =
         findButtonAt(currentUi.active(), point.x, point.y);
@@ -1412,6 +1431,8 @@ void processEvents(uint32_t now) {
 
 void processNetwork(uint32_t now) {
   bluetooth.loop();
+  const int16_t scanResult = wifiScan.poll([]() { wifi.prepareForScan(); });
+  // Also drain cancellation after leaving the list, before another scan can start.
   if (localPanel == LocalPanel::kBluetoothDevices) {
     if (bluetoothScanWasRunning && !bluetooth.scanning()) {
       bluetoothScanWasRunning = false;
@@ -1421,9 +1442,7 @@ void processNetwork(uint32_t now) {
     return;
   }
   if (localPanel == LocalPanel::kWifiNetworks) {
-    const int16_t scanResult = WiFi.scanComplete();
-    if (wifiScanRunning && scanResult >= 0) {
-      wifiScanRunning = false;
+    if (scanResult >= 0) {
       wifiNetworkCount = 0;
       // Arduino's scan is RSSI-sorted. Keep the strongest instance of each SSID.
       for (int16_t result = 0; result < scanResult && wifiNetworkCount < kVisibleWifiNetworks; ++result) {
@@ -1443,8 +1462,7 @@ void processNetwork(uint32_t now) {
       renderWifiNetworks(
           wifiNetworkCount == 0 ? "No encontramos redes" : nullptr);
       Serial.printf("On-device Wi-Fi scan found %u networks\n", wifiNetworkCount);
-    } else if (wifiScanRunning && (scanResult == WIFI_SCAN_FAILED || now - wifiScanStartedAt >= 30000)) {
-      wifiScanRunning = false;
+    } else if (scanResult == WIFI_SCAN_FAILED) {
       renderWifiNetworks("La busqueda fallo. Intenta otra vez");
     }
     return;

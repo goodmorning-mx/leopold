@@ -18,6 +18,7 @@ enum class TouchGesture : uint8_t {
   kSwipeUp,
   kSwipeLeft,
   kSwipeRight,
+  kCancel,
 };
 
 class TouchInput {
@@ -26,6 +27,9 @@ class TouchInput {
   bool pollGesture(TouchGesture& gesture, TouchPoint& point, uint32_t now);
   void setTraceEnabled(bool enabled);
   bool traceEnabled() const;
+  bool contactDown() const { return wasDown_; }
+  uint32_t contactId() const { return contactId_; }
+  TouchPoint lastPoint() const { return touchLast_; }
 
  private:
   bool read(TouchPoint& point);
@@ -33,6 +37,7 @@ class TouchInput {
 
   uint8_t address_ = 0;
   bool wasDown_ = false;
+  uint32_t contactId_ = 0;
   TouchPoint touchStart_;
   TouchPoint touchLast_;
   uint32_t touchStartedAt_ = 0;

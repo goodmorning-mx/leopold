@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "firmware_release": "firmware-v0.8.2",
-  "revision": 15,
+  "revision": 16,
   "poll_after_ms": 5000,
   "screens": [
     {"id":"sky-home","background":"#000000","components":[

@@ -225,8 +225,14 @@ void WifiPortal::prepareForScan() {
     saveBackupNetworks();
   }
   manualSelection_ = true;
+  pendingConnection_ = false;
+  memset(&pendingNetwork_, 0, sizeof(pendingNetwork_));
   WiFi.setAutoReconnect(false);
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
+  // An unfinished association competes with esp_wifi_scan_start. Keep a
+  // working connection, but stop attempts without erasing driver credentials.
+  if (WiFi.status() != WL_CONNECTED) WiFi.disconnect(false, false);
 }
 
 void WifiPortal::cancelSelection(uint32_t now) {

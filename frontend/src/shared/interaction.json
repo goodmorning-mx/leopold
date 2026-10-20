@@ -32,6 +32,7 @@
     "clock_long_press_action": "toggle-clock-format",
     "brightness_minimum": 5,
     "brightness_maximum": 100,
+    "settings_release": {"gestures": ["tap", "long-press", "release"], "require_original_row": true, "cancel_on_leave": true},
     "settings_row_actions": {
       "settings-wifi": "wifi-panel",
       "settings-bluetooth": "bluetooth-panel",
