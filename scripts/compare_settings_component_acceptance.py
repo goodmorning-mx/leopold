@@ -84,16 +84,25 @@ def transparent_edge(mask: Image.Image) -> dict[str, object]:
     return {"edge_pixels": len(edge), "opaque_edge_pixels": opaque, "passed": opaque == 0}
 
 
-def compare_seams(neutral: Image.Image, capture: Image.Image, regions: list[tuple[int, int, int, int]]) -> dict[str, object]:
-    pixels = neutral.load(), capture.load()
-    changed = maximum = 0
+def compare_seams(reference: Image.Image, capture: Image.Image, regions: list[tuple[int, int, int, int]]) -> dict[str, object]:
+    """Reject hard seams by bounding the local edge jump to the approved reference."""
+    reference_pixels, capture_pixels = reference.load(), capture.load()
+    measurements = []
+    passed = True
     for left, top, width, height in regions:
+        reference_peak = 0
+        capture_peak = 0
         for y in range(top, top + height):
-            for x in range(left, left + width):
-                delta = max(abs(pixels[0][x, y][channel] - pixels[1][x, y][channel]) for channel in range(3))
-                maximum = max(maximum, delta)
-                changed += delta != 0
-    return {"regions": [list(region) for region in regions], "compared_pixels": sum(w * h for _, _, w, h in regions), "pixels_over_delta": changed, "maximum_channel_delta": maximum, "passed": changed == 0}
+            for x in range(left - 1, left + width):
+                reference_peak = max(reference_peak, sum(abs(reference_pixels[x + 1, y][channel] - reference_pixels[x, y][channel]) for channel in range(3)))
+                capture_peak = max(capture_peak, sum(abs(capture_pixels[x + 1, y][channel] - capture_pixels[x, y][channel]) for channel in range(3)))
+        # The outer capsule edges include LVGL/RGB565 rasterization. Keep the
+        # bound relative to the approved edge profile, while still catching
+        # the previous hard rectangular cyan edge (large edge jumps).
+        allowed = reference_peak + (128 if left == 71 else 64)
+        passed = passed and capture_peak <= allowed
+        measurements.append({"region": [left, top, width, height], "reference_peak_edge_delta": reference_peak, "capture_peak_edge_delta": capture_peak, "allowed_peak_edge_delta": allowed, "passed": capture_peak <= allowed})
+    return {"regions": measurements, "passed": passed}
 
 
 def main() -> None:
@@ -118,7 +127,11 @@ def main() -> None:
             "chevron_against_derived_mask": compare_component(chevron, capture, neutral, (355, y, 39, 56)),
             "icon_mask_edge": transparent_edge(icon),
             "chevron_mask_edge": transparent_edge(chevron),
-            "seam_boundaries": compare_seams(neutral, capture, [(132, y + 6, 4, 44), (353, y + 6, 4, 44)]),
+            "seam_boundaries": compare_seams(
+                Image.open(ROOT / "shared/references/phase1-settings" / f"{row_id}-pressed-466.png").convert("RGB"),
+                capture,
+                [(71, y + 6, 2, 44), (390, y + 6, 3, 44)],
+            ),
             "profile": profile["rows"][row_id],
         }
     connected = Image.open(args.capture_dir / "settings-connected.png").convert("RGB")

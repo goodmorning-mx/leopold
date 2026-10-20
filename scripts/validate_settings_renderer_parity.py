@@ -116,6 +116,7 @@ def main() -> None:
         fail("a second Settings renderer remains in the legacy browser canvas")
     contains(lvgl_canvas, "settings-neutral", "browser exact Settings asset mapping")
     for key in (
+        "settings-pressed-border-mask",
         "settings-wifi-pressed-icon-mask", "settings-wifi-pressed-chevron-mask",
         "settings-bluetooth-pressed-icon-mask", "settings-bluetooth-pressed-chevron-mask",
         "settings-display-pressed-icon-mask", "settings-display-pressed-chevron-mask",

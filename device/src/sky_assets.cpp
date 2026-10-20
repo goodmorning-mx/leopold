@@ -62,6 +62,7 @@ lv_image_dsc_t kSettingsDisplayPressedIconMask = {};
 lv_image_dsc_t kSettingsDisplayPressedChevronMask = {};
 lv_image_dsc_t kSettingsSoundPressedIconMask = {};
 lv_image_dsc_t kSettingsSoundPressedChevronMask = {};
+lv_image_dsc_t kSettingsPressedBorderMask = {};
 
 namespace {
 
@@ -91,6 +92,7 @@ AssetSlot assets[] = {
     {"settings-display-pressed-chevron-mask", "settings-display-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsDisplayPressedChevronMask},
     {"settings-sound-pressed-icon-mask", "settings-sound-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsSoundPressedIconMask},
     {"settings-sound-pressed-chevron-mask", "settings-sound-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsSoundPressedChevronMask},
+    {"settings-pressed-border-mask", "settings-pressed-border-mask-322x56.bin", 322, 56, &kSettingsPressedBorderMask},
 };
 
 }  // namespace

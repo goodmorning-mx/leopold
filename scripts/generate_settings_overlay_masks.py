@@ -28,8 +28,8 @@ STATUS = {
 }
 
 
-def diff_overlay(target: Image.Image, base: Image.Image) -> Image.Image:
-    """Keep only pixels that differ from the baked base; leave edges transparent."""
+def diff_overlay(target: Image.Image, base: Image.Image, *, edge_margin: int = 3) -> Image.Image:
+    """Keep approved changed pixels, including dark cover pixels over baked white art."""
     output = Image.new("RGBA", target.size)
     source = target.load()
     baked = base.load()
@@ -38,11 +38,29 @@ def diff_overlay(target: Image.Image, base: Image.Image) -> Image.Image:
         for x in range(target.width):
             rgb = source[x, y]
             changed = rgb != baked[x, y]
-            # The approved pressed crop contains the whole row's dark plate.
-            # Keep only bright glyph/glow pixels so that plate pixels cannot
-            # become opaque rectangles when composited over the neutral base.
-            edge = x < 3 or y < 3 or x >= target.width - 3 or y >= target.height - 3
-            pixels[x, y] = (*rgb, 255 if changed and not edge and max(rgb) >= 100 else 0)
+            edge = x < edge_margin or y < edge_margin or x >= target.width - edge_margin or y >= target.height - edge_margin
+            # Component masks are explicit artwork, not a translucent filter:
+            # changed pixels must fully replace baked white glyphs. The border
+            # mask below is the only place where the measured glow ramp uses
+            # partial alpha.
+            alpha = 255 if changed and not (edge and edge_margin > 0) else 0
+            pixels[x, y] = (*rgb, alpha)
+    return output
+
+
+def border_overlay(target: Image.Image, base: Image.Image) -> Image.Image:
+    """Extract only the approved rounded perimeter, never the row interior."""
+    output = Image.new("RGBA", target.size)
+    source, baked, pixels = target.load(), base.load(), output.load()
+    for y in range(target.height):
+        for x in range(target.width):
+            distance = min(x, y, target.width - 1 - x, target.height - 1 - y)
+            rgb, neutral = source[x, y], baked[x, y]
+            delta = max(abs(rgb[channel] - neutral[channel]) for channel in range(3))
+            # Keep the glow through the outer seven pixels; the declared
+            # interior acceptance region must remain the neutral base.
+            changed = rgb != neutral and distance < 8
+            pixels[x, y] = (*rgb, min(255, delta * 3) if changed else 0)
     return output
 
 
@@ -61,6 +79,12 @@ def main() -> None:
             target = reference.crop((x, y, x + width, y + height))
             base = NEUTRAL.crop((x, y, x + width, y + height))
             write_overlay(diff_overlay(target, base), f"settings-{row}-pressed-{component}-mask-{width}x{height}")
+
+    reference = Image.open(ROOT / "shared/references/phase1-settings/settings-wifi-pressed-466.png").convert("RGB")
+    write_overlay(
+        border_overlay(reference.crop((72, 127, 394, 183)), NEUTRAL.crop((72, 127, 394, 183))),
+        "settings-pressed-border-mask-322x56",
+    )
 
     for name, (x, y, width, height) in STATUS.items():
         source = Image.open(ROOT / "shared/assets" / f"settings-status-{name}-{width}x{height}.png").convert("RGB")

@@ -328,19 +328,12 @@ void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t 
 
 void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index, SharedImageResolver resolveImage) {
   const int16_t y = static_cast<int16_t>(127 + index * 54);
-  const lv_color_t active = lv_color_hex(generated_ui::kSettingsIconActiveColor);
-  const lv_color_t innerGlow = lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow);
-  lv_obj_t* border = makePanel(root, 72, y, 322, 56, 28, lv_color_black());
-  lv_obj_set_style_bg_opa(border, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(border, 2, 0);
-  lv_obj_set_style_border_color(border, active, 0);
-  lv_obj_set_style_shadow_width(border, 0, 0);
-  lv_obj_set_style_shadow_opa(border, LV_OPA_TRANSP, 0);
-  lv_obj_t* inset = makePanel(root, 74, static_cast<int16_t>(y + 2), 318, 52, 26, lv_color_black());
-  lv_obj_set_style_bg_opa(inset, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(inset, 1, 0);
-  lv_obj_set_style_border_color(inset, innerGlow, 0);
-  lv_obj_set_style_border_opa(inset, LV_OPA_90, 0);
+  const lv_image_dsc_t* borderMask = resolveImage == nullptr ? nullptr : resolveImage("settings-pressed-border-mask");
+  if (borderMask != nullptr) {
+    lv_obj_t* border = lv_image_create(root);
+    lv_image_set_src(border, borderMask);
+    lv_obj_set_pos(border, 72, y);
+  }
   // The neutral artwork bakes white glyphs into the icon and chevron. These
   // derived transparent masks contain only the approved changed pixels for
   // those two bounded components; the row body and label remain untouched.
@@ -359,7 +352,7 @@ void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index, SharedImageResolver 
     lv_obj_t* chevron = lv_image_create(root);
     lv_image_set_src(chevron, chevronMask);
     lv_obj_set_pos(chevron, 355, y);
-  } else {
+  } else if (borderMask == nullptr) {
     drawSettingsIcon(root, index, 100, static_cast<int16_t>(y + 28), true);
     drawChevron(root, 365, static_cast<int16_t>(y + 19), true);
   }
