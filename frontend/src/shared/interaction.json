@@ -33,10 +33,19 @@
     "brightness_minimum": 5,
     "brightness_maximum": 100,
     "settings_release": {"gestures": ["tap", "long-press", "release"], "require_original_row": true, "cancel_on_leave": true},
+    "home_button_bounds": [
+      {"id":"open-clock","x":203,"y":56,"width":72,"height":72,"center":[239,92],"move_from_center":[239,102],"radial_delta":10},
+      {"id":"open-navigation","x":116,"y":104,"width":72,"height":72,"center":[152,140],"move_from_center":[158,148],"radial_delta":10},
+      {"id":"open-weather","x":63,"y":192,"width":72,"height":72,"center":[99,228],"move_from_center":[109,228],"radial_delta":10},
+      {"id":"open-usb","x":338,"y":192,"width":72,"height":72,"center":[374,228],"move_from_center":[364,228],"radial_delta":10},
+      {"id":"open-whatsapp","x":111,"y":280,"width":72,"height":72,"center":[147,316],"move_from_center":[155,310],"radial_delta":10},
+      {"id":"open-spotify","x":291,"y":282,"width":72,"height":72,"center":[327,318],"move_from_center":[321,310],"radial_delta":10},
+      {"id":"open-settings","x":200,"y":336,"width":72,"height":72,"center":[236,372],"move_from_center":[236,362],"radial_delta":10}
+    ],
     "settings_row_actions": {
       "settings-wifi": "wifi-panel",
       "settings-bluetooth": "bluetooth-panel",
-      "settings-display": "undefined",
+      "settings-display": "open-additional-options",
       "settings-sound": "undefined"
     }
   }

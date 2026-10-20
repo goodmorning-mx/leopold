@@ -45,15 +45,16 @@
         }
       ],
       "generated_asset": {
-        "file": "assets/home-reference-466.png",
-        "sha256": "d5d8e07fb4a4e56f4880a1bc4eb952ceb4989081c984b4e3a0da4689e6921902",
+        "file": "assets/home-controls-outward-10-466.png",
+        "sha256": "d906b3fb62506db09bba5238343fc281310aeb15bebaf4cb403baf4a32d9c954",
         "width": 466,
         "height": 466,
-        "format": "lossless PNG"
+        "format": "lossless PNG",
+        "authorized_transform": "Composite canonical gears wallpaper; translate each Home icon/bubble/button group and its hit target outward by exactly 10 framebuffer pixels; leave the status banner unchanged."
       },
       "device_asset": {
-        "file": "assets/home-reference-466.bin",
-        "sha256": "8a892908dc0b639959833365c266eb63555cf7119b973a96cf3ad8b4eb4e4bca",
+        "file": "assets/home-controls-outward-10-466.bin",
+        "sha256": "8b85769954458a8bc54deec36bf8e747fa26140a51b8f206f49c8c0b29aa36bf",
         "format": "RGB565A8 derived from generated_asset"
       },
       "dynamic_masks": [
@@ -93,8 +94,13 @@
         ]
       },
       "consumers": {
-        "browser": "frontend/public/firmware-assets/home-reference-466.png",
-        "device": "device/assets/home-reference-466.bin"
+        "browser": "frontend/public/firmware-assets/home-controls-outward-10-466.png",
+        "device": "device/assets/home-controls-outward-10-466.bin"
+      },
+      "authorized_changes": {
+        "background": "Canonical gears wallpaper from shared/references/settings-glass-gears-2026-10-20/source.jpeg",
+        "home_controls": "Seven groups shifted outward by length-10 integer vectors; hit targets share translated bounds",
+        "status_banner": "unchanged"
       }
     },
     {
@@ -114,8 +120,22 @@
         "immutable": true
       },
       "overlays": [
-        {"name": "status-bluetooth-connected", "file": "references/phase1-settings/status-bluetooth-connected-660x206.png", "sha256": "3c60d44fa55e0259fa8cb3741d6aa18e5160bbaa346adfb34b253720da9da55b", "width": 660, "height": 206, "immutable": true},
-        {"name": "status-bluetooth-disconnected", "file": "references/phase1-settings/status-bluetooth-disconnected-660x206.png", "sha256": "ce77592599a66b567d816cddaede60ce34de97749a7c55d0c5eb074b6e2a37d7", "width": 660, "height": 206, "immutable": true}
+        {
+          "name": "status-bluetooth-connected",
+          "file": "references/phase1-settings/status-bluetooth-connected-660x206.png",
+          "sha256": "3c60d44fa55e0259fa8cb3741d6aa18e5160bbaa346adfb34b253720da9da55b",
+          "width": 660,
+          "height": 206,
+          "immutable": true
+        },
+        {
+          "name": "status-bluetooth-disconnected",
+          "file": "references/phase1-settings/status-bluetooth-disconnected-660x206.png",
+          "sha256": "ce77592599a66b567d816cddaede60ce34de97749a7c55d0c5eb074b6e2a37d7",
+          "width": 660,
+          "height": 206,
+          "immutable": true
+        }
       ],
       "generated_asset": {
         "file": "assets/settings-neutral-466.png",
@@ -131,17 +151,111 @@
         "format": "RGB565A8 derived from generated_asset"
       },
       "active_status_assets": [
-        {"state": "bluetooth-connected", "asset": "assets/settings-glass-status-bluetooth-active-22x22-v1.bin", "sha256": "98f99344f43f3010fb4cdb44e95fd61ba1d9b78acc99aa3fa3c1d0e12f75fe8f", "bounds": [153, 45, 22, 22], "reference_asset": "assets/settings-status-bluetooth-active-22x22.bin"},
-        {"state": "wifi-connected", "asset": "assets/settings-glass-status-wifi-active-22x22-v1.bin", "sha256": "747d459d553dd88a7e70f630066615076366531363707af44c222d46f9839724", "bounds": [181, 45, 22, 22], "reference_asset": "assets/settings-status-wifi-active-22x22.bin"},
-        {"state": "cloud-connected", "asset": "assets/settings-glass-status-cloud-active-24x24-v1.bin", "sha256": "c51666129b3b266c42bfcba5a839f1b66fce7d00770d4ae25961d33f343b6aaf", "bounds": [264, 45, 24, 24], "reference_asset": "assets/settings-status-cloud-active-24x24.bin"}
+        {
+          "state": "bluetooth-connected",
+          "asset": "assets/settings-glass-status-bluetooth-active-22x22-v1.bin",
+          "sha256": "98f99344f43f3010fb4cdb44e95fd61ba1d9b78acc99aa3fa3c1d0e12f75fe8f",
+          "bounds": [
+            153,
+            45,
+            22,
+            22
+          ],
+          "reference_asset": "assets/settings-status-bluetooth-active-22x22.bin"
+        },
+        {
+          "state": "wifi-connected",
+          "asset": "assets/settings-glass-status-wifi-active-22x22-v1.bin",
+          "sha256": "747d459d553dd88a7e70f630066615076366531363707af44c222d46f9839724",
+          "bounds": [
+            181,
+            45,
+            22,
+            22
+          ],
+          "reference_asset": "assets/settings-status-wifi-active-22x22.bin"
+        },
+        {
+          "state": "cloud-connected",
+          "asset": "assets/settings-glass-status-cloud-active-24x24-v1.bin",
+          "sha256": "c51666129b3b266c42bfcba5a839f1b66fce7d00770d4ae25961d33f343b6aaf",
+          "bounds": [
+            264,
+            45,
+            24,
+            24
+          ],
+          "reference_asset": "assets/settings-status-cloud-active-24x24.bin"
+        }
       ],
       "pressed_states": [
-        {"state": "wifi-pressed", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "sha256": "04a475b5e33bfc8754e5e4e1bd5fd7447f94cc9093ed13bbd68f71d62726db1e", "asset": "assets/settings-wifi-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 127, 322, 56]},
-        {"state": "bluetooth-pressed", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "sha256": "3936c14adcdeb6b6ebcb31306d6d139690a45276748bfecfcadfbdaf24372459", "asset": "assets/settings-bluetooth-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 181, 322, 56]},
-        {"state": "display-pressed", "source": "references/phase1-settings/settings-display-pressed-466.png", "sha256": "b054c4c91fa8e6df482e6a4877cffc686971fafe63bcdecf995bc3085625525e", "asset": "assets/settings-display-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 235, 322, 56]},
-        {"state": "sound-pressed", "source": "references/phase1-settings/settings-sound-pressed-466.png", "sha256": "68dd0fdfa9070aab28e9a8e5b0a2a1eb3789265f0e3c9a522319613223413f3d", "asset": "assets/settings-sound-pressed-322x56.bin", "format": "RGB565A8", "width": 322, "height": 56, "bounds": [72, 289, 322, 56]}
+        {
+          "state": "wifi-pressed",
+          "source": "references/phase1-settings/settings-wifi-pressed-466.png",
+          "sha256": "04a475b5e33bfc8754e5e4e1bd5fd7447f94cc9093ed13bbd68f71d62726db1e",
+          "asset": "assets/settings-wifi-pressed-322x56.bin",
+          "format": "RGB565A8",
+          "width": 322,
+          "height": 56,
+          "bounds": [
+            72,
+            127,
+            322,
+            56
+          ]
+        },
+        {
+          "state": "bluetooth-pressed",
+          "source": "references/phase1-settings/settings-bluetooth-pressed-466.png",
+          "sha256": "3936c14adcdeb6b6ebcb31306d6d139690a45276748bfecfcadfbdaf24372459",
+          "asset": "assets/settings-bluetooth-pressed-322x56.bin",
+          "format": "RGB565A8",
+          "width": 322,
+          "height": 56,
+          "bounds": [
+            72,
+            181,
+            322,
+            56
+          ]
+        },
+        {
+          "state": "display-pressed",
+          "source": "references/phase1-settings/settings-display-pressed-466.png",
+          "sha256": "b054c4c91fa8e6df482e6a4877cffc686971fafe63bcdecf995bc3085625525e",
+          "asset": "assets/settings-display-pressed-322x56.bin",
+          "format": "RGB565A8",
+          "width": 322,
+          "height": 56,
+          "bounds": [
+            72,
+            235,
+            322,
+            56
+          ]
+        },
+        {
+          "state": "sound-pressed",
+          "source": "references/phase1-settings/settings-sound-pressed-466.png",
+          "sha256": "68dd0fdfa9070aab28e9a8e5b0a2a1eb3789265f0e3c9a522319613223413f3d",
+          "asset": "assets/settings-sound-pressed-322x56.bin",
+          "format": "RGB565A8",
+          "width": 322,
+          "height": 56,
+          "bounds": [
+            72,
+            289,
+            322,
+            56
+          ]
+        }
       ],
-      "status_shell_mask": [137, 39, 195, 38],
+      "status_shell_mask": [
+        137,
+        39,
+        195,
+        38
+      ],
       "dynamic_masks": [
         {
           "name": "status-shell",
@@ -363,5 +477,25 @@
         "device": "device/assets/display-reference-466.bin"
       }
     }
-  ]
+  ],
+  "home_wallpaper_asset": {
+    "key": "settings-gears-wallpaper",
+    "png": "assets/settings-gears-wallpaper-466.png",
+    "png_sha256": "b91ed7ea91e11fdcfffaf442418f936cb6f6394e93ab0a8f8df65b37a2146f06",
+    "device_asset": "assets/settings-gears-wallpaper-466.bin",
+    "device_asset_sha256": "cf90078327d1c5e976aee873c5c6463103ce6b02e8b72d4f9d0895a3199e8255",
+    "width": 466,
+    "height": 466,
+    "source": "references/settings-glass-gears-2026-10-20/source.jpeg"
+  },
+  "home_source_derivative": {
+    "file": "references/home-reference-466-source-derivative.png",
+    "sha256": "d5d8e07fb4a4e56f4880a1bc4eb952ceb4989081c984b4e3a0da4689e6921902",
+    "dimensions": [
+      466,
+      466
+    ],
+    "format": "lossless PNG",
+    "derived_from": "the previously generated exact Home asset at the source head before the newly authorized background/position transform"
+  }
 }

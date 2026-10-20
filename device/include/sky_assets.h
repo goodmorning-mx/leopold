@@ -15,6 +15,7 @@ extern lv_image_dsc_t kWhatsappIcon;
 extern lv_image_dsc_t kSpotifyIcon;
 extern lv_image_dsc_t kSpotifyLargeIcon;
 extern lv_image_dsc_t kSettingsNeutral;
+extern lv_image_dsc_t kSettingsGearsWallpaper;
 extern lv_image_dsc_t kSettingsStatusBluetoothActive;
 extern lv_image_dsc_t kSettingsStatusWifiActive;
 extern lv_image_dsc_t kSettingsStatusCloudActive;

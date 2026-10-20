@@ -280,7 +280,7 @@ generated = "\n".join(lines)
 if not target.exists() or target.read_text(encoding="utf-8") != generated:
     target.write_text(generated, encoding="utf-8")
 
-home_asset = (root / "shared" / "assets" / "home-reference-466.bin").read_bytes()
+home_asset = (root / "shared" / "assets" / "home-controls-outward-10-466.bin").read_bytes()
 home_asset_lines = [
     "#pragma once",
     "#ifndef LEOPOLD_WASM",
@@ -319,6 +319,7 @@ settings_asset_lines.extend([
     "constexpr size_t kSettingsAssetDataSize = sizeof(kSettingsAssetData);",
 ])
 for name, file in (
+    ("kSettingsWallpaperAssetData", "settings-gears-wallpaper-466.bin"),
     ("kSettingsGearsAssetData", "settings-glass-gears-v1-466.bin"),
     ("kSettingsStatusBluetoothActiveData", "settings-glass-status-bluetooth-active-22x22-v1.bin"),
     ("kSettingsStatusWifiActiveData", "settings-glass-status-wifi-active-22x22-v1.bin"),

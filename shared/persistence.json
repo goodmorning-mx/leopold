@@ -2,7 +2,7 @@
   "schema_version": 1,
   "namespace": "display",
   "settings": {
-    "brightness": {"key": "brightness", "type": "integer", "default": 70, "minimum": 5, "maximum": 100},
+    "brightness": {"key": "brightness", "type": "integer", "default": 100, "minimum": 5, "maximum": 100},
     "background_mode": {"key": "background_mode", "type": "integer", "default": 0, "minimum": 0, "maximum": 2},
     "spanish_language": {"key": "spanish", "type": "boolean", "default": false},
     "clock_24_hour": {"key": "clock_24", "type": "boolean", "default": false},

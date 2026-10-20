@@ -605,6 +605,15 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   renderSettingsLiveBrightness(root, state, gears != nullptr);
 }
 
+void drawSettingsWallpaper(lv_obj_t* root, SharedImageResolver resolveImage) {
+  const lv_image_dsc_t* wallpaper = resolveImage == nullptr ? nullptr : resolveImage("settings-gears-wallpaper");
+  if (wallpaper == nullptr) return;
+  lv_obj_t* image = lv_image_create(root);
+  lv_image_set_src(image, wallpaper);
+  lv_obj_set_pos(image, 0, 0);
+  lv_obj_remove_flag(image, LV_OBJ_FLAG_CLICKABLE);
+}
+
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id) {
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     if (strcmp(screen.components[index].id, id) == 0) return &screen.components[index];
@@ -700,9 +709,12 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   // The reference home artwork contains the static glass controls. Keep the
   // SDUI components as live hit targets, but let the shared artwork supply
   // their pixels whenever the home screen is in its reference presentation.
-  const bool referenceHome = home && (state == nullptr || state->backgroundMode != 2);
+  const bool referenceHome = home;
+  if (strcmp(screen.screenId, "device-additional-options") == 0) {
+    drawSettingsWallpaper(root, resolveImage);
+  }
   if (resolveImage != nullptr && home && referenceHome) {
-    const lv_image_dsc_t* source = resolveImage(state != nullptr && state->backgroundMode == 2 ? "chevron" : "home");
+    const lv_image_dsc_t* source = resolveImage("home");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   } else if (resolveImage != nullptr && home && backgroundEnabled) {
     const lv_image_dsc_t* source = resolveImage("chevron");

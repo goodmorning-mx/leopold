@@ -54,7 +54,7 @@ async function loadAssets(module: Module) {
         'settings-display-pressed-icon-mask', 'settings-display-pressed-chevron-mask',
         'settings-sound-pressed-icon-mask', 'settings-sound-pressed-chevron-mask',
         'settings-status-bluetooth-active',
-        'settings-status-wifi-active', 'settings-status-cloud-active', 'settings-gears-base',
+        'settings-status-wifi-active', 'settings-status-cloud-active', 'settings-gears-base', 'settings-gears-wallpaper',
       ].indexOf(key);
       if (assetIndex < 0) return;
       const bytes = new Uint8Array(await (await fetch(`/firmware-assets/${asset.file}`)).arrayBuffer());

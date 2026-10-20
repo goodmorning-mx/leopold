@@ -47,6 +47,7 @@ lv_image_dsc_t kWhatsappIcon = {};
 lv_image_dsc_t kSpotifyIcon = {};
 lv_image_dsc_t kSpotifyLargeIcon = {};
 lv_image_dsc_t kSettingsNeutral = {};
+lv_image_dsc_t kSettingsGearsWallpaper = {};
 lv_image_dsc_t kSettingsGears = {};
 lv_image_dsc_t kSettingsStatusBluetoothActive = {};
 lv_image_dsc_t kSettingsStatusWifiActive = {};
@@ -70,7 +71,7 @@ namespace {
 AssetSlot assets[] = {
     {"flower", "sky_flower.bin", 466, 466, &kFlowerBackground},
     {"chevron", "sky_chevron.bin", 466, 466, &kChevronBackground},
-    {"home", "sky_home.bin", 466, 466, &kHomeBackground},
+    {"home", "home-controls-outward-10-466.bin", 466, 466, &kHomeBackground},
     {"open-clock", "icon_clock.bin", 80, 80, &kClockIcon},
     {"open-weather", "icon_weather.bin", 75, 75, &kWeatherIcon},
     {"open-navigation", "icon_nav.bin", 80, 80, &kNavigationIcon},
@@ -78,6 +79,7 @@ AssetSlot assets[] = {
     {"open-spotify", "icon_spotify.bin", 84, 84, &kSpotifyIcon},
     {"spotify-large", "icon_spotify_large.bin", 97, 100, &kSpotifyLargeIcon},
     {"settings-gears-base", "settings-glass-gears-v1-466.bin", 466, 466, &kSettingsGears},
+    {"settings-gears-wallpaper", "settings-gears-wallpaper-466.bin", 466, 466, &kSettingsGearsWallpaper},
     {"settings-neutral", "settings-neutral-466.bin", 466, 466, &kSettingsNeutral},
     {"settings-status-bluetooth-active", "settings-glass-status-bluetooth-active-22x22-v1.bin", 22, 22, &kSettingsStatusBluetoothActive},
     {"settings-status-wifi-active", "settings-glass-status-wifi-active-22x22-v1.bin", 22, 22, &kSettingsStatusWifiActive},
@@ -142,7 +144,7 @@ bool loadSdAssets() {
 
 bool loadCloudAsset(const char* file, const uint8_t* data, size_t bytes) {
   if (file == nullptr || data == nullptr) return false;
-  if (embeddedHomeLoaded && strcmp(file, "sky_home.bin") == 0) return true;
+  if (embeddedHomeLoaded && strcmp(file, "home-controls-outward-10-466.bin") == 0) return true;
   for (AssetSlot& asset : assets) {
     const size_t expected = static_cast<size_t>(asset.width) * asset.height * 3;
     if (strcmp(asset.file, file) != 0 || bytes != expected) continue;
@@ -161,13 +163,14 @@ bool loadCloudAsset(const char* file, const uint8_t* data, size_t bytes) {
 }
 
 bool loadEmbeddedHomeAsset() {
-  if (!loadCloudAsset("sky_home.bin", kHomeAssetData, kHomeAssetDataSize)) return false;
+  if (!loadCloudAsset("home-controls-outward-10-466.bin", kHomeAssetData, kHomeAssetDataSize)) return false;
   embeddedHomeLoaded = true;
   return true;
 }
 
 bool loadEmbeddedSettingsAsset() {
   const bool gears = loadCloudAsset("settings-glass-gears-v1-466.bin", kSettingsGearsAssetData, kSettingsGearsAssetDataSize);
+  const bool wallpaper = loadCloudAsset("settings-gears-wallpaper-466.bin", kSettingsWallpaperAssetData, kSettingsWallpaperAssetDataSize);
   const bool neutral = loadCloudAsset("settings-neutral-466.bin", kSettingsAssetData, kSettingsAssetDataSize);
   const bool bluetooth = loadCloudAsset("settings-glass-status-bluetooth-active-22x22-v1.bin", kSettingsStatusBluetoothActiveData, kSettingsStatusBluetoothActiveDataSize);
   const bool wifi = loadCloudAsset("settings-glass-status-wifi-active-22x22-v1.bin", kSettingsStatusWifiActiveData, kSettingsStatusWifiActiveDataSize);
@@ -182,7 +185,7 @@ bool loadEmbeddedSettingsAsset() {
   pressed = loadCloudAsset("settings-glass-sound-pressed-icon-mask-61x56-v1.bin", kSettingsSoundPressedIconMaskData, kSettingsSoundPressedIconMaskDataSize) && pressed;
   pressed = loadCloudAsset("settings-glass-sound-pressed-chevron-mask-39x56-v1.bin", kSettingsSoundPressedChevronMaskData, kSettingsSoundPressedChevronMaskDataSize) && pressed;
   pressed = loadCloudAsset("settings-glass-pressed-border-mask-322x56-v1.bin", kSettingsPressedBorderMaskData, kSettingsPressedBorderMaskDataSize) && pressed;
-  return gears && neutral && bluetooth && wifi && cloud && pressed;
+  return gears && wallpaper && neutral && bluetooth && wifi && cloud && pressed;
 }
 
 bool allAssetsLoaded() {

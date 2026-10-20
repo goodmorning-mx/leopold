@@ -1,16 +1,95 @@
 {
   "schema_version": 1,
-  "viewport": {"width": 466, "height": 466},
+  "viewport": {
+    "width": 466,
+    "height": 466
+  },
   "states": [
-    {"name": "exact-home", "screen": "sky-home", "mode": "exact-reference-asset", "asset": "home-reference-466.png", "dynamic_masks": ["live-clock"]},
-    {"name": "exact-settings", "screen": "device-control-center", "mode": "exact-reference-asset", "asset": "settings-reference-466.png", "dynamic_masks": ["live-clock"]},
-    {"name": "home-dark", "screen": "sky-home", "dark_background": true, "spanish": false, "clock_24": false, "brightness": 70},
-    {"name": "home-color", "screen": "sky-home", "dark_background": false, "spanish": false, "clock_24": false, "brightness": 70},
-    {"name": "clock-12-hour", "screen": "sky-clock", "dark_background": false, "spanish": false, "clock_24": false, "brightness": 70},
-    {"name": "clock-24-hour", "screen": "sky-clock", "dark_background": false, "spanish": false, "clock_24": true, "brightness": 70},
-    {"name": "control-center", "screen": "device-control-center", "dark_background": false, "spanish": false, "clock_24": false, "brightness": 70},
-    {"name": "additional-options-spanish", "screen": "device-additional-options", "dark_background": false, "spanish": true, "clock_24": false, "brightness": 70},
-    {"name": "spotify", "screen": "spotify-player", "dark_background": true, "spanish": false, "clock_24": false, "brightness": 70},
-    {"name": "offline", "screen": "sky-home", "dark_background": true, "spanish": false, "clock_24": false, "brightness": 70, "wifi": false, "cloud": false, "bluetooth": false}
+    {
+      "name": "exact-home",
+      "screen": "sky-home",
+      "mode": "exact-reference-asset",
+      "asset": "home-controls-outward-10-466.png",
+      "dynamic_masks": [
+        "live-clock"
+      ],
+      "authorized_transform": "canonical gears wallpaper and seven outward-10px control groups; unchanged time banner"
+    },
+    {
+      "name": "exact-settings",
+      "screen": "device-control-center",
+      "mode": "exact-reference-asset",
+      "asset": "settings-reference-466.png",
+      "dynamic_masks": [
+        "live-clock"
+      ]
+    },
+    {
+      "name": "home-dark",
+      "screen": "sky-home",
+      "dark_background": true,
+      "spanish": false,
+      "clock_24": false,
+      "brightness": 70
+    },
+    {
+      "name": "home-color",
+      "screen": "sky-home",
+      "dark_background": false,
+      "spanish": false,
+      "clock_24": false,
+      "brightness": 70
+    },
+    {
+      "name": "clock-12-hour",
+      "screen": "sky-clock",
+      "dark_background": false,
+      "spanish": false,
+      "clock_24": false,
+      "brightness": 70
+    },
+    {
+      "name": "clock-24-hour",
+      "screen": "sky-clock",
+      "dark_background": false,
+      "spanish": false,
+      "clock_24": true,
+      "brightness": 70
+    },
+    {
+      "name": "control-center",
+      "screen": "device-control-center",
+      "dark_background": false,
+      "spanish": false,
+      "clock_24": false,
+      "brightness": 70
+    },
+    {
+      "name": "additional-options-spanish",
+      "screen": "device-additional-options",
+      "dark_background": false,
+      "spanish": true,
+      "clock_24": false,
+      "brightness": 70
+    },
+    {
+      "name": "spotify",
+      "screen": "spotify-player",
+      "dark_background": true,
+      "spanish": false,
+      "clock_24": false,
+      "brightness": 70
+    },
+    {
+      "name": "offline",
+      "screen": "sky-home",
+      "dark_background": true,
+      "spanish": false,
+      "clock_24": false,
+      "brightness": 70,
+      "wifi": false,
+      "cloud": false,
+      "bluetooth": false
+    }
   ]
 }

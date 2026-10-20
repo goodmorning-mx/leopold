@@ -144,7 +144,7 @@ struct UsbAssetSpec {
 };
 
 constexpr UsbAssetSpec kUsbAssetSpecs[] = {
-    {"sky_home.bin", 466u * 466u * 3u},
+    {"home-controls-outward-10-466.bin", 466u * 466u * 3u},
     {"sky_flower.bin", 466u * 466u * 3u},
     {"sky_chevron.bin", 466u * 466u * 3u},
     {"icon_clock.bin", 80u * 80u * 3u},
@@ -899,6 +899,8 @@ const SduiComponent* findSettingsButtonAt(
   return nullptr;
 }
 
+bool openLocalScreen(const char* componentId);
+
 bool handleSettingsTap(const SduiComponent& button, uint32_t now) {
   if (strcmp(button.id, "settings-wifi") == 0) {
     localPanel = LocalPanel::kWifi;
@@ -912,8 +914,11 @@ bool handleSettingsTap(const SduiComponent& button, uint32_t now) {
     Serial.println("Bluetooth details opened");
     return true;
   }
-  if (strcmp(button.id, "settings-display") == 0 ||
-      strcmp(button.id, "settings-sound") == 0) {
+  if (strcmp(button.id, "settings-display") == 0) {
+    openLocalScreen("open-additional-options");
+    return true;
+  }
+  if (strcmp(button.id, "settings-sound") == 0) {
     Serial.printf("Settings row has no destination: %s\n", button.id);
     return true;
   }
@@ -933,6 +938,23 @@ const SduiComponent* firstButton() {
     }
   }
   return nullptr;
+}
+
+void syncDisplayIndicators() {
+  char timeText[9] = {};
+  telemetry.formattedTime(timeText);
+  screen.drawIndicators(
+      wifi.connected(), cloudConnected, bluetooth.enabled(), bluetooth.connected(),
+      telemetry.batteryPercent(), timeText);
+  for (uint8_t screenIndex = 0; screenIndex < currentUi.screenCount; ++screenIndex) {
+    SduiScreen& liveScreen = currentUi.screens[screenIndex];
+    for (uint8_t componentIndex = 0; componentIndex < liveScreen.componentCount; ++componentIndex) {
+      SduiComponent& component = liveScreen.components[componentIndex];
+      if (strcmp(component.id, "sky-time") == 0) {
+        strlcpy(component.text, timeText, sizeof(component.text));
+      }
+    }
+  }
 }
 
 bool openLocalScreen(const char* componentId) {
@@ -957,6 +979,7 @@ bool openLocalScreen(const char* componentId) {
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     if (strcmp(currentUi.screens[index].screenId, screenId) == 0) {
       currentUi.activeScreen = index;
+      syncDisplayIndicators();
       screen.renderSduiScreen(currentUi);
       if (strcmp(screenId, "sky-weather") == 0) {
         weather.render(currentUi);
@@ -1155,6 +1178,7 @@ void processInput(uint32_t now) {
       localPanel != LocalPanel::kNone) {
     if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kNone;
+      syncDisplayIndicators();
       screen.renderSduiScreen(currentUi);
       lastIndicatorAt = 0;
       Serial.println("Connectivity details closed");
@@ -1607,6 +1631,9 @@ void refreshIndicators(uint32_t now) {
   }
   char timeText[9] = {};
   telemetry.formattedTime(timeText);
+  screen.drawIndicators(
+      wifiConnected, cloudConnected, bluetooth.enabled(), bluetooth.connected(),
+      telemetry.batteryPercent(), timeText);
   const uint16_t millivolts = telemetry.batteryMillivolts();
   char voltageText[16] = {};
   snprintf(

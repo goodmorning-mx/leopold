@@ -118,6 +118,15 @@ lv_obj_t* cleanLvglScreen(uint16_t background = kBlack) {
   return root;
 }
 
+void drawSettingsWallpaper(lv_obj_t* root) {
+  const lv_image_dsc_t* wallpaper = sky::resolveAsset("settings-gears-wallpaper");
+  if (wallpaper == nullptr || wallpaper->data == nullptr) return;
+  lv_obj_t* image = lv_image_create(root);
+  lv_image_set_src(image, wallpaper);
+  lv_obj_set_pos(image, 0, 0);
+  lv_obj_remove_flag(image, LV_OBJ_FLAG_CLICKABLE);
+}
+
 lv_obj_t* createLabel(
     lv_obj_t* parent,
     const char* text,
@@ -939,6 +948,7 @@ void DisplayManager::buildLvglConnectivityDetails(
     const char* primaryDetail,
     const char* secondaryDetail) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
       root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
@@ -1059,6 +1069,7 @@ void DisplayManager::showBluetoothDetails(
     bool connected,
     const char* peripheralName) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
       root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
@@ -1104,6 +1115,7 @@ void DisplayManager::showBluetoothDevices(
     bool scanning,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
       root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 23, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
@@ -1155,6 +1167,7 @@ void DisplayManager::showWifiNetworks(
     bool scanning,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
       root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 23, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
@@ -1213,6 +1226,7 @@ void DisplayManager::showWifiPassword(
   static const char* upperGroups[] = {
       "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "1234567890"};
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
       root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
@@ -1315,6 +1329,7 @@ void DisplayManager::showWifiConnecting(
     const char* networkName,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
       root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(

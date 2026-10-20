@@ -201,6 +201,8 @@ function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: 
     if (!darkBackground) { drawAsset(ctx, images, 'flower', 0, 0, W, H); ctx.fillStyle = 'rgba(0,0,0,.20)'; ctx.fillRect(0, 0, W, H); }
     if (screen.id === 'sky-voltage') drawAsset(ctx, images, 'open-voltage', 193, 45, 80, 80);
     if (screen.id === 'sky-weather') drawAsset(ctx, images, 'open-weather', 196, 45, 75, 75);
+  } else if (screen.id === 'device-additional-options') {
+    drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H);
   } else { ctx.fillStyle = screen.background || '#000'; ctx.fillRect(0, 0, W, H); }
   screen.components.forEach((component) => {
     if (flower && ['voltage-symbol', 'weather-symbol'].includes(component.id)) return;
@@ -267,10 +269,11 @@ function drawBack(ctx: CanvasRenderingContext2D, x = interaction.local_panels.ba
   rounded(ctx, x, y, w, h, h / 2, '#1C1C1E'); centered(ctx, '‹', x + w / 2, y + 8, 32);
 }
 
-function drawConnectivity(ctx: CanvasRenderingContext2D, localPanel: string, connected: boolean, networkName: string) {
+function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages, localPanel: string, connected: boolean, networkName: string) {
   const wifi = localPanel === 'wifi';
   const bluetooth = localPanel === 'bluetooth';
   const title = wifi ? 'Wi-Fi' : bluetooth ? 'Bluetooth' : 'GoodMorning Cloud';
+  drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H);
   drawBack(ctx);
   centered(ctx, title, 233, 51, 24);
   const accent = connected ? '#30D158' : '#0A84FF';
@@ -284,8 +287,8 @@ function drawConnectivity(ctx: CanvasRenderingContext2D, localPanel: string, con
   if (wifi) { rounded(ctx, 245, 372, 174, 62, 31, '#2C2C2E'); centered(ctx, 'Cambiar red', 332, 393, 16); }
 }
 
-function drawNetworkList(ctx: CanvasRenderingContext2D, bluetooth: boolean, saved: string[]) {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); drawBack(ctx);
+function drawNetworkList(ctx: CanvasRenderingContext2D, images: FirmwareImages, bluetooth: boolean, saved: string[]) {
+  drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
   centered(ctx, bluetooth ? 'Bluetooth' : 'Elegir Wi-Fi', 233, 43, 24);
   centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Demo networks — no real scan', 233, 80, 12, '#8E8E93');
   const names = bluetooth ? ['Leopold Companion', 'MacBook Pro'] : ['Leopold Wi-Fi', 'GoodMorning Guest', 'Casa'];
@@ -343,9 +346,9 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
     const render = () => {
       ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
       if (calibration) drawCalibration(ctx);
-      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName);
+      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, images, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName);
       else if (localPanel === 'wifi-password') {
-        drawBack(ctx);
+        drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
         centered(ctx, 'Demo Wi-Fi', 233, 55, 24);
         centered(ctx, demoPendingWifi, 233, 130, 20);
         centered(ctx, 'No real password is needed here.', 233, 200, 16);
@@ -353,8 +356,8 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
         rounded(ctx, 111, 360, 244, 60, 26, '#0A84FF');
         centered(ctx, 'Connect demo network', 233, 380, 16);
       }
-      else if (localPanel === 'wifi-networks') drawNetworkList(ctx, false, demoSavedWifi);
-      else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, true, []);
+      else if (localPanel === 'wifi-networks') drawNetworkList(ctx, images, false, demoSavedWifi);
+      else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, images, true, []);
       else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);

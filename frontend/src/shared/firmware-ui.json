@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "firmware_release": "firmware-v0.8.2",
-  "revision": 16,
+  "revision": 17,
   "poll_after_ms": 5000,
   "screens": [
     {"id":"sky-home","background":"#000000","components":[
-      {"type":"button","id":"open-clock","label":"CLOCK","x":197,"y":34,"width":72,"height":72},
-      {"type":"button","id":"open-navigation","label":"NAV","x":96,"y":91,"width":72,"height":72,"color":"#0A84FF"},
+      {"type":"button","id":"open-clock","label":"CLOCK","x":203,"y":56,"width":72,"height":72},
+      {"type":"button","id":"open-navigation","label":"NAV","x":116,"y":104,"width":72,"height":72,"color":"#0A84FF"},
       {"type":"text","id":"voltage-placeholder-home","text":"X","x":334,"y":112,"size":3,"color":"#8E8E93","align":"center"},
-      {"type":"button","id":"open-weather","label":"WEATHER","x":43,"y":190,"width":72,"height":72},
-      {"type":"button","id":"open-usb","label":"USB","icon":"usb","x":351,"y":190,"width":72,"height":72,"color":"#3D7FFF"},
-      {"type":"button","id":"open-whatsapp","label":"CHAT","icon":"whatsapp","x":96,"y":291,"width":72,"height":72,"color":"#30D158"},
-      {"type":"button","id":"open-spotify","label":"SPOTIFY","x":298,"y":291,"width":72,"height":72,"color":"#1DB954"},
-      {"type":"button","id":"open-settings","label":"","icon":"gear","x":197,"y":354,"width":72,"height":72}
+      {"type":"button","id":"open-weather","label":"WEATHER","x":63,"y":192,"width":72,"height":72},
+      {"type":"button","id":"open-usb","label":"USB","icon":"usb","x":338,"y":192,"width":72,"height":72,"color":"#3D7FFF"},
+      {"type":"button","id":"open-whatsapp","label":"CHAT","icon":"whatsapp","x":111,"y":280,"width":72,"height":72,"color":"#30D158"},
+      {"type":"button","id":"open-spotify","label":"SPOTIFY","x":291,"y":282,"width":72,"height":72,"color":"#1DB954"},
+      {"type":"button","id":"open-settings","label":"","icon":"gear","x":200,"y":336,"width":72,"height":72}
     ]},
     {"id":"sky-clock","background":"#000000","components":[{"type":"text","id":"sky-time","text":"--:--","x":233,"y":158,"size":5,"color":"#FFFFFF","align":"center"}]},
     {"id":"sky-voltage","background":"#000000","components":[
@@ -41,8 +41,7 @@
       {"type":"button","id":"settings-bluetooth","label":"Bluetooth","icon":"bluetooth","x":72,"y":181,"width":322,"height":54},
       {"type":"button","id":"settings-display","label":"Display","icon":"display","x":72,"y":235,"width":322,"height":54},
       {"type":"button","id":"settings-sound","label":"Sound & Vibration","icon":"sound","x":72,"y":289,"width":322,"height":54},
-      {"type":"slider","id":"display-brightness","label":"Brightness","x":98,"y":358,"width":272,"height":28,"value":50,"color":"#BBD7F5"},
-      {"type":"button","id":"open-additional-options","label":"Additional options","x":464,"y":464,"width":1,"height":1,"color":"#3D7FFF"}
+      {"type":"slider","id":"display-brightness","label":"Brightness","x":98,"y":358,"width":272,"height":28,"value":100,"color":"#BBD7F5"}
     ]},
     {"id":"device-additional-options","background":"#000000","components":[
       {"type":"text","id":"options-title","text":"ADDITIONAL OPTIONS","x":233,"y":54,"size":2,"color":"#FFFFFF","align":"center"},
