@@ -87,17 +87,76 @@ class RequestedParityContinuationTests(unittest.TestCase):
             self.assertIn('drawSettingsWallpaper(root)', section[:1200])
         self.assertIn('"home-controls-outward-10-466.bin"', (ROOT / 'device/src/sky_assets.cpp').read_text())
 
-    def test_home_composition_keeps_banner_and_fixed_placeholder(self):
+    def test_home_composition_keeps_banner_and_clears_only_approved_live_time_mask(self):
         from PIL import Image
-        from scripts.prepare_home_outward_controls import OUT, SOURCE, PILL
+        from scripts.prepare_home_outward_controls import OUT, SOURCE, BANNER, LIVE_TIME
         source = Image.open(SOURCE).convert('RGBA')
         output = Image.open(OUT).convert('RGBA')
-        mask = Image.new('L', source.size, 0)
+        wallpaper = Image.open(ROOT / 'shared/assets/settings-gears-wallpaper-466.png').convert('RGBA')
+        self.assertEqual(source.getchannel('A').getextrema(), (255, 255))
+        self.assertEqual(wallpaper.getchannel('A').getextrema(), (255, 255))
+        bx, by, bw, bh = BANNER
+        mask = Image.new('L', (bw, bh), 0)
         from PIL import ImageDraw
-        ImageDraw.Draw(mask).rounded_rectangle(PILL, radius=28, fill=255)
-        # The central banner area is unchanged; rounded corners blend into the new background.
-        self.assertEqual(output.crop((142, 220, 310, 240)).tobytes(), source.crop((142, 220, 310, 240)).tobytes())
-        self.assertNotEqual(output.crop((313, 139, 328, 157)).tobytes(), Image.open(ROOT / 'shared/assets/settings-gears-wallpaper-466.png').convert('RGBA').crop((313,139,328,157)).tobytes())
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, bw - 1, bh - 1), radius=28, fill=255)
+        tx, ty, tw, th = LIVE_TIME
+        for y in range(by, by + bh):
+            for x in range(bx, bx + bw):
+                matte = source.getpixel((x, y))
+                key_alpha = min(224, max(0, max(matte[:3]) - 24) * 4)
+                alpha = key_alpha * mask.getpixel((x - bx, y - by)) // 255
+                if tx <= x < tx + tw and ty <= y < ty + th:
+                    continue
+                # Keep this independent pointwise check inside the central
+                # shell, away from the translated weather/nav/USB glows.
+                if not 190 <= x < 285:
+                    continue
+                if alpha:
+                    foreground = tuple(min(255, (matte[c] * 255 + alpha // 2) // alpha) for c in range(3))
+                    base = wallpaper.getpixel((x, y))
+                    expected = tuple((base[c] * (255 - alpha) + foreground[c] * alpha + 127) // 255 for c in range(3)) + (255,)
+                else:
+                    expected = wallpaper.getpixel((x, y))
+                self.assertEqual(output.getpixel((x, y)), expected, f'banner composite pixel ({x},{y})')
+        # The rounded upper-left corner remains the gears pixels; opaque black
+        # from the source matte must not form a background shape.
+        self.assertEqual(output.getpixel((bx, by)), wallpaper.getpixel((bx, by)))
+        # The time patch is exactly the approved narrow mask and carries a
+        # continuous pill fill, rather than the former opaque rectangle.
+        for y in range(ty, ty + th):
+            left, right = output.getpixel((tx - 1, y)), output.getpixel((tx + tw, y))
+            for x in range(tw):
+                ratio = (x + 1) / (tw + 1)
+                expected = tuple(round(left[c] * (1 - ratio) + right[c] * ratio) for c in range(3)) + (255,)
+                self.assertEqual(output.getpixel((tx + x, y)), expected)
+        # Check the complete 68x68 weather artwork, including its sun/cloud,
+        # glass bubble, edge glow and transparent black-matte area. Every
+        # source pixel must move left exactly ten pixels and composite over
+        # the canonical gears wallpaper with the renderer's screen blend.
+        for sy in range(194, 263):
+            for sx in range(75, 144):
+                src_pixel = source.getpixel((sx, sy))
+                wall_pixel = wallpaper.getpixel((sx - 10, sy))
+                peak = max(src_pixel[:3])
+                if peak <= 8:
+                    expected_weather = wall_pixel
+                else:
+                    screen_weather = tuple(255 - (255 - wall_pixel[c]) * (255 - src_pixel[c]) // 255 for c in range(3))
+                    coverage = min(255, peak)
+                    expected_weather = tuple(wall_pixel[c] + (screen_weather[c] - wall_pixel[c]) * coverage // 255 for c in range(3)) + (255,)
+                self.assertEqual(output.getpixel((sx - 10, sy)), expected_weather,
+                                 f'complete weather composite pixel ({sx},{sy})')
+        self.assertNotEqual(output.crop((313, 139, 328, 157)).tobytes(), wallpaper.crop((313,139,328,157)).tobytes())
+
+    def test_home_live_time_uses_asset_mask_without_a_backing_panel(self):
+        renderer = (ROOT / 'shared/lvgl_renderer.cpp').read_text()
+        home_status = renderer[renderer.index('if (strcmp(screen.screenId, "sky-home") == 0)'):renderer.index('const bool top =', renderer.index('if (strcmp(screen.screenId, "sky-home") == 0)'))]
+        self.assertNotIn('makePanel(', home_status)
+        self.assertIn('lv_obj_set_pos(time, 218, 214)', home_status)
+        browser = (ROOT / 'frontend/src/simulator/FirmwareCanvas.tsx').read_text()
+        self.assertNotIn("ctx.fillStyle = '#555C6A'; ctx.fillRect(211, 208, 68, 31)", browser)
+        mask = read_json('shared/reference-manifest.json')['states'][0]['dynamic_masks'][0]
+        self.assertEqual((mask['x'], mask['y'], mask['width'], mask['height']), (211, 219, 56, 22))
 
 if __name__ == '__main__':
     unittest.main()

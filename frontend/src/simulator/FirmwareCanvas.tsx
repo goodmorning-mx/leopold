@@ -120,10 +120,8 @@ function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boo
     // Clear and redraw only the live time so those bitmap elements are not doubled.
     const live = timeText || (clock24 ? '20:42' : '8:42');
     const match = live.match(/^(.*?)(?:\s(AM|PM))$/);
-    // The reference home bitmap contains a static time glyph. Paint only the
-    // live time slot back to the pill color before drawing the live value so
-    // the fixed bitmap time cannot show through as a duplicate.
-    ctx.fillStyle = '#555C6A'; ctx.fillRect(211, 208, 68, 31);
+    // The shared Home asset clears only its declared live-clock mask while
+    // preserving the pill pixels, so the live value needs no backing shape.
     text(ctx, match ? match[1] : live, status.time.x, 214, fonts[status.time.size], status.text_color);
     if (match) text(ctx, match[2], status.time.x + 29, 234, 8, status.text_color);
     return;

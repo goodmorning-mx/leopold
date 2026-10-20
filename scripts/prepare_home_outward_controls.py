@@ -11,7 +11,11 @@ SOURCE=ROOT/'shared/references/home-reference-466-source-derivative.png'
 WALL=ROOT/'shared/assets/settings-gears-wallpaper-466.png'
 OUT=ROOT/'shared/assets/home-controls-outward-10-466.png'
 GROUPS=[((239,102),(0,-10)),((158,148),(-6,-8)),((109,228),(-10,0)),((364,228),(10,0)),((155,310),(-8,6)),((321,310),(6,8)),((236,362),(0,10))]
-PILL=(114,202,338,258)
+# These are the measured bounds of the approved status strip from the reference
+# manifest (145,203,184,57). The former 224 px rounded mask also copied the old
+# weather bubble back over its newly shifted position.
+BANNER=(145,203,184,57)
+LIVE_TIME=(211,219,56,22)
 def compose():
     source=Image.open(SOURCE).convert('RGBA'); wall=Image.open(WALL).convert('RGBA')
     if source.size!=(466,466) or wall.size!=(466,466): raise ValueError('Expected 466x466 inputs')
@@ -34,9 +38,31 @@ def compose():
                 sg=255-(255-bg_)*(255-g)//255
                 sb=255-(255-bb)*(255-b)//255
                 dst[tx,ty]=(br+(sr-br)*coverage//255,bg_+(sg-bg_)*coverage//255,bb+(sb-bb)*coverage//255,255)
-    # Preserve the approved live status shell and its static glyphs exactly.
-    mask=Image.new('L',(466,466),0); ImageDraw.Draw(mask).rounded_rectangle(PILL,radius=28,fill=255)
-    out.paste(source,(0,0),mask)
+    # Restore only the approved banner bounds from the pre-UI17 image. Its
+    # opaque black matte must become transparent over the gears. Use this
+    # source slice rather than the isolated banner overlay, which would draw
+    # the already-baked status icons a second time.
+    banner=source.crop((BANNER[0],BANNER[1],BANNER[0]+BANNER[2],BANNER[1]+BANNER[3]))
+    shape=Image.new('L',banner.size,0)
+    ImageDraw.Draw(shape).rounded_rectangle((0,0,BANNER[2]-1,BANNER[3]-1),radius=28,fill=255)
+    banner_pixels=banner.load(); shape_pixels=shape.load()
+    for y in range(BANNER[3]):
+        for x in range(BANNER[2]):
+            r,g,b,_=banner_pixels[x,y]
+            alpha=min(224,max(0,max(r,g,b)-24)*4)*shape_pixels[x,y]//255
+            if alpha:
+                banner_pixels[x,y]=(min(255,(r*255+alpha//2)//alpha),min(255,(g*255+alpha//2)//alpha),min(255,(b*255+alpha//2)//alpha),alpha)
+            else:
+                banner_pixels[x,y]=(0,0,0,0)
+    out.alpha_composite(banner,(BANNER[0],BANNER[1]))
+    # Remove only the baked clock glyphs. Interpolate the pill pixels at the
+    # two edges of the declared live-time mask, matching the browser path.
+    pixels=out.load(); x,y,width,height=LIVE_TIME
+    for row in range(y,y+height):
+        left=pixels[x-1,row]; right=pixels[x+width,row]
+        for col in range(width):
+            ratio=(col+1)/(width+1)
+            pixels[x+col,row]=tuple(round(left[channel]*(1-ratio)+right[channel]*ratio) for channel in range(3))+(255,)
     # The separate voltage placeholder is content, not one of the seven moved controls.
     for y in range(139,157):
         for x in range(313,328):

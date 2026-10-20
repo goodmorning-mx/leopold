@@ -377,8 +377,6 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
     } else {
       snprintf(clock, sizeof(clock), "%s", live);
     }
-    lv_obj_t* timeSlot = makePanel(root, 211, 208, 68, 31, 0, lv_color_hex(0x555C6A));
-    lv_obj_set_style_border_width(timeSlot, 0, 0);
     lv_obj_t* time = makeLabel(root, clock, &lv_font_montserrat_20, gray);
     lv_obj_set_pos(time, 218, 214);
     if (period[0] != '\0') {

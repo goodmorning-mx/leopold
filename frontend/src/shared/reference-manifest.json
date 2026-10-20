@@ -46,15 +46,15 @@
       ],
       "generated_asset": {
         "file": "assets/home-controls-outward-10-466.png",
-        "sha256": "d906b3fb62506db09bba5238343fc281310aeb15bebaf4cb403baf4a32d9c954",
+        "sha256": "26eba62a03620c38da3ed5ed77bc561227f71947f87df70ba32ed9ce125b9e22",
         "width": 466,
         "height": 466,
         "format": "lossless PNG",
-        "authorized_transform": "Composite canonical gears wallpaper; translate each Home icon/bubble/button group and its hit target outward by exactly 10 framebuffer pixels; leave the status banner unchanged."
+        "authorized_transform": "Canonical gears wallpaper; translate seven Home control groups and hit targets radially outward by exactly 10 px; restore the approved banner bounds with its black matte transparent over gears; clear only the declared live-time mask."
       },
       "device_asset": {
         "file": "assets/home-controls-outward-10-466.bin",
-        "sha256": "8b85769954458a8bc54deec36bf8e747fa26140a51b8f206f49c8c0b29aa36bf",
+        "sha256": "4b119c623bcba14aee61751ab2da223091a1c5a0182b4b49ebf028e4c1308a2c",
         "format": "RGB565A8 derived from generated_asset"
       },
       "dynamic_masks": [
