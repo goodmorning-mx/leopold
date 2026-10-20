@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "status_components": {
+    "bluetooth": {
+      "file": "settings-overlay-sources/settings-status-bluetooth-active-22x22.png",
+      "sha256": "839b295a0c58ac47fa64e8dd5909fb7e2102cbfb1bb2e4f953dd6c4d83005b34",
+      "width": 22,
+      "height": 22,
+      "output": "settings-status-bluetooth-active-22x22.png",
+      "provenance": "Byte-identical source of the bounded RGBA component accepted at fce05f9; approved screen references remain immutable comparison targets."
+    },
+    "wifi": {
+      "file": "settings-overlay-sources/settings-status-wifi-active-22x22.png",
+      "sha256": "1d99f6cf320e1465e4ff12dc874e8ebe241d0d6f4843b6d73eb99bd0e02cd3cc",
+      "width": 22,
+      "height": 22,
+      "output": "settings-status-wifi-active-22x22.png",
+      "provenance": "Byte-identical source of the bounded RGBA component accepted at fce05f9; approved screen references remain immutable comparison targets."
+    },
+    "cloud": {
+      "file": "settings-overlay-sources/settings-status-cloud-active-24x24.png",
+      "sha256": "4535c05ad8fd8da6a825b96a6292d2030ca58804e2853a855b8a49e6f8dc0165",
+      "width": 24,
+      "height": 24,
+      "output": "settings-status-cloud-active-24x24.png",
+      "provenance": "Byte-identical source of the bounded RGBA component accepted at fce05f9; approved screen references remain immutable comparison targets."
+    }
+  }
+}

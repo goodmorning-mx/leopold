@@ -43,7 +43,9 @@ class FlashFirmwareTests(unittest.TestCase):
                 "end_address": hex(int(offset, 0) + size),
             }
         manifest = {
-            "schema_version": 2,
+            "schema_version": 3,
+            "source_commit": "a" * 40,
+            "ui_revision": 12,
             "product": "Leopold",
             "chip": "esp32s3",
             "flash_size": "16MB",
@@ -56,6 +58,7 @@ class FlashFirmwareTests(unittest.TestCase):
                 ],
                 "destructive": False,
                 "verify_partition_table": True,
+                "requires_verified_full_flash_backup": True,
             },
             "factory_reset": {
                 "image": "merged-flash.bin",
@@ -66,7 +69,7 @@ class FlashFirmwareTests(unittest.TestCase):
             "preserved_data_regions": [
                 {"name": "nvs", "start": "0x9000", "end": "0xE000", "preserved": True}
             ],
-            "helpers": ["flash_firmware.py"],
+            "helpers": sorted(flash.PACKAGED_HELPERS),
             "commands": {
                 "update_command": "python3 flash_firmware.py",
                 "backup_command": "python3 flash_firmware.py --backup-only",
@@ -75,7 +78,8 @@ class FlashFirmwareTests(unittest.TestCase):
                 "calibration_commands": ["python3 capture_device_screenshot.py"],
             },
         }
-        (package / "flash_firmware.py").write_text("# helper\n")
+        for name in flash.PACKAGED_HELPERS:
+            (package / name).write_text("# helper\n")
         (package / "manifest.json").write_text(json.dumps(manifest) + "\n")
         checksum_lines = []
         for path in sorted(package.iterdir()):
@@ -104,7 +108,7 @@ class FlashFirmwareTests(unittest.TestCase):
         package = self.make_package("offset-package")
         output = io.StringIO()
         with mock.patch.object(flash.subprocess, "run") as run, contextlib.redirect_stdout(output):
-            self.assertEqual(flash.main(["--package", str(package), "--port", "TEST", "--dry-run"]), 0)
+            self.assertEqual(flash.main(["--package", str(package), "--port", "TEST", "--backup", str(Path(self.temp_dir.name) / "new.bin"), "--dry-run"]), 0)
         run.assert_not_called()
         text = output.getvalue()
         self.assertIn("bootloader.bin", text)
@@ -118,38 +122,51 @@ class FlashFirmwareTests(unittest.TestCase):
         package = self.make_package()
         calls = []
 
-        def run(command):
+        def run(command, **kwargs):
             calls.append(command)
+            if command[7] == "flash-id":
+                return mock.Mock(returncode=0, stdout="MAC: aa:bb:cc:dd:ee:ff\nDetected flash size: 16MB\n")
             if command[7] == "read-flash":
-                Path(command[-1]).write_bytes((package / "partitions.bin").read_bytes())
+                if command[8] == "0x000000":
+                    with Path(command[-1]).open("wb") as stream:
+                        stream.truncate(flash.FLASH_BYTES)
+                else:
+                    Path(command[-1]).write_bytes((package / "partitions.bin").read_bytes())
             return mock.Mock(returncode=0)
 
         with mock.patch.object(flash.subprocess, "run", side_effect=run):
-            self.assertEqual(flash.main(["--package", str(package), "--port", "TEST"]), 0)
-        self.assertEqual(len(calls), 2)
-        self.assertEqual(calls[0][7], "read-flash")
-        self.assertEqual(calls[1][7], "write-flash")
+            self.assertEqual(flash.main(["--package", str(package), "--port", "TEST", "--backup", str(Path(self.temp_dir.name) / "new.bin")]), 0)
+        self.assertEqual([call[7] for call in calls], ["flash-id", "read-flash", "read-flash", "flash-id", "write-flash"])
+        self.assertEqual((Path(self.temp_dir.name) / "new.bin").stat().st_mode & 0o777, 0o600)
 
     def test_partition_mismatch_stops_before_write(self) -> None:
         package = self.make_package()
         calls = []
 
-        def run(command):
+        def run(command, **kwargs):
             calls.append(command)
-            Path(command[-1]).write_bytes(b"different")
+            if command[7] == "flash-id":
+                return mock.Mock(returncode=0, stdout="MAC: aa:bb:cc:dd:ee:ff\nDetected flash size: 16MB\n")
+            if command[8] == "0x000000":
+                with Path(command[-1]).open("wb") as stream:
+                    stream.truncate(flash.FLASH_BYTES)
+            else:
+                Path(command[-1]).write_bytes(b"different")
             return mock.Mock(returncode=0)
 
         with mock.patch.object(flash.subprocess, "run", side_effect=run):
-            self.assertEqual(flash.main(["--package", str(package), "--port", "TEST"]), 2)
-        self.assertEqual(len(calls), 1)
+            self.assertEqual(flash.main(["--package", str(package), "--port", "TEST", "--backup", str(Path(self.temp_dir.name) / "new.bin")]), 2)
+        self.assertNotIn("write-flash", [call[7] for call in calls])
 
     def test_factory_reset_is_explicit_and_backup_precedes_write(self) -> None:
         package = self.make_package()
         backup = Path(self.temp_dir.name) / "backup.bin"
         calls = []
 
-        def run(command):
+        def run(command, **kwargs):
             calls.append(command)
+            if command[7] == "flash-id":
+                return mock.Mock(returncode=0, stdout="MAC: aa:bb:cc:dd:ee:ff\nDetected flash size: 16MB\n")
             if command[7] == "read-flash":
                 with backup.open("wb") as stream:
                     stream.truncate(flash.FLASH_BYTES)
@@ -157,7 +174,7 @@ class FlashFirmwareTests(unittest.TestCase):
 
         with mock.patch.object(flash.subprocess, "run", side_effect=run):
             self.assertEqual(flash.main(["--package", str(package), "--port", "TEST", "--factory-reset", "--backup", str(backup)]), 0)
-        self.assertEqual([call[7] for call in calls], ["read-flash", "write-flash"])
+        self.assertEqual([call[7] for call in calls], ["flash-id", "read-flash", "flash-id", "write-flash"])
         self.assertTrue((backup.with_name("backup.bin.sha256")).is_file())
 
     def test_backup_only_never_writes(self) -> None:
@@ -205,7 +222,7 @@ class FlashFirmwareTests(unittest.TestCase):
         self.rewrite_manifest(package, lambda manifest: manifest.update(schema_version=1))
         with self.assertRaises(SystemExit):
             flash.load_package(package)
-        self.rewrite_manifest(package, lambda manifest: manifest.update(schema_version=2, chip="esp32"))
+        self.rewrite_manifest(package, lambda manifest: manifest.update(schema_version=3, chip="esp32"))
         with self.assertRaises(SystemExit):
             flash.load_package(package)
         self.rewrite_manifest(package, lambda manifest: manifest["images"]["firmware.bin"].update(flash_offset="not-an-offset"))
@@ -234,8 +251,74 @@ class FlashFirmwareTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             flash.main(["--port", "TEST", "--backup", "x"])
         package = self.make_package()
+        with mock.patch.object(flash.subprocess, "run") as run, self.assertRaises(SystemExit):
+            flash.main(["--package", str(package), "--port", "TEST"])
+        run.assert_not_called()
+
+    def test_existing_backup_never_overwritten(self) -> None:
+        package = self.make_package()
+        backup = Path(self.temp_dir.name) / "old.bin"
+        backup.write_bytes(b"preserve")
+        with mock.patch.object(flash.subprocess, "run") as run, self.assertRaises(SystemExit):
+            flash.main(["--package", str(package), "--port", "TEST", "--backup", str(backup)])
+        run.assert_not_called()
+        self.assertEqual(backup.read_bytes(), b"preserve")
+
+    def test_partial_backup_prevents_write(self) -> None:
+        package = self.make_package()
+        calls = []
+
+        def run(command, **kwargs):
+            calls.append(command)
+            if command[7] == "flash-id":
+                return mock.Mock(returncode=0, stdout="MAC: aa:bb:cc:dd:ee:ff\nDetected flash size: 16MB\n")
+            Path(command[-1]).write_bytes(b"short")
+            return mock.Mock(returncode=0)
+
+        with mock.patch.object(flash.subprocess, "run", side_effect=run), self.assertRaises(SystemExit):
+            flash.main(["--package", str(package), "--port", "TEST", "--backup", str(Path(self.temp_dir.name) / "new.bin")])
+        self.assertNotIn("write-flash", [call[7] for call in calls])
+
+    def test_wrong_flash_size_prevents_backup_and_write(self) -> None:
+        package = self.make_package()
+        with mock.patch.object(flash.subprocess, "run", return_value=mock.Mock(returncode=0, stdout="MAC: aa:bb:cc:dd:ee:ff\nDetected flash size: 8MB\n")) as run, self.assertRaises(SystemExit):
+            flash.main(["--package", str(package), "--port", "TEST", "--backup", str(Path(self.temp_dir.name) / "new.bin")])
+        self.assertEqual(run.call_count, 1)
+
+    def test_rejects_preserved_region_erase_overlap(self) -> None:
+        package = self.make_package()
+        self.rewrite_manifest(package, lambda m: m["preserved_data_regions"][0].update(start="0x8000"))
         with self.assertRaises(SystemExit):
-            flash.main(["--package", str(package), "--port", "TEST", "--backup", "x", "--dry-run"])
+            flash.load_package(package)
+
+    def test_changed_device_or_corrupted_backup_cannot_reach_write(self) -> None:
+        for fault in ("identity", "backup"):
+            package = self.make_package(fault)
+            backup = Path(self.temp_dir.name) / (fault + ".bin")
+            calls = []
+            probes = 0
+
+            def run(command, **kwargs):
+                nonlocal probes
+                calls.append(command)
+                if command[7] == "flash-id":
+                    probes += 1
+                    mac = "aa:bb:cc:dd:ee:ff" if probes == 1 or fault != "identity" else "00:11:22:33:44:55"
+                    if probes == 2 and fault == "backup":
+                        with backup.open("r+b") as stream:
+                            stream.write(b"changed")
+                    return mock.Mock(returncode=0, stdout=f"MAC: {mac}\nDetected flash size: 16MB\n")
+                if command[7] == "read-flash":
+                    if command[8] == "0x000000":
+                        with backup.open("wb") as stream:
+                            stream.truncate(flash.FLASH_BYTES)
+                    else:
+                        Path(command[-1]).write_bytes((package / "partitions.bin").read_bytes())
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(flash.subprocess, "run", side_effect=run), self.assertRaises(SystemExit):
+                flash.main(["--package", str(package), "--port", "TEST", "--backup", str(backup)])
+            self.assertNotIn("write-flash", [command[7] for command in calls])
 
 
 if __name__ == "__main__":

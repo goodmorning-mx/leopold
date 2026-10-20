@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import json
 
 from PIL import Image
 
-from png_to_rgb565a8 import decode
+try:
+    from .png_to_rgb565a8 import decode
+except ImportError:
+    from png_to_rgb565a8 import decode
 
 ROOT = Path(__file__).resolve().parents[1]
-NEUTRAL = Image.open(ROOT / "shared/references/phase1-settings/settings-neutral-466.png").convert("RGB")
 
 ROWS = {
     "wifi": (127, "settings-wifi-pressed-466.png"),
@@ -20,11 +24,6 @@ ROWS = {
 COMPONENTS = {
     "icon": (72, 61, 56),
     "chevron": (355, 39, 56),
-}
-STATUS = {
-    "bluetooth-active": (153, 45, 22, 22),
-    "wifi-active": (181, 45, 22, 22),
-    "cloud-active": (264, 45, 24, 24),
 }
 
 
@@ -64,32 +63,49 @@ def border_overlay(target: Image.Image, base: Image.Image) -> Image.Image:
     return output
 
 
-def write_overlay(image: Image.Image, name: str) -> None:
-    png = ROOT / "shared/assets" / f"{name}.png"
+def write_overlay(image: Image.Image, name: str, root: Path) -> None:
+    png = root / "shared/assets" / f"{name}.png"
     binary = png.with_suffix(".bin")
     image.save(png, format="PNG")
     _, _, payload = decode(png)
     binary.write_bytes(payload)
 
 
-def main() -> None:
+def main(root: Path = ROOT) -> None:
+    neutral = Image.open(root / "shared/references/phase1-settings/settings-neutral-466.png").convert("RGB")
+    sources = json.loads((root / "shared/settings-overlay-sources.json").read_text())["status_components"]
+    if set(sources) != {"bluetooth", "wifi", "cloud"}:
+        raise ValueError("exactly three independent status sources are required")
+    # Validate every independent input before touching any generated output.
+    status_inputs = []
+    for entry in sources.values():
+        source = root / "shared" / entry["file"]
+        if hashlib.sha256(source.read_bytes()).hexdigest() != entry["sha256"]:
+            raise ValueError(f"status source checksum mismatch: {source}")
+        with Image.open(source) as image:
+            if image.mode != "RGBA" or image.size != (entry["width"], entry["height"]):
+                raise ValueError(f"status source must retain RGBA dimensions: {source}")
+        _, _, payload = decode(source)
+        status_inputs.append((entry["output"], source.read_bytes(), payload))
     for row, (y, reference_name) in ROWS.items():
-        reference = Image.open(ROOT / "shared/references/phase1-settings" / reference_name).convert("RGB")
+        reference = Image.open(root / "shared/references/phase1-settings" / reference_name).convert("RGB")
         for component, (x, width, height) in COMPONENTS.items():
             target = reference.crop((x, y, x + width, y + height))
-            base = NEUTRAL.crop((x, y, x + width, y + height))
-            write_overlay(diff_overlay(target, base), f"settings-{row}-pressed-{component}-mask-{width}x{height}")
+            base = neutral.crop((x, y, x + width, y + height))
+            write_overlay(diff_overlay(target, base), f"settings-{row}-pressed-{component}-mask-{width}x{height}", root)
 
-    reference = Image.open(ROOT / "shared/references/phase1-settings/settings-wifi-pressed-466.png").convert("RGB")
+    reference = Image.open(root / "shared/references/phase1-settings/settings-wifi-pressed-466.png").convert("RGB")
     write_overlay(
-        border_overlay(reference.crop((72, 127, 394, 183)), NEUTRAL.crop((72, 127, 394, 183))),
+        border_overlay(reference.crop((72, 127, 394, 183)), neutral.crop((72, 127, 394, 183))),
         "settings-pressed-border-mask-322x56",
+        root,
     )
 
-    for name, (x, y, width, height) in STATUS.items():
-        source = Image.open(ROOT / "shared/assets" / f"settings-status-{name}-{width}x{height}.png").convert("RGB")
-        base = NEUTRAL.crop((x, y, x + width, y + height))
-        write_overlay(diff_overlay(source, base), f"settings-status-{name}-{width}x{height}")
+    # Preserve intentional alpha and dark cover pixels. Outputs are never inputs.
+    for filename, png_bytes, payload in status_inputs:
+        target = root / "shared/assets" / filename
+        target.write_bytes(png_bytes)
+        target.with_suffix(".bin").write_bytes(payload)
 
 
 if __name__ == "__main__":

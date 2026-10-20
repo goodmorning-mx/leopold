@@ -20,5 +20,25 @@
     "wifi": {"bounds": [181, 45, 22, 22], "source_asset": "settings-status-wifi-active-22x22.bin"},
     "cloud": {"bounds": [264, 45, 24, 24], "source_asset": "settings-status-cloud-active-24x24.bin"}
   },
-  "palette": {"active": "#00D2FF", "inner_glow": "#0084C8", "label": "#FFFFFF"}
+  "palette": {"active": "#00D2FF", "inner_glow": "#0084C8", "label": "#FFFFFF"},
+  "seam_boundaries": {
+    "metric": "maximum adjacent horizontal RGB L1 channel jump",
+    "regions_relative_to_row_y": [
+      {
+        "x": 71,
+        "y_offset": 6,
+        "width": 2,
+        "height": 44,
+        "maximum_excess_over_reference": 128
+      },
+      {
+        "x": 390,
+        "y_offset": 6,
+        "width": 3,
+        "height": 44,
+        "maximum_excess_over_reference": 64
+      }
+    ],
+    "provenance": "Existing fce05f9 limits moved from comparison code unchanged; no threshold relaxation."
+  }
 }

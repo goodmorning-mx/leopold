@@ -18,6 +18,8 @@ HELPERS = (
     "verify_firmware.py",
     "capture_device_screenshot.py",
     "ppm_to_png.py",
+    "verify_firmware_package.py",
+    "detect_esp32.py",
 )
 UPDATE_NAMES = ("bootloader.bin", "partitions.bin", "firmware.bin")
 FLASH_BYTES = 16 * 1024 * 1024
@@ -94,7 +96,7 @@ def main() -> int:
         {"name": "coredump", "start": "0xFF0000", "end": "0x1000000", "preserved": True},
     ]
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "product": "Leopold",
         "chip": config["flash"]["chip"],
         "flash_size": "16MB",
@@ -117,6 +119,7 @@ def main() -> int:
             ],
             "destructive": False,
             "verify_partition_table": True,
+            "requires_verified_full_flash_backup": True,
         },
         "factory_reset": {
             "image": "merged-flash.bin",
@@ -127,10 +130,10 @@ def main() -> int:
         "preserved_data_regions": preserved_regions,
         "helpers": list(HELPERS),
         "commands": {
-            "update_command": "python3 flash_firmware.py --package . --port PORT",
+            "update_command": "python3 flash_firmware.py --package . --port PORT --backup NEW_BACKUP_PATH",
             "backup_command": "python3 flash_firmware.py --backup-only --port PORT --backup BACKUP",
             "factory_reset_command": "python3 flash_firmware.py --package . --port PORT --factory-reset --backup BACKUP",
-            "verify_command": "python3 verify_firmware.py --port PORT --commit " + commit,
+            "verify_command": "python3 verify_firmware.py --port PORT --commit " + commit + " --ui-revision " + str(ui.get("revision")),
             "calibration_commands": [
                 "python3 capture_device_screenshot.py PORT calibration.ppm",
                 "python3 ppm_to_png.py calibration.ppm calibration.png",

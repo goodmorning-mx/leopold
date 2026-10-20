@@ -7,6 +7,8 @@ import argparse
 import hashlib
 import json
 import os
+import re
+from datetime import datetime, timezone
 import subprocess
 import sys
 import tempfile
@@ -14,7 +16,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 PRODUCT = "Leopold"
 CHIP = "esp32s3"
 FLASH_BYTES = 16 * 1024 * 1024
@@ -22,6 +24,8 @@ FLASH_SIZE = "0x1000000"
 UPDATE_NAMES = ("bootloader.bin", "partitions.bin", "firmware.bin")
 APPROVED_OFFSETS = {"bootloader.bin": 0x0000, "partitions.bin": 0x8000, "firmware.bin": 0x10000}
 IMAGE_NAMES = frozenset((*UPDATE_NAMES, "merged-flash.bin"))
+PACKAGED_HELPERS = {"flash_firmware.py", "verify_firmware.py", "capture_device_screenshot.py",
+                   "ppm_to_png.py", "verify_firmware_package.py", "detect_esp32.py"}
 
 
 def sha256(path: Path) -> str:
@@ -65,6 +69,8 @@ def validate_ranges(entries: list[dict[str, Any]], label: str) -> None:
 
 
 def validate_manifest(manifest: dict[str, Any], package: Path, checksums: dict[str, str]) -> None:
+    if not isinstance(manifest, dict):
+        raise SystemExit("manifest must be an object")
     if manifest.get("schema_version") != SCHEMA_VERSION:
         raise SystemExit(f"unsupported manifest schema_version: {manifest.get('schema_version')!r}")
     if manifest.get("product") != PRODUCT:
@@ -73,12 +79,16 @@ def validate_manifest(manifest: dict[str, Any], package: Path, checksums: dict[s
         raise SystemExit(f"unexpected chip: {manifest.get('chip')!r}")
     if manifest.get("flash_size_bytes") != FLASH_BYTES or manifest.get("flash_size") != "16MB":
         raise SystemExit("manifest must declare a 16 MiB flash")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(manifest.get("source_commit", ""))):
+        raise SystemExit("manifest requires an exact source commit")
+    if type(manifest.get("ui_revision")) is not int or manifest["ui_revision"] < 0:
+        raise SystemExit("manifest requires a non-negative UI revision")
     for section in ("normal_update", "factory_reset", "preserved_data_regions", "commands", "helpers"):
         if section not in manifest:
             raise SystemExit(f"manifest is missing required section: {section}")
     helpers = manifest["helpers"]
-    if not isinstance(helpers, list) or not helpers:
-        raise SystemExit("manifest helpers must be a non-empty list")
+    if not isinstance(helpers, list) or len(helpers) != len(PACKAGED_HELPERS) or set(helpers) != PACKAGED_HELPERS:
+        raise SystemExit("manifest must contain the complete schema-3 helper set")
     for helper in helpers:
         name = safe_filename(helper, "helper")
         if name != helper or not (package / name).is_file():
@@ -104,7 +114,7 @@ def validate_manifest(manifest: dict[str, Any], package: Path, checksums: dict[s
         if not path.is_file():
             raise SystemExit(f"missing image: {name}")
         declared_bytes = image.get("bytes")
-        if not isinstance(declared_bytes, int) or declared_bytes != path.stat().st_size:
+        if type(declared_bytes) is not int or declared_bytes <= 0 or declared_bytes != path.stat().st_size:
             raise SystemExit(f"image size mismatch: {name}")
         digest = image.get("sha256")
         if not isinstance(digest, str) or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
@@ -133,6 +143,8 @@ def validate_manifest(manifest: dict[str, Any], package: Path, checksums: dict[s
         update_entries.append(entries[expected_name])
     if update.get("verify_partition_table") is not True:
         raise SystemExit("normal_update must require partition-table verification")
+    if update.get("requires_verified_full_flash_backup") is not True:
+        raise SystemExit("normal_update must require a fresh verified full-flash backup")
     validate_ranges(update_entries, "normal update")
 
     factory = manifest["factory_reset"]
@@ -154,6 +166,12 @@ def validate_manifest(manifest: dict[str, Any], package: Path, checksums: dict[s
         end = parse_int(region.get("end"), f"{region['name']} end")
         if start >= end or end > FLASH_BYTES or region.get("preserved") is not True:
             raise SystemExit(f"invalid preserved data region: {region.get('name')}")
+        for entry in update_entries:
+            # esptool erases complete 4 KiB sectors before writing.
+            erase_start = entry["offset"] // 4096 * 4096
+            erase_end = (entry["end_address"] + 4095) // 4096 * 4096
+            if erase_start < end and start < erase_end:
+                raise SystemExit(f"normal update overlaps preserved region: {region['name']}")
 
 
 def load_package(package: Path) -> dict[str, Any]:
@@ -165,6 +183,8 @@ def load_package(package: Path) -> dict[str, Any]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise SystemExit(f"invalid manifest.json: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise SystemExit("manifest must be an object")
     checksums: dict[str, str] = {}
     for raw_line in sums_path.read_text(encoding="utf-8").splitlines():
         if not raw_line.strip():
@@ -179,7 +199,7 @@ def load_package(package: Path) -> dict[str, Any]:
         if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
             raise SystemExit(f"invalid checksum digest: {name}")
         path = package / name
-        if not path.is_file() or sha256(path) != digest:
+        if path.is_symlink() or not path.is_file() or sha256(path) != digest:
             raise SystemExit(f"checksum mismatch: {name}")
         checksums[name] = digest
     if "manifest.json" not in checksums:
@@ -225,8 +245,61 @@ def verify_backup(path: Path) -> str:
     if not path.is_file() or path.stat().st_size != FLASH_BYTES:
         raise SystemExit(f"backup must be exactly {FLASH_BYTES} bytes: {path}")
     digest = sha256(path)
-    path.with_name(path.name + ".sha256").write_text(f"{digest}  {path.name}\n", encoding="utf-8")
+    write_private(path.with_name(path.name + ".sha256"), f"{digest}  {path.name}\n")
     return digest
+
+
+def write_private(path: Path, text: str = "") -> None:
+    """Exclusive files: never overwrite an earlier backup or its evidence."""
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise SystemExit(f"refusing to overwrite existing backup/evidence: {path}") from exc
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        stream.write(text)
+
+
+def reserve_backup(path: Path) -> None:
+    for candidate in (path, path.with_name(path.name + ".sha256"), path.with_name(path.name + ".json")):
+        if candidate.exists() or candidate.is_symlink():
+            raise SystemExit(f"refusing to overwrite existing backup/evidence: {candidate}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_private(path)
+
+
+def probe_device(manifest: dict[str, Any], port: str) -> dict[str, Any]:
+    result = subprocess.run(command_for(manifest, port, "flash-id"), capture_output=True, text=True)
+    if result.returncode:
+        raise SystemExit("device identification failed; no write attempted")
+    size = re.search(r"Detected flash size:\s*(\S+)", result.stdout)
+    mac = re.search(r"\bMAC:\s*((?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})\b", result.stdout)
+    if not size or size.group(1) != "16MB" or not mac:
+        raise SystemExit("expected an identifiable ESP32-S3 with 16 MiB flash; no write attempted")
+    return {"chip": manifest["chip"], "flash_size_bytes": FLASH_BYTES, "mac": mac.group(1).lower()}
+
+
+def create_backup(manifest: dict[str, Any], port: str, path: Path, device: dict[str, Any]) -> int:
+    reserve_backup(path)
+    result = subprocess.run(backup_command(manifest, port, path))
+    if result.returncode:
+        return result.returncode
+    digest = verify_backup(path)
+    write_private(path.with_name(path.name + ".json"), json.dumps({
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "port": port, "device": device, "bytes": FLASH_BYTES, "sha256": digest,
+        "package_source_commit": manifest.get("source_commit"),
+        "package_ui_revision": manifest.get("ui_revision"),
+    }, indent=2) + "\n")
+    print(f"verified fresh backup: {path} sha256={digest}")
+    return 0
+
+
+def require_unchanged_backup(path: Path) -> None:
+    receipt = json.loads(path.with_name(path.name + ".json").read_text())
+    sidecar = path.with_name(path.name + ".sha256").read_text()
+    if (path.is_symlink() or path.stat().st_size != FLASH_BYTES or sha256(path) != receipt["sha256"]
+            or sidecar != f"{receipt['sha256']}  {path.name}\n"):
+        raise SystemExit("backup changed after verification; refusing to write")
 
 
 def print_update_plan(manifest: dict[str, Any], package: Path, port: str) -> None:
@@ -236,6 +309,7 @@ def print_update_plan(manifest: dict[str, Any], package: Path, port: str) -> Non
         image = manifest["images"][item["name"]]
         print(f"  {item['name']}: {item['flash_offset']}–{hex(parse_int(image['end_address'], item['name'] + ' end_address'))}")
     print("partition check: the installed partition table will be read and compared before any write")
+    print("backup check: a fresh private 16 MiB backup and SHA-256 evidence are mandatory before any write")
     print("preserves: declared data regions only, after partition-table equality is verified")
     print("$ " + command_text(image_command(manifest, package, port)))
 
@@ -263,10 +337,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.package is None:
             raise SystemExit("--package is required for firmware update modes")
         manifest = load_package(args.package)
-    if args.backup is not None and not (args.backup_only or args.factory_reset):
-        raise SystemExit("--backup is valid only with --backup-only or --factory-reset")
-    if (args.backup_only or args.factory_reset) and args.backup is None:
-        raise SystemExit("--backup is required for backup operations")
+    if args.backup is None:
+        raise SystemExit("--backup is required; every update creates a fresh verified full-flash backup")
+    for candidate in (args.backup, args.backup.with_name(args.backup.name + ".sha256"), args.backup.with_name(args.backup.name + ".json")):
+        if candidate.exists() or candidate.is_symlink():
+            raise SystemExit(f"refusing to overwrite existing backup/evidence: {candidate}")
 
     if args.backup_only:
         command = backup_command(manifest, args.port, args.backup)
@@ -276,12 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         print("$ " + command_text(command))
         if args.dry_run:
             return 0
-        result = subprocess.run(command)
-        if result.returncode:
-            return result.returncode
-        digest = verify_backup(args.backup)
-        print(f"verified backup: {args.backup} sha256={digest}")
-        return 0
+        return create_backup(manifest, args.port, args.backup, probe_device(manifest, args.port))
 
     if args.factory_reset:
         image = manifest["images"]["merged-flash.bin"]
@@ -295,16 +365,22 @@ def main(argv: list[str] | None = None) -> int:
         print("$ " + command_text(flash_command))
         if args.dry_run:
             return 0
-        result = subprocess.run(read_command)
-        if result.returncode:
-            return result.returncode
-        digest = verify_backup(args.backup)
-        print(f"verified backup: {args.backup} sha256={digest}")
+        device = probe_device(manifest, args.port)
+        result = create_backup(manifest, args.port, args.backup, device)
+        if result:
+            return result
+        if probe_device(manifest, args.port) != device:
+            raise SystemExit("device identity changed after backup; refusing to write")
+        require_unchanged_backup(args.backup)
         return subprocess.run(flash_command).returncode
 
     print_update_plan(manifest, args.package, args.port)
     if args.dry_run:
         return 0
+    device = probe_device(manifest, args.port)
+    result = create_backup(manifest, args.port, args.backup, device)
+    if result:
+        return result
     with tempfile.NamedTemporaryFile(prefix="leopold-partitions-", suffix=".bin", delete=False) as temporary:
         installed_path = Path(temporary.name)
     try:
@@ -317,6 +393,9 @@ def main(argv: list[str] | None = None) -> int:
         if installed_path.read_bytes() != packaged_path.read_bytes():
             print("partition-table mismatch: refusing to write; authorized partition migration or factory reset is required", file=sys.stderr)
             return 2
+        if probe_device(manifest, args.port) != device:
+            raise SystemExit("device identity changed after backup; refusing to write")
+        require_unchanged_backup(args.backup)
         return subprocess.run(image_command(manifest, args.package, args.port)).returncode
     finally:
         installed_path.unlink(missing_ok=True)

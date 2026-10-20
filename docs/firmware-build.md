@@ -42,16 +42,16 @@ authorized local configuration flow.
 ## Package and flashing
 
 The package contains the application, bootloader, partition table, merged flash
-image, four self-contained helper scripts, `manifest.json`, and
-`SHA256SUMS.txt`. Manifest schema 2 records exact image ranges and checksums,
+image, six self-contained helper scripts, `manifest.json`, and
+`SHA256SUMS.txt`. Manifest schema 3 records exact image ranges and checksums,
 the non-destructive update set, preserved data regions, the destructive factory
 reset image, partition-table verification requirements, and separate update,
 backup, factory-reset, revision-verification, and calibration commands.
 
 ```bash
-python3 scripts/flash_firmware.py --package <package> --port <authorized-port> --dry-run
-python3 scripts/flash_firmware.py --package <package> --port <authorized-port>
-python3 scripts/verify_firmware.py --port <authorized-port> --commit <source-commit>
+python3 scripts/flash_firmware.py --package <package> --port <authorized-port> --backup <new-private-backup.bin> --dry-run
+python3 scripts/flash_firmware.py --package <package> --port <authorized-port> --backup <new-private-backup.bin>
+python3 scripts/verify_firmware.py --port <authorized-port> --commit <source-commit> --ui-revision <expected-ui> --report <new-revision-proof.json>
 ```
 
 The default update writes only `bootloader.bin` at `0x0000`, `partitions.bin` at
@@ -64,6 +64,45 @@ compatibility check passes; absence of a whole-flash erase alone is not enough.
 `--dry-run` validates the artifact, prints the exact command and address ranges,
 and explains that the connected-device partition check is required, while
 never contacting a device.
+
+Every real normal update probes the chip/flash size and MAC, creates a new
+16 MiB backup, verifies size and SHA-256, and writes private checksum/JSON
+receipt files. Existing backup/evidence paths are refused. Before writing it
+compares installed partitions, confirms the device identity is unchanged, and
+rechecks backup integrity. Missing/partial/corrupted backups, wrong flash size,
+a different device, or partition mismatch prevent the write. Old backups cannot
+be substituted. Files use mode 0600 and may contain credentials; never commit
+or publish them. A failed read leaves its private partial file and requires a
+new path for a retry. Schema-2 packages remain preserved historical artifacts;
+the schema-3 updater rejects them.
+
+## Hardware-free package gate and USB identification
+
+The checksum-covered `verify_firmware_package.py` helper reuses package
+validation, checks actual Git merge parents, compares synchronized runtime
+assets, and verifies every ZIP member against the extracted package. Fetch the
+verified PR merge ref into local Git through an authenticated route beforehand;
+a missing object or unauthenticated private API 404 is not provenance proof.
+
+```bash
+python3 scripts/verify_firmware_package.py --package <package> --repo . \
+  --source-commit <ci-merge-sha> --pr-head <head-sha> --expected-base <base-sha> \
+  --asset-manifest shared/asset-manifest.json --zip <artifact.zip> \
+  --zip-sha256 <verified-github-digest> --report <new-package-report.json>
+```
+
+This is an offline package/provenance result, not a live CI or physical parity
+result. Confirm the exact GitHub run completed successfully separately.
+`python3 scripts/detect_esp32.py --report <new-usb-inventory.json>` enumerates
+USB serial candidates without opening a port. It reports absence/ambiguity;
+`--port` or `--serial-number` can identify one observed candidate. USB IDs alone
+do not prove chip type; the updater probes the actual chip/flash/MAC.
+
+Running-revision proof still requires serial access before an update and again
+after reboot. For an intentionally hardware-free session, use offline checks
+and mocked tests only; do not run update, revision, or capture commands.
+
+## Backup and explicitly destructive provisioning
 
 For a read-only full-flash backup, use the backup-only operation. It verifies
 that the resulting file is exactly 16 MiB and writes a SHA-256 sidecar:
@@ -93,3 +132,9 @@ verification should calibration capture be performed with the packaged
 needed, preserve the verified `.bin` backup and its `.sha256` sidecar, then use
 the device-specific recovery procedure to restore it; never treat a merged
 image as an in-place update.
+
+The revision helper requires both commit and UI revision. Optional JSON proof
+contains only revision fields and port, never arbitrary serial output. Earlier
+calibration can be reused when its inputs are unchanged and the task does not
+call for another pass; physical Settings parity requires fresh post-update
+matching-state captures and interaction evidence.

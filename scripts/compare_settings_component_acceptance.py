@@ -8,7 +8,10 @@ from pathlib import Path
 
 from PIL import Image
 
-from scripts.compare_settings_acceptance import load_framebuffer_asset
+try:
+    from .compare_settings_acceptance import load_framebuffer_asset
+except ImportError:
+    from compare_settings_acceptance import load_framebuffer_asset
 
 ROOT = Path(__file__).resolve().parents[1]
 STATES = {
@@ -49,15 +52,16 @@ def compare_local(reference: Image.Image, capture: Image.Image) -> dict[str, obj
 
 def compare_outside(reference: Image.Image, capture: Image.Image, ignored: list[tuple[int, int, int, int]]) -> dict[str, object]:
     pa, pb = reference.load(), capture.load()
-    changed = maximum = 0
+    changed = maximum = compared = 0
     for y in range(466):
         for x in range(466):
             if any(left <= x < left + width and top <= y < top + height for left, top, width, height in ignored):
                 continue
+            compared += 1
             delta = max(abs(pa[x, y][channel] - pb[x, y][channel]) for channel in range(3))
             maximum = max(maximum, delta)
             changed += delta != 0
-    return {"ignored_masks": [list(mask) for mask in ignored], "compared_pixels": 466 * 466 - sum(width * height for _, _, width, height in ignored), "pixels_over_delta": changed, "maximum_channel_delta": maximum, "passed": changed == 0}
+    return {"ignored_masks": [list(mask) for mask in ignored], "compared_pixels": compared, "pixels_over_delta": changed, "maximum_channel_delta": maximum, "passed": changed == 0}
 
 
 def compare_component(mask: Image.Image, capture: Image.Image, neutral: Image.Image, bounds: tuple[int, int, int, int]) -> dict[str, object]:
@@ -84,42 +88,50 @@ def transparent_edge(mask: Image.Image) -> dict[str, object]:
     return {"edge_pixels": len(edge), "opaque_edge_pixels": opaque, "passed": opaque == 0}
 
 
-def compare_seams(reference: Image.Image, capture: Image.Image, regions: list[tuple[int, int, int, int]]) -> dict[str, object]:
+def compare_seams(reference: Image.Image, capture: Image.Image, regions: list[dict[str, object]]) -> dict[str, object]:
     """Reject hard seams by bounding the local edge jump to the approved reference."""
+    if not regions:
+        raise ValueError("the seam profile must declare comparison regions")
     reference_pixels, capture_pixels = reference.load(), capture.load()
     measurements = []
     passed = True
-    for left, top, width, height in regions:
+    for region in regions:
+        left, top, width, height = region["bounds"]
+        excess = region["maximum_excess_over_reference"]
+        if not isinstance(excess, int) or isinstance(excess, bool) or excess < 0:
+            raise ValueError("invalid profile seam allowance")
+        if left < 1 or top < 0 or width < 1 or height < 1 or left + width >= reference.width or top + height > reference.height:
+            raise ValueError("seam bounds escape framebuffer")
         reference_peak = 0
         capture_peak = 0
         for y in range(top, top + height):
             for x in range(left - 1, left + width):
                 reference_peak = max(reference_peak, sum(abs(reference_pixels[x + 1, y][channel] - reference_pixels[x, y][channel]) for channel in range(3)))
                 capture_peak = max(capture_peak, sum(abs(capture_pixels[x + 1, y][channel] - capture_pixels[x, y][channel]) for channel in range(3)))
-        # The outer capsule edges include LVGL/RGB565 rasterization. Keep the
-        # bound relative to the approved edge profile, while still catching
-        # the previous hard rectangular cyan edge (large edge jumps).
-        allowed = reference_peak + (128 if left == 71 else 64)
+        allowed = reference_peak + excess
         passed = passed and capture_peak <= allowed
         measurements.append({"region": [left, top, width, height], "reference_peak_edge_delta": reference_peak, "capture_peak_edge_delta": capture_peak, "allowed_peak_edge_delta": allowed, "passed": capture_peak <= allowed})
     return {"regions": measurements, "passed": passed}
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("capture_dir", type=Path)
-    parser.add_argument("output", type=Path)
-    args = parser.parse_args()
-    neutral = load_framebuffer_asset(ROOT / "shared/assets/settings-neutral-466.bin", 466, 466).convert("RGB")
-    profile = json.loads((ROOT / "shared/settings-acceptance-profile.json").read_text())
-    manifest = json.loads((ROOT / "shared/reference-manifest.json").read_text())
+def load_capture(path: Path) -> Image.Image:
+    with Image.open(path) as image:
+        if image.format != "PNG" or image.size != (466, 466):
+            raise ValueError(f"capture must be a lossless 466x466 PNG: {path}")
+        return image.convert("RGB")
+
+
+def evaluate(capture_dir: Path, root: Path = ROOT) -> dict[str, object]:
+    neutral = load_framebuffer_asset(root / "shared/assets/settings-neutral-466.bin", 466, 466).convert("RGB")
+    profile = json.loads((root / "shared/settings-acceptance-profile.json").read_text())
+    manifest = json.loads((root / "shared/reference-manifest.json").read_text())
     settings_state = next(state for state in manifest["states"] if state["name"] == "settings")
     shared_dynamic_masks = [(int(mask["x"]), int(mask["y"]), int(mask["width"]), int(mask["height"])) for mask in settings_state["dynamic_masks"]]
     rows: dict[str, object] = {}
     for row_id, (capture_name, y) in STATES.items():
-        capture = Image.open(args.capture_dir / capture_name).convert("RGB")
-        icon = load_framebuffer_asset(ROOT / "shared/assets" / f"{row_id}-pressed-icon-mask-61x56.bin", 61, 56)
-        chevron = load_framebuffer_asset(ROOT / "shared/assets" / f"{row_id}-pressed-chevron-mask-39x56.bin", 39, 56)
+        capture = load_capture(capture_dir / capture_name)
+        icon = load_framebuffer_asset(root / "shared/assets" / f"{row_id}-pressed-icon-mask-61x56.bin", 61, 56)
+        chevron = load_framebuffer_asset(root / "shared/assets" / f"{row_id}-pressed-chevron-mask-39x56.bin", 39, 56)
         rows[row_id] = {
             "outside_row_mask": compare_outside(neutral, capture, shared_dynamic_masks + [(72, y, 322, 56)]),
             "row_interior_against_neutral": compare(neutral, capture, (133, y + 8, 222, 40)),
@@ -128,25 +140,36 @@ def main() -> None:
             "icon_mask_edge": transparent_edge(icon),
             "chevron_mask_edge": transparent_edge(chevron),
             "seam_boundaries": compare_seams(
-                Image.open(ROOT / "shared/references/phase1-settings" / f"{row_id}-pressed-466.png").convert("RGB"),
+                load_capture(root / "shared/references/phase1-settings" / f"{row_id}-pressed-466.png"),
                 capture,
-                [(71, y + 6, 2, 44), (390, y + 6, 3, 44)],
+                [{"bounds": [entry["x"], y + entry["y_offset"], entry["width"], entry["height"]],
+                  "maximum_excess_over_reference": entry["maximum_excess_over_reference"]}
+                 for entry in profile["seam_boundaries"]["regions_relative_to_row_y"]],
             ),
             "profile": profile["rows"][row_id],
         }
-    connected = Image.open(args.capture_dir / "settings-connected.png").convert("RGB")
+    connected = load_capture(capture_dir / "settings-connected.png")
     banner: dict[str, object] = {}
     for name, (filename, bounds) in BANNER_ASSETS.items():
-        asset = load_framebuffer_asset(ROOT / "shared/assets" / filename, bounds[2], bounds[3])
+        asset = load_framebuffer_asset(root / "shared/assets" / filename, bounds[2], bounds[3])
         banner[name] = compare_component(asset, connected, neutral, bounds)
         banner[name]["mask_edge"] = transparent_edge(asset)
         banner[name]["profile"] = profile["banner"][name]
-    result = {"profile": str((ROOT / "shared/settings-acceptance-profile.json").relative_to(ROOT)), "captures": rows, "passed": all(
+    result = {"profile": "shared/settings-acceptance-profile.json", "seam_profile": profile["seam_boundaries"], "captures": rows, "passed": all(
         item["outside_row_mask"]["passed"] and item["row_interior_against_neutral"]["passed"] and
         item["icon_against_derived_mask"]["passed"] and item["chevron_against_derived_mask"]["passed"]
         and item["icon_mask_edge"]["passed"] and item["chevron_mask_edge"]["passed"] and item["seam_boundaries"]["passed"]
         for item in rows.values()
     ) and all(item["passed"] and item["mask_edge"]["passed"] for item in banner.values()), "banner": banner}
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("capture_dir", type=Path)
+    parser.add_argument("output", type=Path)
+    args = parser.parse_args()
+    result = evaluate(args.capture_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps({"report": str(args.output), "passed": result["passed"]}))

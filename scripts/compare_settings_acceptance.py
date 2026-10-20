@@ -8,7 +8,10 @@ from pathlib import Path
 
 from PIL import Image
 
-from scripts.settings_geometry import brightness_knob_x
+try:
+    from .settings_geometry import brightness_knob_x
+except ImportError:
+    from settings_geometry import brightness_knob_x
 
 
 ROOT = Path(__file__).resolve().parents[1]

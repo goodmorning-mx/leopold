@@ -22,6 +22,7 @@ Regenerate and verify the assets with the pinned tooling dependency:
 python3 -m pip install -r scripts/requirements.txt
 python3 scripts/generate_exact_reference_asset.py
 python3 scripts/generate_exact_reference_asset.py --check
+python3 scripts/check_settings_overlay_generation.py
 python3 scripts/sync_shared_assets.py
 python3 scripts/verify_shared_outputs.py
 ```
@@ -35,8 +36,9 @@ python3 scripts/compare_reference_capture.py home <home-capture.png> <report-dir
 python3 scripts/compare_reference_capture.py settings <settings-capture.png> <report-directory>
 ```
 
-The committed profile permits no mismatched pixels outside each state's narrow
-live-clock mask. A normal simulator run must still preserve the circular panel
+The Settings profile is `shared/settings-acceptance-profile.json`, including
+explicit seam bounds and allowances. Dynamic masks include live status and
+brightness regions; they are not restricted to the clock. A normal simulator run must preserve the circular panel
 mask; capture mode exposes the square framebuffer only for measurement.
 
 ## Change workflow
@@ -51,14 +53,24 @@ mask; capture mode exposes the square framebuffer only for measurement.
    authorization; local firmware compilation is not part of this workflow.
 6. Open `/simulator` and exercise every state in
    `shared/reference-states.json`.
-7. For exact-reference states, run the raw framebuffer comparator and require
-   every whole-frame and region result to pass. For reconstructed states,
-   capture a 466×466 reference image when visual changes are intentional.
+7. For Settings, use `scripts/compare_settings_component_acceptance.py` and the
+   approved component profile, plus full-screen visual inspection. Preserve the
+   legacy full-row comparator as diagnostic; never loosen limits to hide errors.
+   The test fixtures contain a hash-recorded good simulator composition and a
+   real historical bad Wi-Fi seam. These are regression inputs, not new approved
+   design references or physical evidence.
 
-The browser may use a renderer-specific implementation for Canvas and the
-firmware may use LVGL, but neither may maintain a second screen definition.
-Renderer-specific code is limited to drawing primitives, dynamic state adapters,
-and hardware/browser integrations.
+Settings acceptance must use the same native LVGL renderer compiled to WASM
+and ESP32. A separate TypeScript/Canvas implementation is not sufficient.
+Platform-specific adapters remain limited to runtime state and hardware/browser
+integration. Compare themes, DPI, defaults, clipping, and pixel conversion too.
+
+Settings status RGBA inputs live in `shared/settings-overlay-sources/` with
+checksums in `shared/settings-overlay-sources.json`. They preserve the accepted
+bounded component alpha and cover pixels byte for byte. The generator reads
+these independent inputs, never its own generated outputs. The isolated
+generation check runs twice and fails if either run differs from committed
+assets; CI and release builds enforce it before synchronization/packaging.
 
 ## Pixel-accuracy definition
 

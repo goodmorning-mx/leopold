@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install -r scripts/requirements.txt
+      - run: python3 scripts/check_settings_overlay_generation.py
       - run: python3 scripts/validate_shared_ui.py
       - run: python3 scripts/validate_settings_renderer_parity.py
       - run: python3 scripts/sync_shared_assets.py
@@ -76,8 +81,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned image tooling for generation and regression checks
+        run: python3 -m pip install -r scripts/requirements.txt
       - name: Generate and validate shared firmware output
         run: |
+          python3 scripts/check_settings_overlay_generation.py
           python3 scripts/validate_shared_ui.py
           python3 scripts/validate_settings_renderer_parity.py
           python3 scripts/validate_calibration.py
