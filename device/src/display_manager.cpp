@@ -338,6 +338,13 @@ void DisplayManager::exitCalibration() {
 
 bool DisplayManager::calibrationMode() const { return calibrationMode_; }
 
+void DisplayManager::writeDisplayInfo(Stream& output) const {
+  output.printf("LEOPOLD_DISPLAY_INFO panel=%dx%d framebuffer=%ux%u lvgl=%ldx%ld origin=0,0\n",
+                display->width(), display->height(), kScreenWidth, kScreenHeight,
+                static_cast<long>(lvglDisplay == nullptr ? 0 : lv_display_get_horizontal_resolution(lvglDisplay)),
+                static_cast<long>(lvglDisplay == nullptr ? 0 : lv_display_get_vertical_resolution(lvglDisplay)));
+}
+
 bool DisplayManager::writeLvglScreenshot(Stream& output) {
   if (lvglCaptureBuffer == nullptr) return false;
   // A USB screenshot can arrive in the same loop iteration as a screen change.

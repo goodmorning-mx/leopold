@@ -10,6 +10,17 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+EMBEDDED_PRESSED = [
+    ('kSettingsWifiPressedIconMaskData', 'settings-glass-wifi-pressed-icon-mask-61x56-v1.bin'),
+    ('kSettingsWifiPressedChevronMaskData', 'settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin'),
+    ('kSettingsBluetoothPressedIconMaskData', 'settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin'),
+    ('kSettingsBluetoothPressedChevronMaskData', 'settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin'),
+    ('kSettingsDisplayPressedIconMaskData', 'settings-glass-display-pressed-icon-mask-61x56-v1.bin'),
+    ('kSettingsDisplayPressedChevronMaskData', 'settings-glass-display-pressed-chevron-mask-39x56-v1.bin'),
+    ('kSettingsSoundPressedIconMaskData', 'settings-glass-sound-pressed-icon-mask-61x56-v1.bin'),
+    ('kSettingsSoundPressedChevronMaskData', 'settings-glass-sound-pressed-chevron-mask-39x56-v1.bin'),
+    ('kSettingsPressedBorderMaskData', 'settings-glass-pressed-border-mask-322x56-v1.bin'),
+]
 
 
 def fail(message: str) -> None:
@@ -70,7 +81,7 @@ def main() -> None:
         ("selectedRowId", "shared selected-row state"),
         ("drawSelectedSettingsRow(root, selectedIndex, resolveImage)", "bounded selected-row treatment"),
         ("renderSettingsLiveStatus(root, state, resolveImage);", "live status composition"),
-        ("renderSettingsLiveBrightness(root, state);", "live brightness composition"),
+        ("renderSettingsLiveBrightness(root, state, gears != nullptr);", "live brightness composition"),
     ):
         contains(settings_render, needle, label)
     for forbidden, label in (
@@ -101,7 +112,8 @@ def main() -> None:
         contains(status, token, label)
 
     brightness = renderer[renderer.index("void renderSettingsLiveBrightness"):renderer.index("void renderSettings(")]
-    contains(brightness, "makePanel(root, 63, 349, 342, 75", "brightness mask clear")
+    contains(brightness, "if (!glassBackdrop)", "glass background is preserved below live brightness")
+    contains(brightness, "makePanel(root, 63, 349, 342, 75", "legacy neutral fallback brightness mask clear")
     for bounds in ((98, 358, 272, 28), (153, 400, 160, 19)):
         if not inside(bounds, dynamic_masks["brightness-control"]):
             fail(f"brightness overlay bounds escape declared mask: {bounds}")
@@ -154,6 +166,23 @@ def main() -> None:
         payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", block))
         if payload != (ROOT / "shared" / entry["asset"]).read_bytes():
             fail(f"embedded active Settings status asset differs from canonical: {symbol}")
+
+    # Every Settings runtime overlay must resolve offline, not only in WASM/cloud.
+    loader = (ROOT / "device/src/sky_assets.cpp").read_text()
+    embedded_loader = loader.split("bool loadEmbeddedSettingsAsset() {", 1)[1].split("bool allAssetsLoaded()", 1)[0]
+    for symbol, filename in EMBEDDED_PRESSED:
+        block = embedded_source.split(f"const uint8_t {symbol}[] PROGMEM = {{", 1)[1].split("};", 1)[0]
+        payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", block))
+        if payload != (ROOT / "shared/assets" / filename).read_bytes():
+            fail(f"embedded pressed asset differs from canonical: {filename}")
+        contains(embedded_loader, f'loadCloudAsset("{filename}", {symbol}, {symbol}Size)', f"offline pressed asset {filename}")
+    interaction = json.loads((ROOT / "shared/interaction.json").read_text())
+    document = json.loads((ROOT / "shared/firmware-ui.json").read_text())
+    controls = next(screen for screen in document["screens"] if screen["id"] == "device-control-center")["components"]
+    for row in interaction["touch"]["settings_row_bounds"]:
+        component = next(control for control in controls if control["id"] == row["id"])
+        if any(component[key] != row[key] for key in ("x", "y", "width", "height")):
+            fail(f"simulator/device Settings hit bounds disagree: {row['id']}")
 
     for relative in (
         "shared/assets/settings-neutral-466.png",

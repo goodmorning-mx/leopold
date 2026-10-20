@@ -316,10 +316,19 @@ settings_asset_lines.extend([
     "constexpr size_t kSettingsAssetDataSize = sizeof(kSettingsAssetData);",
 ])
 for name, file in (
-    ("kSettingsGearsAssetData", "settings-gears-base-466.bin"),
-    ("kSettingsStatusBluetoothActiveData", "settings-status-bluetooth-active-22x22.bin"),
-    ("kSettingsStatusWifiActiveData", "settings-status-wifi-active-22x22.bin"),
-    ("kSettingsStatusCloudActiveData", "settings-status-cloud-active-24x24.bin"),
+    ("kSettingsGearsAssetData", "settings-glass-gears-v1-466.bin"),
+    ("kSettingsStatusBluetoothActiveData", "settings-glass-status-bluetooth-active-22x22-v1.bin"),
+    ("kSettingsStatusWifiActiveData", "settings-glass-status-wifi-active-22x22-v1.bin"),
+    ("kSettingsStatusCloudActiveData", "settings-glass-status-cloud-active-24x24-v1.bin"),
+    ("kSettingsWifiPressedIconMaskData", "settings-glass-wifi-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsWifiPressedChevronMaskData", "settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsBluetoothPressedIconMaskData", "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsBluetoothPressedChevronMaskData", "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsDisplayPressedIconMaskData", "settings-glass-display-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsDisplayPressedChevronMaskData", "settings-glass-display-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsSoundPressedIconMaskData", "settings-glass-sound-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsSoundPressedChevronMaskData", "settings-glass-sound-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsPressedBorderMaskData", "settings-glass-pressed-border-mask-322x56-v1.bin"),
 ):
     payload = (root / "shared" / "assets" / file).read_bytes()
     settings_asset_lines.append(f"const uint8_t {name}[] PROGMEM = {{")

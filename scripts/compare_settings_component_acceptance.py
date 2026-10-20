@@ -127,11 +127,14 @@ def evaluate(capture_dir: Path, root: Path = ROOT, base_asset: str = "settings-n
     manifest = json.loads((root / "shared/reference-manifest.json").read_text())
     settings_state = next(state for state in manifest["states"] if state["name"] == "settings")
     shared_dynamic_masks = [(int(mask["x"]), int(mask["y"]), int(mask["width"]), int(mask["height"])) for mask in settings_state["dynamic_masks"]]
+    runtime_assets = json.loads((root / "shared/asset-manifest.json").read_text())["assets"]
+    def asset_file(key: str, legacy: str) -> str:
+        return runtime_assets[key]["file"] if base_asset == runtime_assets["settings-gears-base"]["file"] else legacy
     rows: dict[str, object] = {}
     for row_id, (capture_name, y) in STATES.items():
         capture = load_capture(capture_dir / capture_name)
-        icon = load_framebuffer_asset(root / "shared/assets" / f"{row_id}-pressed-icon-mask-61x56.bin", 61, 56)
-        chevron = load_framebuffer_asset(root / "shared/assets" / f"{row_id}-pressed-chevron-mask-39x56.bin", 39, 56)
+        icon = load_framebuffer_asset(root / "shared/assets" / asset_file(f"{row_id}-pressed-icon-mask", f"{row_id}-pressed-icon-mask-61x56.bin"), 61, 56)
+        chevron = load_framebuffer_asset(root / "shared/assets" / asset_file(f"{row_id}-pressed-chevron-mask", f"{row_id}-pressed-chevron-mask-39x56.bin"), 39, 56)
         rows[row_id] = {
             "outside_row_mask": compare_outside(neutral, capture, shared_dynamic_masks + [(72, y, 322, 56)]),
             "row_interior_against_neutral": compare(neutral, capture, (133, y + 8, 222, 40)),
@@ -151,7 +154,7 @@ def evaluate(capture_dir: Path, root: Path = ROOT, base_asset: str = "settings-n
     connected = load_capture(capture_dir / "settings-connected.png")
     banner: dict[str, object] = {}
     for name, (filename, bounds) in BANNER_ASSETS.items():
-        asset = load_framebuffer_asset(root / "shared/assets" / filename, bounds[2], bounds[3])
+        asset = load_framebuffer_asset(root / "shared/assets" / asset_file(f"settings-status-{name}-active", filename), bounds[2], bounds[3])
         banner[name] = compare_component(asset, connected, neutral, bounds)
         banner[name]["mask_edge"] = transparent_edge(asset)
         banner[name]["profile"] = profile["banner"][name]

@@ -14,10 +14,10 @@
     "drag_interval_ms": 16,
     "slider_touch_padding": 16,
     "settings_row_bounds": [
-      {"id": "settings-wifi", "x": 106, "y": 148, "width": 258, "height": 40},
-      {"id": "settings-bluetooth", "x": 106, "y": 191, "width": 258, "height": 41},
-      {"id": "settings-display", "x": 106, "y": 234, "width": 258, "height": 41},
-      {"id": "settings-sound", "x": 106, "y": 277, "width": 258, "height": 41}
+      {"id": "settings-wifi", "x": 72, "y": 127, "width": 322, "height": 54},
+      {"id": "settings-bluetooth", "x": 72, "y": 181, "width": 322, "height": 54},
+      {"id": "settings-display", "x": 72, "y": 235, "width": 322, "height": 54},
+      {"id": "settings-sound", "x": 72, "y": 289, "width": 322, "height": 54}
     ],
     "settings_pressed_masks": {
       "settings-wifi": [72, 127, 322, 56],

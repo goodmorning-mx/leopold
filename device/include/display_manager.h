@@ -84,6 +84,7 @@ class DisplayManager {
   void exitCalibration();
   bool calibrationMode() const;
   bool writeLvglScreenshot(Stream& output);
+  void writeDisplayInfo(Stream& output) const;
 
  private:
   void centered(const char* text, int16_t y, uint8_t size, uint16_t color);

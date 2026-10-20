@@ -1335,6 +1335,8 @@ void processUsbCommands() {
       usbCommand[usbCommandLength] = '\0';
       if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strcmp(usbCommand, "LEOPOLD_DISPLAY_INFO") == 0) {
+        screen.writeDisplayInfo(Serial);
       } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE ON") == 0) {
         touch.setTraceEnabled(true);
         screen.setTouchTraceEnabled(true);

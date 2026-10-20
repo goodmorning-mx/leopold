@@ -77,24 +77,24 @@ AssetSlot assets[] = {
     {"open-whatsapp", "icon_whatsapp.bin", 72, 72, &kWhatsappIcon},
     {"open-spotify", "icon_spotify.bin", 84, 84, &kSpotifyIcon},
     {"spotify-large", "icon_spotify_large.bin", 97, 100, &kSpotifyLargeIcon},
-    {"settings-gears-base", "settings-gears-base-466.bin", 466, 466, &kSettingsGears},
+    {"settings-gears-base", "settings-glass-gears-v1-466.bin", 466, 466, &kSettingsGears},
     {"settings-neutral", "settings-neutral-466.bin", 466, 466, &kSettingsNeutral},
-    {"settings-status-bluetooth-active", "settings-status-bluetooth-active-22x22.bin", 22, 22, &kSettingsStatusBluetoothActive},
-    {"settings-status-wifi-active", "settings-status-wifi-active-22x22.bin", 22, 22, &kSettingsStatusWifiActive},
-    {"settings-status-cloud-active", "settings-status-cloud-active-24x24.bin", 24, 24, &kSettingsStatusCloudActive},
+    {"settings-status-bluetooth-active", "settings-glass-status-bluetooth-active-22x22-v1.bin", 22, 22, &kSettingsStatusBluetoothActive},
+    {"settings-status-wifi-active", "settings-glass-status-wifi-active-22x22-v1.bin", 22, 22, &kSettingsStatusWifiActive},
+    {"settings-status-cloud-active", "settings-glass-status-cloud-active-24x24-v1.bin", 24, 24, &kSettingsStatusCloudActive},
     {"settings-wifi-pressed", "settings-wifi-pressed-322x56.bin", 322, 56, &kSettingsWifiPressed},
     {"settings-bluetooth-pressed", "settings-bluetooth-pressed-322x56.bin", 322, 56, &kSettingsBluetoothPressed},
     {"settings-display-pressed", "settings-display-pressed-322x56.bin", 322, 56, &kSettingsDisplayPressed},
     {"settings-sound-pressed", "settings-sound-pressed-322x56.bin", 322, 56, &kSettingsSoundPressed},
-    {"settings-wifi-pressed-icon-mask", "settings-wifi-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsWifiPressedIconMask},
-    {"settings-wifi-pressed-chevron-mask", "settings-wifi-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsWifiPressedChevronMask},
-    {"settings-bluetooth-pressed-icon-mask", "settings-bluetooth-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsBluetoothPressedIconMask},
-    {"settings-bluetooth-pressed-chevron-mask", "settings-bluetooth-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsBluetoothPressedChevronMask},
-    {"settings-display-pressed-icon-mask", "settings-display-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsDisplayPressedIconMask},
-    {"settings-display-pressed-chevron-mask", "settings-display-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsDisplayPressedChevronMask},
-    {"settings-sound-pressed-icon-mask", "settings-sound-pressed-icon-mask-61x56.bin", 61, 56, &kSettingsSoundPressedIconMask},
-    {"settings-sound-pressed-chevron-mask", "settings-sound-pressed-chevron-mask-39x56.bin", 39, 56, &kSettingsSoundPressedChevronMask},
-    {"settings-pressed-border-mask", "settings-pressed-border-mask-322x56.bin", 322, 56, &kSettingsPressedBorderMask},
+    {"settings-wifi-pressed-icon-mask", "settings-glass-wifi-pressed-icon-mask-61x56-v1.bin", 61, 56, &kSettingsWifiPressedIconMask},
+    {"settings-wifi-pressed-chevron-mask", "settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin", 39, 56, &kSettingsWifiPressedChevronMask},
+    {"settings-bluetooth-pressed-icon-mask", "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin", 61, 56, &kSettingsBluetoothPressedIconMask},
+    {"settings-bluetooth-pressed-chevron-mask", "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin", 39, 56, &kSettingsBluetoothPressedChevronMask},
+    {"settings-display-pressed-icon-mask", "settings-glass-display-pressed-icon-mask-61x56-v1.bin", 61, 56, &kSettingsDisplayPressedIconMask},
+    {"settings-display-pressed-chevron-mask", "settings-glass-display-pressed-chevron-mask-39x56-v1.bin", 39, 56, &kSettingsDisplayPressedChevronMask},
+    {"settings-sound-pressed-icon-mask", "settings-glass-sound-pressed-icon-mask-61x56-v1.bin", 61, 56, &kSettingsSoundPressedIconMask},
+    {"settings-sound-pressed-chevron-mask", "settings-glass-sound-pressed-chevron-mask-39x56-v1.bin", 39, 56, &kSettingsSoundPressedChevronMask},
+    {"settings-pressed-border-mask", "settings-glass-pressed-border-mask-322x56-v1.bin", 322, 56, &kSettingsPressedBorderMask},
 };
 
 }  // namespace
@@ -167,12 +167,22 @@ bool loadEmbeddedHomeAsset() {
 }
 
 bool loadEmbeddedSettingsAsset() {
-  const bool gears = loadCloudAsset("settings-gears-base-466.bin", kSettingsGearsAssetData, kSettingsGearsAssetDataSize);
+  const bool gears = loadCloudAsset("settings-glass-gears-v1-466.bin", kSettingsGearsAssetData, kSettingsGearsAssetDataSize);
   const bool neutral = loadCloudAsset("settings-neutral-466.bin", kSettingsAssetData, kSettingsAssetDataSize);
-  const bool bluetooth = loadCloudAsset("settings-status-bluetooth-active-22x22.bin", kSettingsStatusBluetoothActiveData, kSettingsStatusBluetoothActiveDataSize);
-  const bool wifi = loadCloudAsset("settings-status-wifi-active-22x22.bin", kSettingsStatusWifiActiveData, kSettingsStatusWifiActiveDataSize);
-  const bool cloud = loadCloudAsset("settings-status-cloud-active-24x24.bin", kSettingsStatusCloudActiveData, kSettingsStatusCloudActiveDataSize);
-  return gears && neutral && bluetooth && wifi && cloud;
+  const bool bluetooth = loadCloudAsset("settings-glass-status-bluetooth-active-22x22-v1.bin", kSettingsStatusBluetoothActiveData, kSettingsStatusBluetoothActiveDataSize);
+  const bool wifi = loadCloudAsset("settings-glass-status-wifi-active-22x22-v1.bin", kSettingsStatusWifiActiveData, kSettingsStatusWifiActiveDataSize);
+  const bool cloud = loadCloudAsset("settings-glass-status-cloud-active-24x24-v1.bin", kSettingsStatusCloudActiveData, kSettingsStatusCloudActiveDataSize);
+  bool pressed = true;
+  pressed = loadCloudAsset("settings-glass-wifi-pressed-icon-mask-61x56-v1.bin", kSettingsWifiPressedIconMaskData, kSettingsWifiPressedIconMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin", kSettingsWifiPressedChevronMaskData, kSettingsWifiPressedChevronMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin", kSettingsBluetoothPressedIconMaskData, kSettingsBluetoothPressedIconMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin", kSettingsBluetoothPressedChevronMaskData, kSettingsBluetoothPressedChevronMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-display-pressed-icon-mask-61x56-v1.bin", kSettingsDisplayPressedIconMaskData, kSettingsDisplayPressedIconMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-display-pressed-chevron-mask-39x56-v1.bin", kSettingsDisplayPressedChevronMaskData, kSettingsDisplayPressedChevronMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-sound-pressed-icon-mask-61x56-v1.bin", kSettingsSoundPressedIconMaskData, kSettingsSoundPressedIconMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-sound-pressed-chevron-mask-39x56-v1.bin", kSettingsSoundPressedChevronMaskData, kSettingsSoundPressedChevronMaskDataSize) && pressed;
+  pressed = loadCloudAsset("settings-glass-pressed-border-mask-322x56-v1.bin", kSettingsPressedBorderMaskData, kSettingsPressedBorderMaskDataSize) && pressed;
+  return gears && neutral && bluetooth && wifi && cloud && pressed;
 }
 
 bool allAssetsLoaded() {

@@ -526,14 +526,17 @@ void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, Sh
   lv_obj_set_pos(battery, 291, 52);
 }
 
-void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state) {
+void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state, bool glassBackdrop) {
   using namespace generated_ui;
   // This mask owns only the live slider treatment and label. The immutable
   // base asset remains the owner of every pixel outside this declared region.
   // The Sound & Vibration capsule and its glow extend below its nominal row.
   // Start the live-control clear below them so the slider cannot clip the row.
-  lv_obj_t* mask = makePanel(root, 63, 349, 342, 75, 0, lv_color_black());
-  lv_obj_set_style_border_width(mask, 0, 0);
+  // The glass plate already clears the baked slider: preserve its background.
+  if (!glassBackdrop) {
+    lv_obj_t* mask = makePanel(root, 63, 349, 342, 75, 0, lv_color_black());
+    lv_obj_set_style_border_width(mask, 0, 0);
+  }
   lv_obj_t* slider = lv_slider_create(root);
   lv_obj_set_pos(slider, kSettingsSliderX, kSettingsSliderY);
   lv_obj_set_size(slider, kSettingsSliderWidth, kSettingsSliderHeight);
@@ -599,7 +602,7 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   }
   if (selectedIndex < 4) drawSelectedSettingsRow(root, selectedIndex, resolveImage);
   renderSettingsLiveStatus(root, state, resolveImage);
-  renderSettingsLiveBrightness(root, state);
+  renderSettingsLiveBrightness(root, state, gears != nullptr);
 }
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id) {

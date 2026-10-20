@@ -32,3 +32,16 @@ class SettingsBackgroundTests(unittest.TestCase):
         field=json.loads((ROOT/'shared/interaction.json').read_text())['local_panels']['wifi_password_field']
         self.assertLessEqual(bounds['y']+bounds['height'],field['y'])
         self.assertLess(field['y']+field['height'],159)  # first keyboard row
+
+    def test_physical_touch_regressions_and_visible_row_targets(self):
+        rows=json.loads((ROOT/'shared/interaction.json').read_text())['touch']['settings_row_bounds']
+        def hits(x,y):
+            return [r['id'] for r in rows if r['x'] <= x < r['x']+r['width'] and r['y'] <= y < r['y']+r['height']]
+        # Real device samples previously missed Wi-Fi or activated Sound from Display.
+        self.assertEqual(hits(303,145),['settings-wifi'])
+        self.assertEqual(hits(281,277),['settings-display'])
+        for i,row in enumerate(rows):
+            y=127+i*54
+            for x,py in [(100,y+28),(233,y+28),(369,y+28),(233,y+8),(233,y+48)]:
+                self.assertEqual(hits(x,py),[row['id']])
+        self.assertEqual(hits(233,345),[])
