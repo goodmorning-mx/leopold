@@ -63,21 +63,33 @@ def border_overlay(target: Image.Image, base: Image.Image) -> Image.Image:
     return output
 
 
-def write_overlay(image: Image.Image, name: str, root: Path) -> None:
-    png = root / "shared/assets" / f"{name}.png"
-    binary = png.with_suffix(".bin")
-    image.save(png, format="PNG")
-    _, _, payload = decode(png)
-    binary.write_bytes(payload)
+def encode_overlay(image: Image.Image, name: str, root: Path, encodings: dict) -> tuple[str, bytes, bytes]:
+    """Keep host-dependent zlib out of reproducible artifact identity.
+
+    The checkpoint owns only the PNG encoding. The algorithm/reference still
+    owns every RGBA pixel; a stale or edited checkpoint cannot replace it.
+    """
+    entry = encodings[name]
+    source = root / "shared" / entry["file"]
+    encoded = source.read_bytes()
+    if hashlib.sha256(encoded).hexdigest() != entry["sha256"]:
+        raise ValueError(f"row encoding checksum mismatch: {source}")
+    with Image.open(source) as checkpoint:
+        if checkpoint.mode != "RGBA" or checkpoint.size != image.size or checkpoint.tobytes() != image.tobytes():
+            raise ValueError(f"reference-derived pixels differ from encoding checkpoint: {name}")
+    _, _, payload = decode(source)
+    return f"{name}.png", encoded, payload
 
 
 def main(root: Path = ROOT) -> None:
     neutral = Image.open(root / "shared/references/phase1-settings/settings-neutral-466.png").convert("RGB")
-    sources = json.loads((root / "shared/settings-overlay-sources.json").read_text())["status_components"]
+    source_manifest = json.loads((root / "shared/settings-overlay-sources.json").read_text())
+    sources = source_manifest["status_components"]
+    encodings = source_manifest["row_encodings"]
     if set(sources) != {"bluetooth", "wifi", "cloud"}:
         raise ValueError("exactly three independent status sources are required")
     # Validate every independent input before touching any generated output.
-    status_inputs = []
+    outputs = []
     for entry in sources.values():
         source = root / "shared" / entry["file"]
         if hashlib.sha256(source.read_bytes()).hexdigest() != entry["sha256"]:
@@ -86,23 +98,25 @@ def main(root: Path = ROOT) -> None:
             if image.mode != "RGBA" or image.size != (entry["width"], entry["height"]):
                 raise ValueError(f"status source must retain RGBA dimensions: {source}")
         _, _, payload = decode(source)
-        status_inputs.append((entry["output"], source.read_bytes(), payload))
+        outputs.append((entry["output"], source.read_bytes(), payload))
     for row, (y, reference_name) in ROWS.items():
         reference = Image.open(root / "shared/references/phase1-settings" / reference_name).convert("RGB")
         for component, (x, width, height) in COMPONENTS.items():
             target = reference.crop((x, y, x + width, y + height))
             base = neutral.crop((x, y, x + width, y + height))
-            write_overlay(diff_overlay(target, base), f"settings-{row}-pressed-{component}-mask-{width}x{height}", root)
+            outputs.append(encode_overlay(diff_overlay(target, base), f"settings-{row}-pressed-{component}-mask-{width}x{height}", root, encodings))
 
     reference = Image.open(root / "shared/references/phase1-settings/settings-wifi-pressed-466.png").convert("RGB")
-    write_overlay(
+    outputs.append(encode_overlay(
         border_overlay(reference.crop((72, 127, 394, 183)), neutral.crop((72, 127, 394, 183))),
         "settings-pressed-border-mask-322x56",
         root,
-    )
+        encodings,
+    ))
 
     # Preserve intentional alpha and dark cover pixels. Outputs are never inputs.
-    for filename, png_bytes, payload in status_inputs:
+    # All inputs and reference-derived RGBA pixels passed before any write.
+    for filename, png_bytes, payload in outputs:
         target = root / "shared/assets" / filename
         target.write_bytes(png_bytes)
         target.with_suffix(".bin").write_bytes(payload)

@@ -34,6 +34,25 @@ class SettingsToolingTests(unittest.TestCase):
                 generate(root)
             self.assertEqual(before, {p.name: p.read_bytes() for p in (root / "shared/assets").iterdir() if p.is_file()})
 
+    def test_encoding_checkpoint_cannot_override_reference_pixels(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            shutil.copytree(ROOT / "shared", root / "shared")
+            manifest = root / "shared/settings-overlay-sources.json"
+            data = json.loads(manifest.read_text())
+            entry = next(iter(data["row_encodings"].values()))
+            checkpoint = root / "shared" / entry["file"]
+            with Image.open(checkpoint) as image:
+                changed = image.copy()
+            changed.putpixel((0, 0), (255, 0, 0, 255))
+            changed.save(checkpoint)
+            entry["sha256"] = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+            manifest.write_text(json.dumps(data))
+            before = {p.name: p.read_bytes() for p in (root / "shared/assets").iterdir() if p.is_file()}
+            with self.assertRaisesRegex(ValueError, "reference-derived pixels differ"):
+                generate(root)
+            self.assertEqual(before, {p.name: p.read_bytes() for p in (root / "shared/assets").iterdir() if p.is_file()})
+
     def test_good_composition_passes_and_real_historical_seam_fails(self):
         for entry in json.loads((FIXTURES / "provenance.json").read_text()):
             self.assertEqual(hashlib.sha256((FIXTURES / entry["fixture"]).read_bytes()).hexdigest(), entry["sha256"])

@@ -25,5 +25,52 @@
       "output": "settings-status-cloud-active-24x24.png",
       "provenance": "Byte-identical source of the bounded RGBA component accepted at fce05f9; approved screen references remain immutable comparison targets."
     }
+  },
+  "row_encodings": {
+    "settings-bluetooth-pressed-chevron-mask-39x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-bluetooth-pressed-chevron-mask-39x56.png",
+      "sha256": "192602f761ce307964213f7fbf8763441724bbbc8d723195d49bddccf7159da6",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-bluetooth-pressed-icon-mask-61x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-bluetooth-pressed-icon-mask-61x56.png",
+      "sha256": "5b21d68b13c203a4f7a814040d5a909b66823534d3e3a9e69468fbec9a6e1c9b",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-display-pressed-chevron-mask-39x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-display-pressed-chevron-mask-39x56.png",
+      "sha256": "82e928db6d7ea0b8eb9bdb1f85f4f2d7fe3562de9e42642215fdde1c72fcf8c4",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-display-pressed-icon-mask-61x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-display-pressed-icon-mask-61x56.png",
+      "sha256": "10655d1e53c6a494c353c1e65c68304d2dc189dc6622ac8d2a06727b54725e2e",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-pressed-border-mask-322x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-pressed-border-mask-322x56.png",
+      "sha256": "72ea629c133045a185aec9617fa37cb820d019ad278f60fbf4dc3d3e3439114c",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-sound-pressed-chevron-mask-39x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-sound-pressed-chevron-mask-39x56.png",
+      "sha256": "613be056f1ca4e1c713b259a24b26ce64dfe965c379062deabf65257f2e6a8de",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-sound-pressed-icon-mask-61x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-sound-pressed-icon-mask-61x56.png",
+      "sha256": "a4395e0ab4c4daee3a33bed205db0fdecbbb6f2ead9d6a2738dd150d761aabdc",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-wifi-pressed-chevron-mask-39x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-wifi-pressed-chevron-mask-39x56.png",
+      "sha256": "8108090f667066af3960abed520509fd90f1abb0e2e3f4fde635c46caaca21d9",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    },
+    "settings-wifi-pressed-icon-mask-61x56": {
+      "file": "settings-overlay-sources/row-encodings/settings-wifi-pressed-icon-mask-61x56.png",
+      "sha256": "a1e58f93a71522f22b188df73fbad5daafad784160d53b9751c9db5090f45a36",
+      "provenance": "Encoding checkpoint only: generated RGBA pixels must independently equal the reference-derived mask before these immutable PNG bytes can be emitted."
+    }
   }
 }

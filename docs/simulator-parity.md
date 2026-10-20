@@ -71,6 +71,11 @@ bounded component alpha and cover pixels byte for byte. The generator reads
 these independent inputs, never its own generated outputs. The isolated
 generation check runs twice and fails if either run differs from committed
 assets; CI and release builds enforce it before synchronization/packaging.
+Row-mask RGBA pixels are independently derived from approved references and
+checked against immutable encoding checkpoints in the same source manifest.
+Only after pixel equality is proved are the checkpoint's exact PNG bytes
+emitted. This avoids macOS/Linux zlib encoding differences without relaxing
+byte checks or allowing a checkpoint to replace the reference-derived design.
 
 ## Pixel-accuracy definition
 
