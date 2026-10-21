@@ -559,8 +559,35 @@ void buildDeviceDisplayMenu(SduiScreen& target) {
   addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
   addButton(target, "display-row-background", screen.spanishLanguage() ? "Fondo" : "Background", 58, 139, 350, 54, "#D5E3FA");
   addButton(target, "display-row-appearance", screen.spanishLanguage() ? "Apariencia" : "Appearance", 58, 201, 350, 54, "#D5E3FA");
+  addButton(target, "display-row-clock", screen.spanishLanguage() ? "Reloj" : "Clock", 58, 263, 350, 54, "#D5E3FA");
   target.components[2].icon[0] = '\0';
   target.components[3].icon[0] = '\0';
+  target.components[4].icon[0] = '\0';
+}
+
+void buildDeviceClockMenu(SduiScreen& target) {
+  static const char* names[] = {"Minimal", "Classic", "Gold", "Digital", "Segment"};
+  target.componentCount = 0;
+  memset(target.components, 0, sizeof(target.components));
+  strlcpy(target.screenId, "device-clock-options", sizeof(target.screenId));
+  addText(target, "submenu-title", screen.spanishLanguage() ? "RELOJ" : "CLOCK", 196, 91, 2, "#FFFFFF", TextAlign::kLeft);
+  addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
+  addText(target, "clock-face-label", screen.spanishLanguage() ? "Caratula" : "Face selection", 73, 151, 1, "#FFFFFF", TextAlign::kLeft);
+  for (uint8_t index = 0; index < 5; ++index) {
+    const uint8_t row = index < 3 ? 0 : 1;
+    const uint8_t column = row == 0 ? index : index - 3;
+    const int16_t x = row == 0 ? 74 + column * 100 : 124 + column * 100;
+    const int16_t y = row == 0 ? 174 : 228;
+    char id[24] = {};
+    char label[32] = {};
+    snprintf(id, sizeof(id), "clock-face-%u", index);
+    snprintf(label, sizeof(label), "%s%s", screen.clockFace() == index ? "[x] " : "", names[index]);
+    addButton(target, id, label, x, y, 96, 46, "#FFFFFF");
+    snprintf(target.components[target.componentCount - 1].icon,
+             sizeof(target.components[target.componentCount - 1].icon),
+             "clkface-%u", index);
+  }
+  addText(target, "clock-face-hint", screen.spanishLanguage() ? "La hora, fecha y bateria se actualizan en vivo" : "Time, date and battery update live", 73, 300, 1, "#A7A7A7", TextAlign::kLeft);
 }
 
 void buildDeviceAppearanceMenu(SduiScreen& target) {
@@ -664,14 +691,16 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
 
   const bool wasDisplayMenu = strcmp(previousScreenId, "device-additional-options") == 0;
   const bool wasAppearanceMenu = strcmp(previousScreenId, "device-appearance-options") == 0;
+  const bool wasClockMenu = strcmp(previousScreenId, "device-clock-options") == 0;
   syncControlCenterScreen();
 
-  if (wasDisplayMenu || wasAppearanceMenu) {
+  if (wasDisplayMenu || wasAppearanceMenu || wasClockMenu) {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
       if (strcmp(currentUi.screens[index].screenId, "device-additional-options") == 0) {
         currentUi.activeScreen = index;
         buildDeviceDisplayMenu(currentUi.active());
         if (wasAppearanceMenu) buildDeviceAppearanceMenu(currentUi.active());
+        else if (wasClockMenu) buildDeviceClockMenu(currentUi.active());
         break;
       }
     }
@@ -1253,6 +1282,16 @@ void processInput(uint32_t now) {
              ((strcmp(currentUi.active().screenId, "spotify-player") == 0 &&
                point.x <= 88 && point.y <= 94))) {
     openLocalScreen("open-home");
+  } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
+             localPanel == LocalPanel::kNone &&
+             strcmp(currentUi.active().screenId, "sky-home") == 0 &&
+             point.y >= 205 && point.y <= 253 &&
+             point.x >= 167 && point.x <= 300) {
+    if (point.x < 193) localPanel = LocalPanel::kBluetooth;
+    else if (point.x < 224) localPanel = LocalPanel::kWifi;
+    else localPanel = LocalPanel::kCloud;
+    showLocalConnectivityPanel(now);
+    Serial.println("Home status indicator opened connectivity details");
   } else if (hasGesture && hasUi &&
              strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
              localPanel == LocalPanel::kNone) {
@@ -1261,19 +1300,29 @@ void processInput(uint32_t now) {
       handleSettingsTap(*button, now);
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
              (strcmp(currentUi.active().screenId, "device-additional-options") == 0 ||
-              strcmp(currentUi.active().screenId, "device-appearance-options") == 0)) {
+              strcmp(currentUi.active().screenId, "device-appearance-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-clock-options") == 0)) {
     const bool appearancePage = strcmp(currentUi.active().screenId, "device-appearance-options") == 0;
+    const bool clockPage = strcmp(currentUi.active().screenId, "device-clock-options") == 0;
     const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);
     if (button != nullptr) {
       if (strcmp(button->id, "menu-back") == 0) {
-        if (appearancePage) buildDeviceDisplayMenu(currentUi.active());
+        if (appearancePage || clockPage) buildDeviceDisplayMenu(currentUi.active());
         else openLocalScreen("open-settings");
         screen.renderSduiScreen(currentUi);
       } else if (!appearancePage && strcmp(button->id, "display-row-appearance") == 0) {
         buildDeviceAppearanceMenu(currentUi.active());
         screen.renderSduiScreen(currentUi);
+      } else if (!appearancePage && !clockPage && strcmp(button->id, "display-row-clock") == 0) {
+        buildDeviceClockMenu(currentUi.active());
+        screen.renderSduiScreen(currentUi);
       } else if (!appearancePage && strcmp(button->id, "display-row-background") == 0) {
         screen.cycleBackground();
+        screen.renderSduiScreen(currentUi);
+      } else if (clockPage && strncmp(button->id, "clock-face-", 11) == 0) {
+        const int requestedFace = atoi(button->id + 11);
+        if (requestedFace >= 0 && requestedFace <= 4) screen.setClockFace(static_cast<uint8_t>(requestedFace));
+        buildDeviceClockMenu(currentUi.active());
         screen.renderSduiScreen(currentUi);
       } else if (appearancePage && strncmp(button->id, "display-accent-", 15) == 0) {
         static const char* ids[] = {"display-accent-red", "display-accent-orange", "display-accent-yellow", "display-accent-green", "display-accent-blue", "display-accent-indigo", "display-accent-violet"};
@@ -1386,7 +1435,8 @@ void processInput(uint32_t now) {
   } else if (gesture == TouchGesture::kTap && hasUi &&
              strcmp(currentUi.active().screenId, "device-control-center") != 0 &&
              strcmp(currentUi.active().screenId, "device-additional-options") != 0 &&
-             strcmp(currentUi.active().screenId, "device-appearance-options") != 0) {
+             strcmp(currentUi.active().screenId, "device-appearance-options") != 0 &&
+             strcmp(currentUi.active().screenId, "device-clock-options") != 0) {
     // Settings releases were consumed above, including cancelled contacts.
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button =

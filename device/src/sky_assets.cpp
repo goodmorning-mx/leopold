@@ -99,7 +99,7 @@ AssetSlot assets[] = {
     {"settings-gears-base", "settings-glass-gears-v1-466.bin", 466, 466, &kSettingsGears},
     {"settings-gears-rainbow", "settings-gears-rainbow-466.bin", 466, 466, &kSettingsGearsRainbow},
     {"settings-gears-wallpaper", "settings-gears-wallpaper-466.bin", 466, 466, &kSettingsGearsWallpaper},
-    {"settings-status-banner", "settings-status-banner-181x28.bin", 181, 28, &kSettingsStatusBanner},
+    {"settings-status-banner", "settings-status-banner-181x35.bin", 181, 35, &kSettingsStatusBanner},
     {"display-icon-background", "display-icon-background.bin", 30, 30, &kDisplayBackgroundIcon},
     {"display-icon-appearance", "display-icon-appearance.bin", 32, 32, &kDisplayAppearanceIcon},
     {"display-icon-clock", "display-icon-clock.bin", 31, 31, &kDisplayClockIcon},

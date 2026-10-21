@@ -349,18 +349,18 @@
         143,
         43,
         324,
-        71
+        78
       ],
-      "output_png": "shared/assets/settings-status-banner-181x28.png",
-      "output_png_sha256": "785b8772bbbf9ef7dcd4dec21ff4e5805dbe6667fb74e572b39c477ae8b53e74",
-      "output_bin": "shared/assets/settings-status-banner-181x28.bin",
-      "output_bin_sha256": "3b03c86c69d8a442811bff1a77a5c94413e3e5b3eac59143c5953daa59dcc26d",
+      "output_png": "shared/assets/settings-status-banner-181x35.png",
+      "output_png_sha256": "b038e6ca11fc51e78868577578bdb6fca778382adf380fbe9da244d040f7a382",
+      "output_bin": "shared/assets/settings-status-banner-181x35.bin",
+      "output_bin_sha256": "c2a3c09dae0e14da9f91cbf3d435eb8cb2b10aee1706130679460993eb770388",
       "dimensions": [
         181,
-        28
+        35
       ],
       "format": "RGBA PNG / RGB565A8 runtime",
-      "alpha_mask": "rounded rectangle radius 14px"
+      "alpha_mask": "rounded rectangle radius 17px"
     }
   ],
   "additional_references": [

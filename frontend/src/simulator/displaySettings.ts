@@ -102,7 +102,7 @@ export function displayScreen(base: SduiScreen, prefs: DisplayPreferences): Sdui
           const countryLabel = prefs.country === 'US' ? 'United States' : 'Mexico';
           components.push(button('display-country', `${countryLabel} (${prefs.country})`, 90, controlY, 286, 34, neutralRole('disabled', prefs.appearanceDark)));
           components.push(button('display-postal-field', prefs.postalDraft || 'Postal code', 90, controlY + 37, 286, 34, accentForAppearance(prefs.accentColor, prefs.appearanceDark)));
-          components.push({ type: 'text', id: 'display-postal-status', text: prefs.postalStatus || (prefs.weatherLocation ? `Saved: ${prefs.weatherLocation}` : 'Enter a postal code'), x: 92, y: controlY + 72, size: 1, color: neutralRole('mutedText', prefs.appearanceDark), align: 'left' });
+          components.push({ type: 'text', id: 'display-postal-status', text: prefs.postalStatus || (prefs.weatherLocation ? `Saved: ${prefs.weatherLocation} · GeoNames` : 'Enter a postal code · GeoNames'), x: 92, y: controlY + 72, size: 1, color: neutralRole('mutedText', prefs.appearanceDark), align: 'left' });
           if (prefs.keypadOpen) {
             const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','C'];
             keys.forEach((key, index) => {
@@ -131,16 +131,20 @@ export function clockSettingsScreen(base: SduiScreen, prefs: DisplayPreferences)
     button('clock-format-12', '12 hour', 74, 165, 137, 45, prefs.clock24 ? neutralRole('disabled', prefs.appearanceDark) : accentForAppearance(prefs.accentColor, prefs.appearanceDark)),
     button('clock-format-24', '24 hour', 231, 165, 137, 45, prefs.clock24 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)),
     { type: 'text', id: 'clock-face-label', text: spanish ? 'Caratula' : 'Face Selection', x: 73, y: 215, size: 1, color: neutralRole('text', prefs.appearanceDark) },
-    button('clock-face-0', 'Classic', 74, 232, 96, 72, prefs.clockFace === 0 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkface-0'),
-    button('clock-face-1', 'Minimal', 174, 232, 96, 72, prefs.clockFace === 1 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkface-1'),
-    button('clock-face-2', 'Digital', 274, 232, 96, 72, prefs.clockFace === 2 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkface-2'),
-    { type: 'text', id: 'clock-background-label', text: spanish ? 'Fondo del reloj' : 'Clock background', x: 73, y: 310, size: 1, color: neutralRole('text', prefs.appearanceDark) },
-    button('clock-background-0', 'Flower', 74, 328, 96, 52, prefs.clockBackground === 0 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-0'),
-    button('clock-background-1', 'Chevron', 174, 328, 96, 52, prefs.clockBackground === 1 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-1'),
-    button('clock-background-2', 'Mechanical', 274, 328, 96, 52, prefs.clockBackground === 2 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-2'),
-    { type: 'text', id: 'clock-weather-label', text: spanish ? 'Mostrar clima en reloj' : 'Show weather on clock', x: 73, y: 385, size: 1, color: neutralRole('text', prefs.appearanceDark) },
-    button('clock-weather-yes', spanish ? 'Si' : 'Yes', 231, 379, 68, 35, prefs.clockShowWeather ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)),
-    button('clock-weather-no', spanish ? 'No' : 'No', 307, 379, 68, 35, prefs.clockShowWeather ? neutralRole('disabled', prefs.appearanceDark) : accentForAppearance(prefs.accentColor, prefs.appearanceDark)),
+    ...(['Minimal', 'Classic', 'Gold', 'Digital', 'Segment'] as const).map((name, index) => {
+      const column = index < 3 ? index : index - 3;
+      const row = index < 3 ? 0 : 1;
+      const x = 74 + column * 100;
+      const y = 230 + row * 51;
+      return button(`clock-face-${index}`, name, x, y, 96, 45, prefs.clockFace === index ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), `clkface-${index}`);
+    }),
+    { type: 'text', id: 'clock-background-label', text: spanish ? 'Fondo del reloj' : 'Clock background', x: 73, y: 336, size: 1, color: neutralRole('text', prefs.appearanceDark) },
+    button('clock-background-0', 'Flower', 74, 353, 96, 42, prefs.clockBackground === 0 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-0'),
+    button('clock-background-1', 'Chevron', 174, 353, 96, 42, prefs.clockBackground === 1 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-1'),
+    button('clock-background-2', 'Mechanical', 274, 353, 96, 42, prefs.clockBackground === 2 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-2'),
+    { type: 'text', id: 'clock-weather-label', text: spanish ? 'Mostrar clima en reloj' : 'Show weather on clock', x: 73, y: 404, size: 1, color: neutralRole('text', prefs.appearanceDark) },
+    button('clock-weather-yes', spanish ? 'Si' : 'Yes', 231, 398, 68, 32, prefs.clockShowWeather ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)),
+    button('clock-weather-no', spanish ? 'No' : 'No', 307, 398, 68, 32, prefs.clockShowWeather ? neutralRole('disabled', prefs.appearanceDark) : accentForAppearance(prefs.accentColor, prefs.appearanceDark)),
   ];
   return { ...base, id: 'device-clock-options', components };
 }

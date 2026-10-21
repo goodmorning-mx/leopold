@@ -254,7 +254,7 @@
         137,
         39,
         195,
-        38
+        40
       ],
       "dynamic_masks": [
         {
@@ -263,7 +263,7 @@
           "x": 137,
           "y": 39,
           "width": 195,
-          "height": 38
+          "height": 40
         },
         {
           "name": "live-clock",
@@ -277,7 +277,7 @@
           "name": "wifi-status",
           "reason": "Wi-Fi connected/disconnected state",
           "x": 181,
-          "y": 45,
+          "y": 49,
           "width": 22,
           "height": 22
         },
@@ -285,7 +285,7 @@
           "name": "cloud-status",
           "reason": "cloud connected/disconnected state",
           "x": 264,
-          "y": 45,
+          "y": 48,
           "width": 24,
           "height": 24
         },
@@ -293,17 +293,17 @@
           "name": "bluetooth-status",
           "reason": "Bluetooth connected/disconnected; simulator and ESP32 share this visual treatment",
           "x": 153,
-          "y": 45,
+          "y": 49,
           "width": 22,
           "height": 22
         },
         {
           "name": "battery-status",
           "reason": "live battery percentage",
-          "x": 294,
-          "y": 45,
-          "width": 31,
-          "height": 24
+          "x": 291,
+          "y": 52,
+          "width": 34,
+          "height": 20
         },
         {
           "name": "brightness-control",

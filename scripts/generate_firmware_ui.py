@@ -45,12 +45,14 @@ def rgb565(value: str) -> str:
 
 
 status = rendering["status_bar"]
+shared_status_banner = status["shared_banner"]
 settings = rendering["settings"]
 settings_title = settings["title"]
 settings_slider = settings["slider"]
 settings_cloud = settings["status_cloud"]
 settings_bubble = settings["icon_bubble"]
 settings_center = settings["icon_center"]
+settings_selected_overlay = settings["selected_overlay"]
 settings_chevron = settings["chevron"]
 spotify_rendering = rendering["spotify"]
 arc = spotify_rendering["arc"]
@@ -139,6 +141,21 @@ lines.extend([
     f"constexpr int16_t kStatusWifiY = {status['wifi']['y']};",
     f"constexpr int16_t kStatusCloudX = {status['cloud']['x']};",
     f"constexpr int16_t kStatusCloudY = {status['cloud']['y']};",
+    f'constexpr char kSharedStatusBannerAsset[] = "{shared_status_banner["asset_key"]}";',
+    f"constexpr int16_t kSharedStatusBannerX = {shared_status_banner['x']};",
+    f"constexpr int16_t kSharedStatusBannerY = {shared_status_banner['y']};",
+    f"constexpr int16_t kSharedStatusBluetoothX = {shared_status_banner['bluetooth']['x']};",
+    f"constexpr int16_t kSharedStatusBluetoothY = {shared_status_banner['bluetooth']['y']};",
+    f"constexpr int16_t kSharedStatusWifiX = {shared_status_banner['wifi']['x']};",
+    f"constexpr int16_t kSharedStatusWifiY = {shared_status_banner['wifi']['y']};",
+    f"constexpr int16_t kSharedStatusCloudX = {shared_status_banner['cloud']['x']};",
+    f"constexpr int16_t kSharedStatusCloudY = {shared_status_banner['cloud']['y']};",
+    f"constexpr int16_t kSharedStatusTimeX = {shared_status_banner['time']['x']};",
+    f"constexpr int16_t kSharedStatusTimeY = {shared_status_banner['time']['y']};",
+    f"constexpr uint16_t kSharedStatusTimeColor = {rgb565(shared_status_banner['time']['color'])};",
+    f"constexpr int16_t kSharedStatusBatteryX = {shared_status_banner['battery']['x']};",
+    f"constexpr int16_t kSharedStatusBatteryY = {shared_status_banner['battery']['y']};",
+    f"constexpr uint16_t kSharedStatusBatteryColor = {rgb565(shared_status_banner['battery']['color'])};",
     f"constexpr int16_t kSettingsStatusX = {settings['status_pill']['x']};",
     f"constexpr int16_t kSettingsStatusY = {settings['status_pill']['y']};",
     f"constexpr int16_t kSettingsStatusWidth = {settings['status_pill']['width']};",
@@ -161,6 +178,7 @@ lines.extend([
     f"constexpr uint32_t kSettingsIconColor = 0x{settings_center['color'].replace('#', '')};",
     f"constexpr uint32_t kSettingsIconActiveColor = 0x{settings_center['active_color'].replace('#', '')};",
     f"constexpr uint32_t kSettingsIconActiveInnerGlow = 0x{settings_center['active_inner_glow'].replace('#', '')};",
+    f"constexpr uint8_t kSettingsSelectedBorderOpacity = {settings_selected_overlay['border_opacity']};",
     f"constexpr uint32_t kThemeAccentBright[] = {{{', '.join('0x' + color['accentBright'].replace('#', '') for color in theme_accents)}}};",
     f"constexpr uint32_t kThemeAccent[] = {{{', '.join('0x' + color['accent'].replace('#', '') for color in theme_accents)}}};",
     f"constexpr uint16_t kThemeAccent565[] = {{{', '.join(rgb565(color['accent']) for color in theme_accents)}}};",
@@ -202,6 +220,22 @@ lines.extend([
     f"constexpr uint16_t kHomeSpotifyAssetScale = {rendering['home']['spotify_asset_scale']};",
     f"constexpr int16_t kHomeSpotifyAssetWidth = {rendering['home']['spotify_asset_width']};",
     f"constexpr int16_t kHomeSpotifyAssetHeight = {rendering['home']['spotify_asset_height']};",
+    f"constexpr uint16_t kHomeGlassFill = {rgb565(rendering['home']['glass_button']['fill'])};",
+    f"constexpr uint8_t kHomeGlassFillOpacity = {rendering['home']['glass_button']['fill_opa']};",
+    f"constexpr uint16_t kHomeGlassBorder = {rgb565(rendering['home']['glass_button']['border'])};",
+    f"constexpr uint8_t kHomeGlassBorderOpacity = {rendering['home']['glass_button']['border_opa']};",
+    f"constexpr uint16_t kHomeGlassLightFill = {rgb565(rendering['home']['glass_button']['light_fill'])};",
+    f"constexpr uint8_t kHomeGlassLightFillOpacity = {rendering['home']['glass_button']['light_fill_opa']};",
+    f"constexpr uint16_t kHomeGlassLightBorder = {rgb565(rendering['home']['glass_button']['light_border'])};",
+    f"constexpr uint8_t kHomeGlassLightBorderOpacity = {rendering['home']['glass_button']['light_border_opa']};",
+    f"constexpr uint16_t kHomeGlassLightInset = {rgb565(rendering['home']['glass_button']['light_inset'])};",
+    f"constexpr uint8_t kHomeGlassLightInsetOpacity = {rendering['home']['glass_button']['light_inset_opa']};",
+    f"constexpr uint16_t kHomeLightNeutralIcon = {rgb565(rendering['home']['glass_button']['light_neutral_icon'])};",
+    f"constexpr uint8_t kHomeGlassBorderWidth = {rendering['home']['glass_button']['border_width']};",
+    f"constexpr uint8_t kHomeGlassInsetOpacity = {rendering['home']['glass_button']['inset_opa']};",
+    f"constexpr uint8_t kHomeGlassPressedShadowWidth = {rendering['home']['glass_button']['pressed_shadow_width']};",
+    f"constexpr uint8_t kHomeGlassPressedShadowOpacity = {rendering['home']['glass_button']['pressed_shadow_opa']};",
+    f"constexpr uint8_t kHomeInnerHighlightOpacity = {rendering['home']['glass_button']['inner_highlight_opa']};",
     f"constexpr int16_t kUsbIconWidth = {usb['width']};",
     f"constexpr int16_t kUsbIconHeight = {usb['height']};",
     f"constexpr int16_t kUsbIconStroke = {usb['stroke']};",

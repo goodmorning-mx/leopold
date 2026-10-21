@@ -35,7 +35,19 @@
       "outline_width": 0
     },
     "home_time_font": 20,
-    "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
+    "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-whatsapp", "computer-controls", "device-control-center", "device-additional-options", "device-clock-options", "device-appearance-options", "sky-weather", "sky-navigation", "spotify-player", "spotify-actions", "youtube-feed"],
+    "shared_banner": {
+      "asset_key": "settings-status-banner",
+      "x": 143,
+      "y": 43,
+      "width": 181,
+      "height": 35,
+      "bluetooth": {"x": 153, "y": 49, "width": 22, "height": 22},
+      "wifi": {"x": 181, "y": 49, "width": 22, "height": 22},
+      "cloud": {"x": 264, "y": 48, "width": 24, "height": 24},
+      "time": {"x": 217, "y": 50, "font_size": 20, "color": "#F4F7FC"},
+      "battery": {"x": 291, "y": 54, "font_size": 12, "color": "#DFE8F4"}
+    },
     "time": {"x": 218, "y": 218, "size": 2, "period_y": 230},
     "battery": {"x": 303, "y": 220, "size": 1},
     "bluetooth": {"x": 174, "y": 228},
@@ -48,6 +60,7 @@
     "title": {"gear_x": 166, "gear_y": 102, "gear_diameter": 40, "text_x": 196, "text_y": 92, "font_size": 25},
     "icon_bubble": {"x_offset": 2, "y_offset": -1, "diameter": 50, "radius": 25, "gradient_inner": "#D5E2F3", "gradient_outer": "#91A3BF", "active_gradient_inner": "#C7E5FF", "active_gradient_outer": "#0B5B9B", "glow": "#E7F0FF", "glow_blur": 18},
     "icon_center": {"x_offset": 27, "y_offset": 24.5, "scale": 1.15, "stroke": 2.8, "color": "#FFFFFF", "active_color": "#00D2FF", "active_inner_glow": "#0084C8"},
+    "selected_overlay": {"border_opacity": 58},
     "chevron": {"x_offset": 293, "y_offset": 19, "points": [[0, 0], [6, 6], [0, 12]], "stroke": 3, "color": "#D5E3FA", "glow": "#D5E3FA", "glow_blur": 2},
     "rows": [
       {"id": "settings-wifi", "x": 73, "y": 130, "width": 320, "height": 49, "active": true, "label": "WiFi", "icon": "wifi"},
@@ -80,13 +93,24 @@
   "home": {
     "glass_button": {
       "fill": "#BFC9D8",
-      "fill_opa": 90,
+      "fill_opa": 58,
       "border": "#F3F6FA",
-      "border_opa": 80,
+      "border_opa": 88,
       "border_width": 2,
-      "shadow_width": 20,
-      "shadow_opa": 90,
-      "inset_opa": 60
+      "shadow_width": 0,
+      "shadow_opa": 0,
+      "inset_opa": 42,
+      "light_fill": "#77869A",
+      "light_fill_opa": 18,
+      "light_border": "#34465D",
+      "light_border_opa": 58,
+      "light_inset": "#25364D",
+      "light_inset_opa": 8,
+      "light_neutral_icon": "#26364A",
+      "pressed_shadow_width": 3,
+      "pressed_shadow_opa": 24,
+      "icon_minimum_visible_diameter": 40,
+      "inner_highlight_opa": 48
     },
     "spotify_asset_scale": 180,
     "spotify_asset_width": 59,

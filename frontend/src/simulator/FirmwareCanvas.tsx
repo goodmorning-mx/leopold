@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { SduiComponent, SduiScreen, SduiText } from './contract';
+import { SduiButton, SduiComponent, SduiScreen, SduiText } from './contract';
 import typography from '../shared/typography.json';
 import interaction from '../shared/interaction.json';
 import rendering from '../shared/rendering.json';
@@ -145,12 +145,13 @@ function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boo
 }
 
 function drawSettingsStatusBanner(ctx: CanvasRenderingContext2D, images: FirmwareImages, timeText: string, batteryPercent: number, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean) {
-  drawAsset(ctx, images, 'settings-status-banner', 143, 43, 181, 28);
-  if (bluetoothEnabled) drawAsset(ctx, images, 'settings-status-bluetooth-active', 153, 45, 22, 22);
-  if (wifiConnected) drawAsset(ctx, images, 'settings-status-wifi-active', 181, 45, 22, 22);
-  if (cloudConnected) drawAsset(ctx, images, 'settings-status-cloud-active', 264, 45, 24, 24);
-  text(ctx, timeText, 217, 50, 20, '#F4F7FC');
-  text(ctx, `${batteryPercent}%`, 291, 52, 12, '#DFE8F4');
+  const banner = rendering.status_bar.shared_banner;
+  drawAsset(ctx, images, banner.asset_key, banner.x, banner.y, banner.width, banner.height);
+  if (bluetoothEnabled) drawAsset(ctx, images, 'settings-status-bluetooth-active', banner.bluetooth.x, banner.bluetooth.y, banner.bluetooth.width, banner.bluetooth.height);
+  if (wifiConnected) drawAsset(ctx, images, 'settings-status-wifi-active', banner.wifi.x, banner.wifi.y, banner.wifi.width, banner.wifi.height);
+  if (cloudConnected) drawAsset(ctx, images, 'settings-status-cloud-active', banner.cloud.x, banner.cloud.y, banner.cloud.width, banner.cloud.height);
+  text(ctx, timeText, banner.time.x, banner.time.y, banner.time.font_size, banner.time.color);
+  text(ctx, `${batteryPercent}%`, banner.battery.x, banner.battery.y, banner.battery.font_size, banner.battery.color);
 }
 
 function drawWhatsapp(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -172,13 +173,56 @@ function drawUsb(ctx: CanvasRenderingContext2D, x: number, y: number, stroke: st
   });
 }
 
-function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, backgroundArt: number, pressed: string | null) {
+function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, backgroundArt: number, pressed: string | null, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
   if (backgroundArt >= 0 && backgroundArt <= 2) {
     ctx.fillStyle = darkBackground ? '#000000' : '#FFFFFF'; ctx.fillRect(0, 0, W, H);
     drawAsset(ctx, images, ['background-flower', 'background-chevron', 'background-mechanical-flower'][backgroundArt], 0, 0, W, H);
-    drawAsset(ctx, images, 'home-controls-transparent', 0, 0, W, H);
-    drawAsset(ctx, images, 'open-spotify', 304, 295, 46, 46);
   } else drawAsset(ctx, images, 'reference-home', 0, 0, W, H);
+  if (backgroundArt >= 0 && backgroundArt <= 2) {
+    screen.components.filter((item): item is SduiButton => item.type === 'button' && item.id.startsWith('open-')).forEach((button) => {
+      const isPressed = pressed === button.id;
+      const cx = button.x + button.width / 2;
+      const cy = button.y + button.height / 2;
+      const radius = 28;
+      const style = rendering.home.glass_button;
+      const fillOpacity = style.fill_opa / 100;
+      const borderOpacity = style.border_opa / 100;
+      const glass = ctx.createRadialGradient(cx - 11, cy - 14, 2, cx, cy, radius + 2);
+      glass.addColorStop(0, `rgba(225,238,255,${Math.min(1, fillOpacity + (isPressed ? .18 : 0))})`);
+      glass.addColorStop(.7, `rgba(142,169,204,${Math.min(1, fillOpacity * .66 + (isPressed ? .12 : 0))})`);
+      glass.addColorStop(1, `rgba(47,69,99,${fillOpacity * .59})`);
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fillStyle = glass; ctx.fill();
+      ctx.lineWidth = isPressed ? style.border_width + 1 : style.border_width; ctx.strokeStyle = isPressed ? '#FFFFFF' : `rgba(243,246,250,${borderOpacity})`; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, radius - 4, Math.PI * 1.08, Math.PI * 1.88);
+      ctx.lineWidth = 2; ctx.strokeStyle = `rgba(255,255,255,${style.inner_highlight_opa / 100 + (isPressed ? .4 : 0)})`; ctx.stroke();
+      if (button.id === 'open-usb') {
+        drawUsb(ctx, button.x, button.y, '#F7FBFF');
+      } else if (button.id === 'open-settings') {
+        ctx.save(); ctx.translate(cx, cy); ctx.fillStyle = '#FFFFFF';
+        for (let tooth = 0; tooth < 8; tooth += 1) { ctx.rotate(Math.PI / 4); ctx.fillRect(-3, -18, 6, 8); }
+        ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#6F839E'; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      } else {
+        const size = button.id === 'open-spotify' ? 48 : 54;
+        drawAsset(ctx, images, button.id, cx - size / 2, cy - size / 2, size, size);
+      }
+    });
+    drawHomeStatus(ctx, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
+  }
+}
+
+function drawHomeStatus(ctx: CanvasRenderingContext2D, clock24: boolean, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, batteryPercent: number, timeText: string) {
+  const status = rendering.status_bar;
+  const pill = status.home_pill;
+  rounded(ctx, pill.x, pill.y, pill.width, pill.height, pill.height / 2, 'rgba(85,92,106,.76)', 'rgba(224,232,243,.72)', 1);
+  drawBluetooth(ctx, status.bluetooth.x - 4, status.bluetooth.y - 7, bluetoothEnabled);
+  drawWifi(ctx, status.wifi.x - 4, status.wifi.y - 7, wifiConnected);
+  drawCloud(ctx, status.cloud.x - 7, status.cloud.y - 7, cloudConnected);
+  const live = timeText || (clock24 ? '20:42' : '8:42 PM');
+  const match = live.match(/^(.*?)(?:\s(AM|PM))$/);
+  text(ctx, match ? match[1] : live, status.time.x, status.time.y, fonts[status.time.size], status.text_color);
+  if (match) text(ctx, match[2], status.time.x + 29, status.time.period_y, 8, status.text_color);
+  text(ctx, `${batteryPercent}%`, status.battery.x, status.battery.y, fonts[status.battery.size], status.text_color);
 }
 
 function drawExactClock(ctx: CanvasRenderingContext2D, stateName: 'home' | 'settings', value: string) {
@@ -406,11 +450,11 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       }
       else if (localPanel === 'wifi-networks') drawNetworkList(ctx, images, false, demoSavedWifi);
       else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, images, true, []);
-      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, backgroundArt, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
+      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, backgroundArt, pressed, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText || settingsTimeText); drawExactClock(ctx, 'home', settingsTimeText); }
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing, backgroundArt, darkBackground);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
       else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed, backgroundArt, clockBackground, clockFace, clockShowWeather, playing, timeText, settingsTimeText);
-      if (screen.id !== 'sky-home') {
+      if (screen.id !== 'sky-home' && screen.id !== 'sky-clock') {
         drawSettingsStatusBanner(ctx, images, timeText || (clock24 ? '20:42' : '8:42'), batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled);
       }
       if (new URLSearchParams(window.location.search).get('capture') === '1') {

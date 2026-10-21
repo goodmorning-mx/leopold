@@ -31,8 +31,9 @@ def install_client(monkeypatch, payload):
         async def __aexit__(self, *args):
             return None
 
-        async def get(self, url, params):
-            assert params["countryCode"] in {"US", "MX"}
+        async def get(self, url, params=None):
+            assert params is not None
+            assert params["countryCode"] == "US"
             assert params["count"] == 10
             return MockResponse(payload)
 
@@ -61,13 +62,53 @@ def test_us_zip_plus_four_uses_base_postcode_and_preserves_entry(monkeypatch):
 
 
 def test_mexico_postal_lookup_filters_country(monkeypatch):
-    install_client(monkeypatch, {"results": [{
-        "country_code": "MX", "postcodes": ["06000"], "name": "Cuauhtémoc",
-        "latitude": 19.4326, "longitude": -99.1332,
-    }]})
+    class MockClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url):
+            assert url == "https://api.zippopotam.us/MX/06000"
+            return MockResponse({
+                "country abbreviation": "MX", "post code": "06000", "places": [{
+                    "place name": "Centro de La Ciudad de Mexico Area 1",
+                    "state": "Distrito Federal", "latitude": "19.4007", "longitude": "-99.1573",
+                }],
+            })
+
+    monkeypatch.setattr(weather_api.httpx, "AsyncClient", MockClient)
     result = asyncio.run(weather_api.geocode_postal_code("MX", "06000"))
     assert result.country == "MX"
     assert result.postal_code == "06000"
+    assert result.provider == "GeoNames via Zippopotam.us (ODbL)"
+    assert result.latitude == pytest.approx(19.4007)
+
+
+def test_mexico_not_found_is_not_reported_as_cloud_outage(monkeypatch):
+    class MockClient:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url):
+            request = httpx.Request("GET", url)
+            response = httpx.Response(404, request=request)
+            raise httpx.HTTPStatusError("not found", request=request, response=response)
+
+    monkeypatch.setattr(weather_api.httpx, "AsyncClient", MockClient)
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(weather_api.geocode_postal_code("MX", "99999"))
+    assert error.value.status_code == 404
 
 
 @pytest.mark.parametrize(("country", "postal"), [("US", "123"), ("MX", "1234"), ("CA", "12345")])

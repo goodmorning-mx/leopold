@@ -37,6 +37,8 @@ class DisplayManager {
   void setAccentIndex(uint8_t index);
   uint8_t accentIndex() const;
   void setBackgroundArt(uint8_t index);
+  void setClockFace(uint8_t index);
+  uint8_t clockFace() const;
   uint8_t backgroundMode() const;
   bool spanishLanguage() const;
   const SharedRenderState& sharedRenderState() const;
@@ -129,6 +131,7 @@ class DisplayManager {
   uint8_t backgroundMode_ = 1;
   uint8_t backgroundArt_ = 0;
   uint8_t accentIndex_ = 4;
+  uint8_t clockFace_ = 0;
   bool spanishLanguage_ = false;
   uint32_t lastFaceFrameAt_ = 0;
   bool wifiConnected_ = false;
@@ -138,7 +141,8 @@ class DisplayManager {
   bool calibrationMode_ = false;
   uint8_t batteryPercent_ = 0;
   char timeText_[16] = "--:--";
-  SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0, 1};
+  char dateText_[16] = "";
+  SharedRenderState sharedRenderState_{};
   char pressedButtonId_[kMaxComponentId + 1] = {};
   bool touchTraceEnabled_ = false;
 };

@@ -15,7 +15,8 @@ static char pressedId[leopold::kMaxComponentId + 1];
 static lv_image_dsc_t assets[46];
 static bool assetReady[46];
 static char renderTime[16] = "--:--";
-static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
+static char renderDate[16] = "OCT 26";
+static leopold::SharedRenderState renderState = {};
 
 static void flush(lv_display_t* target, const lv_area_t* area, uint8_t* pixels) {
   const int32_t width = lv_area_get_width(area);
@@ -116,11 +117,15 @@ void lvgl_wasm_add_slider(const char* id, int16_t x, int16_t y, int16_t width, i
 
 void lvgl_wasm_set_pressed(const char* id) { strncpy(pressedId, id == nullptr ? "" : id, sizeof(pressedId) - 1); pressedId[sizeof(pressedId) - 1] = '\0'; }
 
-void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode, uint8_t backgroundArt, bool appearanceDark, uint8_t clockBackground, uint8_t clockFace, bool clockShowWeather, uint8_t accentIndex) {
+void lvgl_wasm_set_state(const char* timeText, const char* dateText, uint8_t battery, uint8_t clockSecond, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode, uint8_t backgroundArt, bool appearanceDark, uint8_t clockBackground, uint8_t clockFace, bool clockShowWeather, uint8_t accentIndex) {
   strncpy(renderTime, timeText == nullptr ? "--:--" : timeText, sizeof(renderTime) - 1);
   renderTime[sizeof(renderTime) - 1] = '\0';
   renderState.timeText = renderTime;
+  strncpy(renderDate, dateText == nullptr ? "" : dateText, sizeof(renderDate) - 1);
+  renderDate[sizeof(renderDate) - 1] = '\0';
+  renderState.dateText = renderDate;
   renderState.batteryPercent = battery;
+  renderState.clockSecond = clockSecond;
   renderState.wifiConnected = wifi;
   renderState.cloudConnected = cloud;
   renderState.bluetoothEnabled = bluetooth;

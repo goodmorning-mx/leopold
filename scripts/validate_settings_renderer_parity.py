@@ -60,18 +60,22 @@ def main() -> None:
         for item in settings["dynamic_masks"]
     }
     required_masks = {
-        "status-shell": (137, 39, 195, 38),
+        "status-shell": (137, 39, 195, 40),
         "live-clock": (216, 45, 49, 26),
-        "wifi-status": (181, 45, 22, 22),
-        "cloud-status": (264, 45, 24, 24),
-        "bluetooth-status": (153, 45, 22, 22),
-        "battery-status": (294, 45, 31, 24),
+        "wifi-status": (181, 49, 22, 22),
+        "cloud-status": (264, 48, 24, 24),
+        "bluetooth-status": (153, 49, 22, 22),
+        "battery-status": (291, 52, 34, 20),
         "brightness-control": (63, 349, 342, 75),
     }
     if dynamic_masks != required_masks:
         fail(f"declared dynamic masks changed: {dynamic_masks}")
 
     renderer = (ROOT / "shared/lvgl_renderer.cpp").read_text(encoding="utf-8")
+    banner_start = renderer.index("void renderSharedStatusBanner(")
+    banner_end = renderer.index("void renderSettingsLiveBrightness(", banner_start)
+    status_banner = renderer[banner_start:banner_end]
+    contains(status_banner, "renderSettingsLiveStatus(root, state, resolveImage);", "bounded live status banner composition")
     render_start = renderer.index("void renderSettings(")
     render_end = renderer.index("const SduiComponent* findComponent", render_start)
     settings_render = renderer[render_start:render_end]
@@ -80,7 +84,6 @@ def main() -> None:
         ('"SETTINGS ASSET ERROR"', "missing-asset diagnostic"),
         ("selectedRowId", "shared selected-row state"),
         ("drawSelectedSettingsRow(root, selectedIndex, resolveImage)", "bounded selected-row treatment"),
-        ("renderSettingsLiveStatus(root, state, resolveImage);", "live status composition"),
         ("renderSettingsLiveBrightness(root, state, gears != nullptr);", "live brightness composition"),
     ):
         contains(settings_render, needle, label)
@@ -103,12 +106,15 @@ def main() -> None:
 
     status = renderer[renderer.index("void renderSettingsLiveStatus"):renderer.index("void renderSettingsLiveBrightness")]
     contains(status, "state.timeText == nullptr ? \"--:--\"", "deterministic missing-clock fallback")
-    for token, label in (("153, 45", "Bluetooth overlay position"), ("centerX = 192", "Wi-Fi overlay position"),
-                         ("217, 50", "clock overlay position"), ("264, 45", "cloud overlay position"),
-                         ("291, 52", "battery overlay position")):
-        contains(status, token, label)
-    for token, label in (("generated_ui::kSettingsIconActiveColor", "shared active status color"),
-                         ("generated_ui::kSettingsIconActiveInnerGlow", "shared status inner glow")):
+    generated = (ROOT / "device/include/generated_firmware_ui.h").read_text(encoding="utf-8")
+    for token, label in (("kSharedStatusBluetoothY = 49", "Bluetooth overlay vertical position"),
+                         ("kSharedStatusWifiY = 49", "Wi-Fi overlay vertical position"),
+                         ("kSharedStatusCloudY = 48", "cloud overlay vertical position"),
+                         ("kSharedStatusTimeY = 50", "clock overlay vertical position"),
+                         ("kSharedStatusBatteryY = 54", "battery overlay vertical position")):
+        contains(generated, token, label)
+    for token, label in (("accentBright()", "shared active status color"),
+                         ("innerGlow = accentBright()", "shared status inner glow")):
         contains(status, token, label)
 
     brightness = renderer[renderer.index("void renderSettingsLiveBrightness"):renderer.index("void renderSettings(")]
@@ -123,7 +129,7 @@ def main() -> None:
     legacy_canvas = (ROOT / "frontend/src/simulator/FirmwareCanvas.tsx").read_text(encoding="utf-8")
     wasm = (ROOT / "frontend/wasm/lvgl_wasm.cpp").read_text(encoding="utf-8")
     build = (ROOT / "scripts/build_lvgl_wasm.py").read_text(encoding="utf-8")
-    contains(simulator, "['device-control-center', 'device-additional-options', 'device-clock-options'].includes(screen.id) && localPanel === 'none'", "normal and capture Settings LVGL/WASM path")
+    contains(simulator, "localPanel === 'none' && !calibrationMode ? <FirmwareLvglCanvas", "normal and capture LVGL/WASM path")
     if "function drawSettings(" in legacy_canvas:
         fail("a second Settings renderer remains in the legacy browser canvas")
     contains(lvgl_canvas, "settings-neutral", "browser exact Settings asset mapping")
@@ -207,8 +213,8 @@ def main() -> None:
             asset = ROOT / "shared" / entry[name]
             if hashlib.sha256(asset.read_bytes()).hexdigest() != entry[checksum]:
                 fail(f"background composition input/output differs: {asset}")
-        for source, label in ((settings_render, "shared renderer"), (lvgl_canvas, "browser asset mapping"),
-                              (wasm, "WASM mapping")):
+        contains(settings_render, 'resolveImage("settings-neutral")', "shared renderer background")
+        for source, label in ((lvgl_canvas, "browser asset mapping"), (wasm, "WASM mapping")):
             contains(source, "settings-gears-base", label + " background")
         block = embedded_source.split("const uint8_t kSettingsGearsAssetData[] PROGMEM = {", 1)[1].split("};", 1)[0]
         payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", block))

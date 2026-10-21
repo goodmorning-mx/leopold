@@ -33,6 +33,10 @@ class Settings(BaseSettings):
         default="https://geocoding-api.open-meteo.com/v1/search",
         alias="WEATHER_GEOCODING_URL",
     )
+    weather_postal_geocoding_url: str = Field(
+        default="https://api.zippopotam.us",
+        alias="WEATHER_POSTAL_GEOCODING_URL",
+    )
     weather_geocoding_api_key: str | None = Field(
         default=None, alias="WEATHER_GEOCODING_API_KEY"
     )

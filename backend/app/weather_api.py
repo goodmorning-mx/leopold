@@ -26,7 +26,7 @@ class WeatherLocation(BaseModel):
     latitude: float
     longitude: float
     timezone: str | None = None
-    provider: str = "Open-Meteo Geocoding API"
+    provider: str = "GeoNames via Open-Meteo"
 
 
 @router.get("/geocode", response_model=WeatherLocation)
@@ -43,6 +43,43 @@ async def geocode_postal_code(
         raise HTTPException(status_code=422, detail="Postal code format is not valid for the selected country.")
 
     settings = get_settings()
+    if normalized_country == "MX":
+        # Open-Meteo's GeoNames-backed search does not return Mexican postal
+        # codes reliably. Zippopotam.us exposes those GeoNames postal records.
+        url = f"{settings.weather_postal_geocoding_url.rstrip('/')}/{normalized_country}/{code}"
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                payload = response.json()
+        except httpx.HTTPStatusError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                raise HTTPException(status_code=404, detail="No exact match was found for that postal code.") from exc
+            raise HTTPException(status_code=503, detail="Postal-code lookup is temporarily unavailable.") from exc
+        except (httpx.HTTPError, ValueError) as exc:
+            raise HTTPException(status_code=503, detail="Postal-code lookup is temporarily unavailable.") from exc
+
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=502, detail="The location service returned an incomplete result.")
+        if payload.get("country abbreviation", "").upper() != normalized_country or payload.get("post code") != code:
+            raise HTTPException(status_code=404, detail="No exact match was found for that postal code.")
+        places = payload.get("places", [])
+        if not isinstance(places, list) or not places or not isinstance(places[0], dict):
+            raise HTTPException(status_code=404, detail="No exact match was found for that postal code.")
+        place = places[0]
+        try:
+            return WeatherLocation(
+                country=normalized_country,
+                postal_code=code,
+                name=str(place["place name"]),
+                admin1=str(place["state"]) if place.get("state") else None,
+                latitude=float(place["latitude"]),
+                longitude=float(place["longitude"]),
+                provider="GeoNames via Zippopotam.us (ODbL)",
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="The location service returned an incomplete result.") from exc
+
     provider_code = code[:5] if normalized_country == "US" and len(code) == 10 else code
     params: dict[str, str | int] = {"name": provider_code, "countryCode": normalized_country, "count": 10}
     if settings.weather_geocoding_api_key:

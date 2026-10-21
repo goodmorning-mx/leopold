@@ -466,23 +466,23 @@
       "resampling": "no scaling; source pixels preserved"
     },
     "settings-status-banner": {
-      "file": "settings-status-banner-181x28.bin",
+      "file": "settings-status-banner-181x35.bin",
       "width": 181,
-      "height": 28,
+      "height": 35,
       "format": "rgb565a8",
-      "derived_from": "settings-status-banner-181x28.png",
+      "derived_from": "settings-status-banner-181x35.png",
       "source": "shared/assets/settings-gears-base-466.png",
       "source_sha256": "4e62f977f82341fe2065cbd7c1069603fe3fa26ed9c32ecf4a41b5190b858792",
       "crop": [
         143,
         43,
         324,
-        71
+        78
       ],
-      "alpha_mask": "rounded rectangle radius 14px",
-      "png_sha256": "785b8772bbbf9ef7dcd4dec21ff4e5805dbe6667fb74e572b39c477ae8b53e74",
-      "device_sha256": "3b03c86c69d8a442811bff1a77a5c94413e3e5b3eac59143c5953daa59dcc26d",
-      "resampling": "exact 181x28 crop at Settings status pill bounds with transparent rounded corners; no scaling"
+      "alpha_mask": "rounded rectangle radius 17px",
+      "png_sha256": "b038e6ca11fc51e78868577578bdb6fca778382adf380fbe9da244d040f7a382",
+      "device_sha256": "c2a3c09dae0e14da9f91cbf3d435eb8cb2b10aee1706130679460993eb770388",
+      "resampling": "exact 181x35 crop at Settings status pill bounds with transparent rounded corners; no scaling"
     },
     "background-preview-flower": {
       "file": "background-preview-flower.bin",

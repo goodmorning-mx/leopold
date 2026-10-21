@@ -41,6 +41,18 @@ explicit seam bounds and allowances. Dynamic masks include live status and
 brightness regions; they are not restricted to the clock. A normal simulator run must preserve the circular panel
 mask; capture mode exposes the square framebuffer only for measurement.
 
+## Reusable Home controls and status banner
+
+Use `docs/parity/home-screen-button-sop.md` when editing circular Home controls
+and `docs/parity/shared-status-banner-sop.md` when editing the shared pill. The
+Settings pill is the gold standard: the same complete 181 × 35 shell belongs on
+all pages except Home and Clock. Keep the entire lower edge visible. Home uses
+its separate centered status pill; Clock keeps its own screen treatment. Keep
+both controls and banner in the shared rendering/asset contract so the browser
+simulator and device renderer consume the same visual rules. The personal
+`leopold-home-controls` and `leopold-status-banner` skills provide focused
+workflows for these two project SOPs.
+
 ## Change workflow
 
 1. Edit the committed files in `shared/`.

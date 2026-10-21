@@ -22,7 +22,7 @@ ICON_FILES = {
     "display-icon-display": "icon_display.png",
 }
 BANNER_SOURCE = ASSETS / "settings-gears-base-466.png"
-BANNER_BOUNDS = (143, 43, 324, 71)
+BANNER_BOUNDS = (143, 43, 324, 78)
 
 BACKGROUND_SOURCES = {
     "background-preview-flower": "background-flower-466.png",
@@ -244,23 +244,23 @@ def main() -> None:
     banner_source = BANNER_SOURCE
     banner = register_asset(
         "settings-status-banner", banner_source,
-        "settings-status-banner-181x28.png", 181, 28,
-        crop=BANNER_BOUNDS, rounded_alpha=14,
+        "settings-status-banner-181x35.png", 181, 35,
+        crop=BANNER_BOUNDS, rounded_alpha=17,
     )
     records.append(banner)
     manifest["assets"]["settings-status-banner"] = {
         "file": Path(banner["output_bin"]).name,
         "width": 181,
-        "height": 28,
+        "height": 35,
         "format": "rgb565a8",
         "derived_from": Path(banner["output_png"]).name,
         "source": banner["source"],
         "source_sha256": banner["source_sha256"],
         "crop": BANNER_BOUNDS,
-        "alpha_mask": "rounded rectangle radius 14px",
+        "alpha_mask": "rounded rectangle radius 17px",
         "png_sha256": banner["output_png_sha256"],
         "device_sha256": banner["output_bin_sha256"],
-        "resampling": "exact 181x28 crop at Settings status pill bounds with transparent rounded corners; no scaling",
+        "resampling": "exact 181x35 crop at Settings status pill bounds with transparent rounded corners; no scaling",
     }
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 

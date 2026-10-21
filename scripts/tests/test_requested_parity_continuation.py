@@ -48,11 +48,14 @@ class RequestedParityContinuationTests(unittest.TestCase):
         settings = next(s for s in ui['screens'] if s['id'] == 'device-control-center')
         self.assertFalse(any(c['id'] == 'open-additional-options' for c in settings['components']))
         additional = next(s for s in ui['screens'] if s['id'] == 'device-additional-options')
-        self.assertTrue(any(c['id'] == 'open-settings' and c['label'] == 'BACK' for c in additional['components']))
+        self.assertTrue(any(c['id'] == 'menu-back' and c['label'] == '‹' for c in additional['components']))
         main = (ROOT / 'device/src/main.cpp').read_text()
         self.assertIn('openLocalScreen("open-additional-options")', main)
-        self.assertIn('strcmp(button->id, "open-settings") == 0', main)
-        self.assertIn("localTargets[component.id]", (ROOT / 'frontend/src/simulator/Simulator.tsx').read_text())
+        self.assertIn('strcmp(button->id, "menu-back") == 0', main)
+        self.assertIn('addButton(target, "display-row-clock"', main)
+        simulator = (ROOT / 'frontend/src/simulator/Simulator.tsx').read_text()
+        self.assertIn("localTargets[component.id]", simulator)
+        self.assertIn("buttonId === 'menu-back'", simulator)
 
     def test_home_groups_and_hit_bounds_move_outward_exactly_ten_pixels(self):
         ui = read_json('shared/firmware-ui.json')
@@ -77,10 +80,10 @@ class RequestedParityContinuationTests(unittest.TestCase):
         for path in ['frontend/src/simulator/FirmwareCanvas.tsx', 'shared/lvgl_renderer.cpp', 'device/src/display_manager.cpp']:
             self.assertIn('settings-gears-wallpaper', (ROOT / path).read_text())
         renderer = (ROOT / 'shared/lvgl_renderer.cpp').read_text()
-        self.assertIn('resolveImage("home")', renderer)
+        self.assertIn('resolveImage("settings-gears-wallpaper")', renderer)
         self.assertNotIn('resolveImage(state != nullptr && state->backgroundMode == 2 ? "chevron" : "home")', renderer)
         simulator = (ROOT / 'frontend/src/simulator/Simulator.tsx').read_text()
-        self.assertIn("framebufferCaptureMode && localPanel === 'none'", simulator)
+        self.assertIn("localPanel === 'none' && !calibrationMode ? <FirmwareLvglCanvas", simulator)
         manager = (ROOT / 'device/src/display_manager.cpp').read_text()
         for screen in ['buildLvglConnectivityDetails', 'showBluetoothDetails', 'showBluetoothDevices', 'showWifiNetworks', 'showWifiPassword', 'showWifiConnecting']:
             section = manager[manager.index('DisplayManager::' + screen):]
@@ -165,12 +168,18 @@ class RequestedParityContinuationTests(unittest.TestCase):
                                  f'complete weather composite pixel ({sx},{sy})')
         self.assertNotEqual(output.crop((313, 139, 328, 157)).tobytes(), wallpaper.crop((313,139,328,157)).tobytes())
 
-    def test_home_live_time_uses_asset_mask_without_a_backing_panel(self):
+    def test_home_live_time_uses_the_declared_translucent_glass_pill(self):
         renderer = (ROOT / 'shared/lvgl_renderer.cpp').read_text()
         home_status = renderer[renderer.index('if (strcmp(screen.screenId, "sky-home") == 0)'):renderer.index('const bool top =', renderer.index('if (strcmp(screen.screenId, "sky-home") == 0)'))]
-        self.assertNotIn('makePanel(', home_status)
-        self.assertIn('generated_ui::kStatusTimeX, generated_ui::kStatusTimeY', home_status)
-        self.assertIn('generated_ui::kStatusTimePeriodY', home_status)
+        self.assertIn('makePanel(root, 147, 205, 192, 48, 24', home_status)
+        self.assertIn('static_cast<lv_opa_t>(194)', home_status)
+        self.assertIn('lv_obj_set_style_shadow_width(surface, 0, 0)', home_status)
+        self.assertIn('lv_obj_set_pos(time, 218, 218)', home_status)
+        self.assertIn('lv_obj_set_pos(meridiem, 247, 230)', home_status)
+        self.assertIn('state.bluetoothEnabled ? active : gray', home_status)
+        self.assertIn('state.wifiConnected ? active : gray', home_status)
+        self.assertIn('state.cloudConnected ? active : gray', home_status)
+        self.assertIn('state.batteryPercent', home_status)
         browser = (ROOT / 'frontend/src/simulator/FirmwareCanvas.tsx').read_text()
         self.assertNotIn("ctx.fillStyle = '#555C6A'; ctx.fillRect(211, 208, 68, 31)", browser)
         self.assertIn('status.time.y', browser)
@@ -178,6 +187,9 @@ class RequestedParityContinuationTests(unittest.TestCase):
         rendering = read_json('shared/rendering.json')['status_bar']['time']
         mask = read_json('shared/reference-manifest.json')['states'][0]['dynamic_masks'][0]
         self.assertEqual((mask['x'], mask['y'], mask['width'], mask['height']), (211, 219, 56, 22))
+        home_pill = read_json('shared/rendering.json')['status_bar']['home_pill']
+        self.assertEqual((home_pill['x'], home_pill['y'], home_pill['width'], home_pill['height']), (147, 205, 192, 48))
+        self.assertEqual(home_pill['shadow_width'], 0)
         self.assertEqual(rendering['y'], 218)
         self.assertEqual(rendering['period_y'], 230)
         self.assertGreaterEqual(rendering['y'] + 4, mask['y'])

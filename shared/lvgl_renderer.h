@@ -9,8 +9,10 @@ namespace leopold {
 using SharedImageResolver = const lv_image_dsc_t* (*)(const char* key);
 
 struct SharedRenderState {
-  const char* timeText;
+  const char* timeText = "--:--";
+  const char* dateText = "";
   uint8_t batteryPercent;
+  uint8_t clockSecond = 0;
   bool wifiConnected;
   bool cloudConnected;
   bool bluetoothEnabled;

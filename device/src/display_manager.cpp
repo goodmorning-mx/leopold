@@ -230,6 +230,10 @@ bool DisplayManager::begin() {
   spanishLanguage_ = displayPreferences.getBool("spanish", false);
   backgroundArt_ = min<uint8_t>(displayPreferences.getUChar("background_art", 0), 2);
   accentIndex_ = min<uint8_t>(displayPreferences.getUChar("accent_color", 4), 6);
+  clockFace_ = min<uint8_t>(displayPreferences.getUChar("clock_face", 0), 4);
+  sharedRenderState_.timeText = timeText_;
+  sharedRenderState_.dateText = dateText_;
+  sharedRenderState_.clockFace = clockFace_;
   sharedRenderState_.backgroundArt = backgroundArt_;
   sharedRenderState_.accentIndex = accentIndex_;
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
@@ -708,6 +712,14 @@ void DisplayManager::setBackgroundArt(uint8_t index) {
   sharedRenderState_.backgroundArt = backgroundArt_;
   displayPreferences.putUChar("background_art", backgroundArt_);
 }
+
+void DisplayManager::setClockFace(uint8_t index) {
+  clockFace_ = min<uint8_t>(index, 4);
+  sharedRenderState_.clockFace = clockFace_;
+  displayPreferences.putUChar("clock_face", clockFace_);
+}
+
+uint8_t DisplayManager::clockFace() const { return clockFace_; }
 
 uint8_t DisplayManager::backgroundMode() const {
   return backgroundMode_;
@@ -1729,6 +1741,16 @@ void DisplayManager::drawIndicators(
   strncpy(timeText_, timeText == nullptr ? "--:--" : timeText, sizeof(timeText_) - 1);
   timeText_[sizeof(timeText_) - 1] = '\0';
   sharedRenderState_.timeText = timeText_;
+  time_t now = time(nullptr);
+  struct tm local = {};
+  if (now > 1700000000 && localtime_r(&now, &local) != nullptr) {
+    strftime(dateText_, sizeof(dateText_), "%b %d", &local);
+    sharedRenderState_.clockSecond = static_cast<uint8_t>(local.tm_sec);
+  } else {
+    dateText_[0] = '\0';
+    sharedRenderState_.clockSecond = 0;
+  }
+  sharedRenderState_.dateText = dateText_;
   sharedRenderState_.batteryPercent = batteryPercent_;
   sharedRenderState_.wifiConnected = wifiConnected_;
   sharedRenderState_.cloudConnected = cloudConnected_;

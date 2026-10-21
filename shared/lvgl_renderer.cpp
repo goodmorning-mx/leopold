@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>
+#include <cctype>
 #include <cstring>
 
 #if __has_include("generated_firmware_ui.h")
@@ -15,6 +16,21 @@ constexpr int16_t kSettingsStatusY = 39;
 constexpr int16_t kSettingsStatusWidth = 195;
 constexpr int16_t kSettingsStatusHeight = 34;
 constexpr int16_t kSettingsStatusRadius = 17;
+constexpr char kSharedStatusBannerAsset[] = "settings-status-banner";
+constexpr int16_t kSharedStatusBannerX = 143;
+constexpr int16_t kSharedStatusBannerY = 43;
+constexpr int16_t kSharedStatusBluetoothX = 153;
+constexpr int16_t kSharedStatusBluetoothY = 49;
+constexpr int16_t kSharedStatusWifiX = 181;
+constexpr int16_t kSharedStatusWifiY = 49;
+constexpr int16_t kSharedStatusCloudX = 264;
+constexpr int16_t kSharedStatusCloudY = 48;
+constexpr int16_t kSharedStatusTimeX = 217;
+constexpr int16_t kSharedStatusTimeY = 50;
+constexpr uint16_t kSharedStatusTimeColor = 0xF7DE;
+constexpr int16_t kSharedStatusBatteryX = 291;
+constexpr int16_t kSharedStatusBatteryY = 54;
+constexpr uint16_t kSharedStatusBatteryColor = 0xDF5E;
 constexpr int16_t kSettingsCloudX = 277;
 constexpr int16_t kSettingsCloudY = 48;
 constexpr int16_t kSettingsCloudGlowBlur = 4;
@@ -66,6 +82,22 @@ constexpr uint16_t kSettingsSliderAccent = 0x357F;
 constexpr int16_t kSettingsBrightnessLabelX = 233;
 constexpr int16_t kSettingsBrightnessLabelY = 400;
 constexpr int16_t kSettingsBrightnessLabelFontSize = 16;
+constexpr uint16_t kHomeGlassFill = 0xBE5B;
+constexpr uint8_t kHomeGlassFillOpacity = 58;
+constexpr uint16_t kHomeGlassBorder = 0xF7BF;
+constexpr uint8_t kHomeGlassBorderOpacity = 88;
+constexpr uint16_t kHomeGlassLightFill = 0x7433;
+constexpr uint8_t kHomeGlassLightFillOpacity = 18;
+constexpr uint16_t kHomeGlassLightBorder = 0x322B;
+constexpr uint8_t kHomeGlassLightBorderOpacity = 58;
+constexpr uint16_t kHomeGlassLightInset = 0x21A9;
+constexpr uint8_t kHomeGlassLightInsetOpacity = 8;
+constexpr uint16_t kHomeLightNeutralIcon = 0x21A9;
+constexpr uint8_t kHomeGlassBorderWidth = 2;
+constexpr uint8_t kHomeGlassInsetOpacity = 42;
+constexpr uint8_t kHomeGlassPressedShadowWidth = 3;
+constexpr uint8_t kHomeGlassPressedShadowOpacity = 24;
+constexpr uint8_t kHomeInnerHighlightOpacity = 48;
 }  // namespace leopold::generated_ui
 #endif
 
@@ -74,6 +106,7 @@ namespace {
 
 uint8_t gAccentIndex = 4;
 bool gDarkAppearance = true;
+uint8_t gHomeArt = 255;
 
 lv_color_t accentBright() {
   const uint8_t index = gAccentIndex < generated_ui::kThemeAccentCount ? gAccentIndex : 4;
@@ -112,8 +145,7 @@ lv_color_t color565(uint16_t value) {
 
 uint16_t selectedAccent565() {
   const uint8_t index = gAccentIndex < generated_ui::kThemeAccentCount ? gAccentIndex : 4;
-  const uint32_t rgb = gDarkAppearance ? generated_ui::kThemeAccentBright[index] : generated_ui::kThemeAccent[index];
-  return static_cast<uint16_t>(((rgb >> 19) & 0x1F) << 11 | ((rgb >> 10) & 0x3F) << 5 | ((rgb >> 3) & 0x1F));
+  return generated_ui::kThemeAccent565[index];
 }
 
 const lv_image_dsc_t* tintAccentMask(const lv_image_dsc_t* source, uint8_t slot) {
@@ -139,6 +171,40 @@ const lv_image_dsc_t* tintAccentMask(const lv_image_dsc_t* source, uint8_t slot)
   item.source = source;
   item.color = accent;
   return &item.descriptor;
+}
+
+const lv_image_dsc_t* contrastHomeIcon(const lv_image_dsc_t* source) {
+  if (gDarkAppearance || gHomeArt == 2 || source == nullptr || source->header.cf != LV_COLOR_FORMAT_RGB565A8) return source;
+  const uint32_t pixels = static_cast<uint32_t>(source->header.w) * source->header.h;
+  if (source->data_size < pixels * 3) return source;
+  struct Cache { lv_image_dsc_t descriptor = {}; uint8_t* bytes = nullptr; uint32_t size = 0; const lv_image_dsc_t* source = nullptr; };
+  static Cache cache[2];
+  for (Cache& item : cache) {
+    if (item.source == source && item.bytes != nullptr) return &item.descriptor;
+    if (item.source != nullptr) continue;
+    item.bytes = static_cast<uint8_t*>(realloc(item.bytes, source->data_size));
+    if (item.bytes == nullptr) return source;
+    item.size = source->data_size;
+    memcpy(item.bytes, source->data, source->data_size);
+    const uint16_t neutral = generated_ui::kHomeLightNeutralIcon;
+    const uint8_t* alpha = source->data + pixels * 2;
+    for (uint32_t index = 0; index < pixels; ++index) {
+      if (alpha[index] == 0) continue;
+      const uint16_t pixel = static_cast<uint16_t>(source->data[index * 2] | (source->data[index * 2 + 1] << 8));
+      const int red = (pixel >> 11) & 0x1F;
+      const int green = (pixel >> 5) & 0x3F;
+      const int blue = pixel & 0x1F;
+      if (red >= 20 && green >= 40 && blue >= 20 && std::abs(red * 2 - green) < 10 && std::abs(green - blue * 2) < 10) {
+        item.bytes[index * 2] = static_cast<uint8_t>(neutral & 0xFF);
+        item.bytes[index * 2 + 1] = static_cast<uint8_t>(neutral >> 8);
+      }
+    }
+    item.descriptor = *source;
+    item.descriptor.data = item.bytes;
+    item.source = source;
+    return &item.descriptor;
+  }
+  return source;
 }
 
 const lv_font_t* fontForSize(uint8_t size) {
@@ -188,11 +254,9 @@ lv_obj_t* makeButton(lv_obj_t* parent, const SduiComponent& component, const cha
 
 lv_obj_t* makeHomeButton(lv_obj_t* parent, const SduiComponent& component, const char* pressedComponentId) {
   const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
-  const lv_color_t glass = lv_color_hex(0xBFC9D8);
-  const lv_color_t white = lv_color_hex(0xF3F6FA);
-  const lv_color_t accent = color565(component.color);
-  const bool greenAccent = strcmp(component.id, "open-whatsapp") == 0 || strcmp(component.id, "open-spotify") == 0;
-  const bool blueAccent = strcmp(component.id, "open-navigation") == 0 || strcmp(component.id, "open-usb") == 0;
+  const bool lightSurface = !gDarkAppearance && gHomeArt != 2;
+  const lv_color_t glass = rawColor565(lightSurface ? generated_ui::kHomeGlassLightFill : generated_ui::kHomeGlassFill);
+  const lv_color_t insetColor = rawColor565(lightSurface ? generated_ui::kHomeGlassLightInset : 0xFFFF);
   lv_obj_t* object = makePanel(
       parent,
       component.x,
@@ -201,16 +265,17 @@ lv_obj_t* makeHomeButton(lv_obj_t* parent, const SduiComponent& component, const
       component.height,
       component.height / 2,
       glass);
-  // The reference uses a luminous frosted-glass disc rather than a dark
-  // outlined button. Keep the color translucent so the active background
-  // still shows through, but make the glass itself readable on both modes.
-  lv_obj_set_style_bg_opa(object, pressed ? LV_OPA_90 : greenAccent ? LV_OPA_50 : blueAccent ? LV_OPA_70 : LV_OPA_90, 0);
-  lv_obj_set_style_border_width(object, 2, 0);
-  lv_obj_set_style_border_color(object, pressed ? accentBright() : greenAccent || blueAccent ? accent : white, 0);
-  lv_obj_set_style_border_opa(object, greenAccent ? LV_OPA_90 : LV_OPA_80, 0);
-  lv_obj_set_style_shadow_width(object, pressed ? 7 : 20, 0);
-  lv_obj_set_style_shadow_opa(object, pressed ? LV_OPA_60 : LV_OPA_90, 0);
-  lv_obj_set_style_shadow_color(object, pressed ? accentBright() : accent, 0);
+  const uint8_t fillOpacity = lightSurface ? generated_ui::kHomeGlassLightFillOpacity : generated_ui::kHomeGlassFillOpacity;
+  const uint16_t borderColor = lightSurface ? generated_ui::kHomeGlassLightBorder : generated_ui::kHomeGlassBorder;
+  const uint8_t borderOpacity = lightSurface ? generated_ui::kHomeGlassLightBorderOpacity : generated_ui::kHomeGlassBorderOpacity;
+  const uint8_t insetOpacity = lightSurface ? generated_ui::kHomeGlassLightInsetOpacity : generated_ui::kHomeGlassInsetOpacity;
+  lv_obj_set_style_bg_opa(object, static_cast<lv_opa_t>(pressed ? 204 : fillOpacity * 255 / 100), 0);
+  lv_obj_set_style_border_width(object, generated_ui::kHomeGlassBorderWidth, 0);
+  lv_obj_set_style_border_color(object, pressed ? accentBright() : rawColor565(borderColor), 0);
+  lv_obj_set_style_border_opa(object, static_cast<lv_opa_t>(pressed ? 255 : borderOpacity * 255 / 100), 0);
+  lv_obj_set_style_shadow_width(object, pressed ? generated_ui::kHomeGlassPressedShadowWidth : 0, 0);
+  lv_obj_set_style_shadow_opa(object, pressed ? static_cast<lv_opa_t>(generated_ui::kHomeGlassPressedShadowOpacity * 255 / 100) : LV_OPA_TRANSP, 0);
+  lv_obj_set_style_shadow_color(object, accentBright(), 0);
   lv_obj_t* inset = makePanel(
       object,
       6,
@@ -218,11 +283,11 @@ lv_obj_t* makeHomeButton(lv_obj_t* parent, const SduiComponent& component, const
       component.width - 12,
       component.height - 12,
       (component.height - 12) / 2,
-      white);
-  lv_obj_set_style_bg_opa(inset, pressed ? LV_OPA_70 : greenAccent ? LV_OPA_10 : LV_OPA_60, 0);
+      insetColor);
+  lv_obj_set_style_bg_opa(inset, static_cast<lv_opa_t>(pressed ? 170 : insetOpacity * 255 / 100), 0);
   lv_obj_set_style_border_width(inset, 1, 0);
-  lv_obj_set_style_border_color(inset, greenAccent ? accent : white, 0);
-  lv_obj_set_style_border_opa(inset, greenAccent ? LV_OPA_40 : LV_OPA_50, 0);
+  lv_obj_set_style_border_color(inset, rawColor565(borderColor), 0);
+  lv_obj_set_style_border_opa(inset, static_cast<lv_opa_t>(generated_ui::kHomeInnerHighlightOpacity * 255 / 100), 0);
   return object;
 }
 
@@ -400,6 +465,7 @@ void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index, SharedImageResolver 
     lv_obj_t* border = lv_image_create(root);
     lv_image_set_src(border, borderMask);
     lv_obj_set_pos(border, 72, y);
+    lv_obj_set_style_image_opa(border, static_cast<lv_opa_t>(generated_ui::kSettingsSelectedBorderOpacity * 255 / 100), 0);
   }
   // The neutral artwork bakes white glyphs into the icon and chevron. These
   // derived transparent masks contain only the approved changed pixels for
@@ -429,9 +495,17 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
   const lv_color_t gray = lv_color_hex(0xD2D8E2);
   const lv_color_t active = lv_color_hex(0xF3F6FA);
   if (strcmp(screen.screenId, "sky-home") == 0) {
-    // sky_home.bin contains the reference bezel, pill, icons, and battery.
-    // Keep the physical renderer from painting a second pill over that asset;
-    // only the time remains live, matching the browser renderer.
+    lv_obj_t* surface = makePanel(root, 147, 205, 192, 48, 24, lv_color_hex(0x555C6A));
+    lv_obj_set_style_bg_opa(surface, static_cast<lv_opa_t>(194), 0);
+    lv_obj_set_style_border_width(surface, 1, 0);
+    lv_obj_set_style_border_color(surface, lv_color_hex(0xE0E8F3), 0);
+    lv_obj_set_style_border_opa(surface, LV_OPA_60, 0);
+    lv_obj_set_style_shadow_width(surface, 0, 0);
+    lv_obj_t* bluetooth = makeLabel(root, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_16, state.bluetoothEnabled ? active : gray);
+    lv_obj_set_pos(bluetooth, 170, 220);
+    lv_obj_t* wifi = makeLabel(root, LV_SYMBOL_WIFI, &lv_font_montserrat_16, state.wifiConnected ? active : gray);
+    lv_obj_set_pos(wifi, 195, 220);
+    drawPairedCircles(root, 278, 216, state.cloudConnected ? active : gray, lv_color_hex(0xA9C9F4));
     const char* live = state.timeText == nullptr ? "--:--" : state.timeText;
     char clock[8] = {};
     char period[3] = {};
@@ -445,11 +519,15 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
       snprintf(clock, sizeof(clock), "%s", live);
     }
     lv_obj_t* time = makeLabel(root, clock, &lv_font_montserrat_20, gray);
-    lv_obj_set_pos(time, generated_ui::kStatusTimeX, generated_ui::kStatusTimeY);
+    lv_obj_set_pos(time, 218, 218);
     if (period[0] != '\0') {
       lv_obj_t* meridiem = makeLabel(root, period, &lv_font_montserrat_12, gray);
-      lv_obj_set_pos(meridiem, 247, generated_ui::kStatusTimePeriodY);
+      lv_obj_set_pos(meridiem, 247, 230);
     }
+    char batteryText[8] = {};
+    snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
+    lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_12, gray);
+    lv_obj_set_pos(battery, 302, 222);
     return;
   }
   const bool top = strcmp(screen.screenId, "sky-clock") == 0 ||
@@ -537,6 +615,184 @@ const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
 void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage);
 void drawSettingsWallpaper(lv_obj_t* root, SharedImageResolver resolveImage);
 
+struct ClockTimeParts { int hour; int minute; int second; bool pm; bool twelveHour; };
+uint8_t gClockLinePointSet = 0;
+lv_point_precise_t gClockLinePoints[128][2] = {};
+
+ClockTimeParts clockTimeParts(const SharedRenderState& state) {
+  ClockTimeParts parts{10, 9, static_cast<int>(state.clockSecond % 60), false, false};
+  if (state.timeText == nullptr) return parts;
+  const char* colon = strchr(state.timeText, ':');
+  if (colon == nullptr) return parts;
+  parts.hour = atoi(state.timeText);
+  parts.minute = atoi(colon + 1);
+  parts.second = static_cast<int>(state.clockSecond % 60);
+  parts.pm = strstr(state.timeText, "PM") != nullptr || strstr(state.timeText, "pm") != nullptr;
+  parts.twelveHour = strstr(state.timeText, "AM") != nullptr || strstr(state.timeText, "PM") != nullptr ||
+                     strstr(state.timeText, "am") != nullptr || strstr(state.timeText, "pm") != nullptr;
+  if (parts.twelveHour) {
+    parts.hour %= 12;
+    if (parts.pm) parts.hour += 12;
+  }
+  parts.hour %= 24;
+  parts.minute %= 60;
+  return parts;
+}
+
+void drawClockLine(lv_obj_t* root, int16_t x1, int16_t y1, int16_t x2, int16_t y2, int16_t width, lv_color_t color) {
+  lv_point_precise_t* linePoints = gClockLinePoints[gClockLinePointSet++ % 128];
+  linePoints[0] = {x1, y1};
+  linePoints[1] = {x2, y2};
+  lv_obj_t* line = lv_line_create(root);
+  lv_line_set_points(line, linePoints, 2);
+  lv_obj_set_size(line, 466, 466);
+  lv_obj_set_style_line_color(line, color, 0);
+  lv_obj_set_style_line_width(line, width, 0);
+  lv_obj_set_style_line_rounded(line, true, 0);
+}
+
+void drawClockDot(lv_obj_t* root, int16_t centerX, int16_t centerY, int16_t diameter, lv_color_t color) {
+  lv_obj_t* dot = lv_obj_create(root);
+  lv_obj_set_size(dot, diameter, diameter);
+  lv_obj_set_pos(dot, centerX - diameter / 2, centerY - diameter / 2);
+  lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_color(dot, color, 0);
+  lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(dot, 0, 0);
+  lv_obj_remove_flag(dot, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_remove_flag(dot, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+void drawClockText(lv_obj_t* root, const char* text, int16_t y, const lv_font_t* font, lv_color_t color) {
+  lv_obj_t* label = makeLabel(root, text, font, color);
+  lv_obj_set_width(label, 466);
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_pos(label, 0, y);
+}
+
+void drawSevenSegmentDigit(lv_obj_t* root, int digit, int16_t x, int16_t y, lv_color_t color) {
+  static const uint8_t segments[10] = {
+      0b1111110, 0b0110000, 0b1101101, 0b1111001, 0b0110011,
+      0b1011011, 0b1011111, 0b1110000, 0b1111111, 0b1111011};
+  static const int16_t ends[7][4] = {
+      {4, 0, 26, 0}, {29, 3, 29, 25}, {29, 31, 29, 53}, {4, 56, 26, 56},
+      {1, 31, 1, 53}, {1, 3, 1, 25}, {4, 28, 26, 28}};
+  const int value = digit >= 0 && digit <= 9 ? digit : 0;
+  for (int segment = 0; segment < 7; ++segment) {
+    if ((segments[value] & (1 << (6 - segment))) == 0) continue;
+    drawClockLine(root, x + ends[segment][0], y + ends[segment][1],
+                  x + ends[segment][2], y + ends[segment][3], 5, color);
+  }
+}
+
+void drawWatchFace(lv_obj_t* root, const SharedRenderState& state) {
+  gClockLinePointSet = 0;
+  const uint8_t face = state.clockFace > 4 ? 0 : state.clockFace;
+  const ClockTimeParts time = clockTimeParts(state);
+  const lv_color_t white = lv_color_hex(0xF4F3EB);
+  const lv_color_t muted = lv_color_hex(0xA7A7A0);
+  const lv_color_t red = lv_color_hex(0xFF3547);
+  const lv_color_t gold = lv_color_hex(0xE2A923);
+  char date[24] = {};
+  snprintf(date, sizeof(date), "%s", state.dateText != nullptr && state.dateText[0] ? state.dateText : "OCT 26");
+  for (char* p = date; *p; ++p) *p = static_cast<char>(toupper(static_cast<unsigned char>(*p)));
+  char battery[16] = {};
+  snprintf(battery, sizeof(battery), "%u%%", state.batteryPercent);
+
+  if (face == 3) {
+    drawClockText(root, date, 106, &lv_font_montserrat_20, white);
+    const char* timeText = state.timeText == nullptr ? "10:09" : state.timeText;
+    char largeTime[16] = {};
+    const char* suffix = strstr(timeText, " AM");
+    if (suffix == nullptr) suffix = strstr(timeText, " PM");
+    if (suffix != nullptr) snprintf(largeTime, sizeof(largeTime), "%.*s", static_cast<int>(suffix - timeText), timeText);
+    else snprintf(largeTime, sizeof(largeTime), "%s", timeText);
+    drawClockText(root, largeTime, 160, &lv_font_montserrat_48, white);
+    if (suffix != nullptr) drawClockText(root, suffix + 1, 218, &lv_font_montserrat_14, muted);
+    drawClockText(root, battery, 339, &lv_font_montserrat_24, white);
+    return;
+  }
+
+  if (face == 4) {
+    const int hour = time.twelveHour ? (time.hour % 12 == 0 ? 12 : time.hour % 12) : time.hour;
+    const int digits[] = {hour / 10, hour % 10, time.minute / 10, time.minute % 10};
+    const int16_t startX = 154;
+    drawClockText(root, date, 119, &lv_font_montserrat_18, white);
+    for (int index = 0; index < 4; ++index) {
+      const int16_t x = static_cast<int16_t>(startX + (index < 2 ? index * 39 : 92 + (index - 2) * 39));
+      drawSevenSegmentDigit(root, digits[index], x, 190, white);
+    }
+    drawClockDot(root, 233, 210, 6, white);
+    drawClockDot(root, 233, 232, 6, white);
+    drawClockText(root, battery, 339, &lv_font_montserrat_24, white);
+    return;
+  }
+
+  constexpr int16_t centerX = 233;
+  constexpr int16_t centerY = 235;
+  const int16_t radius = face == 0 ? 153 : 174;
+  if (face == 2) {
+    lv_obj_t* bezel = lv_obj_create(root);
+    lv_obj_set_size(bezel, 2 * radius + 12, 2 * radius + 12);
+    lv_obj_set_pos(bezel, centerX - radius - 6, centerY - radius - 6);
+    lv_obj_set_style_radius(bezel, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(bezel, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(bezel, 2, 0);
+    lv_obj_set_style_border_color(bezel, gold, 0);
+    lv_obj_remove_flag(bezel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(bezel, LV_OBJ_FLAG_SCROLLABLE);
+  }
+  if (face == 1) {
+    for (int mark = 0; mark < 60; ++mark) {
+      if (mark >= 27 && mark <= 33) continue;  // Keep the lower date/battery window clear.
+      const double angle = (mark * 6.0 - 90.0) * 3.14159265358979323846 / 180.0;
+      const bool hourMark = mark % 5 == 0;
+      const int16_t inner = static_cast<int16_t>(radius - (hourMark ? 20 : 9));
+      drawClockLine(root,
+                    static_cast<int16_t>(centerX + std::cos(angle) * inner),
+                    static_cast<int16_t>(centerY + std::sin(angle) * inner),
+                    static_cast<int16_t>(centerX + std::cos(angle) * (radius - 2)),
+                    static_cast<int16_t>(centerY + std::sin(angle) * (radius - 2)),
+                    hourMark ? 5 : 2, white);
+    }
+  } else if (face == 2) {
+    for (int mark = 0; mark < 60; ++mark) {
+      if (mark >= 27 && mark <= 33) continue;
+      const double angle = (mark * 6.0 - 90.0) * 3.14159265358979323846 / 180.0;
+      const bool hourMark = mark % 5 == 0;
+      drawClockDot(root,
+                   static_cast<int16_t>(centerX + std::cos(angle) * (radius - 3)),
+                   static_cast<int16_t>(centerY + std::sin(angle) * (radius - 3)), 4, gold);
+      if (hourMark) {
+        drawClockLine(root,
+                      static_cast<int16_t>(centerX + std::cos(angle) * (radius - 21)),
+                      static_cast<int16_t>(centerY + std::sin(angle) * (radius - 21)),
+                      static_cast<int16_t>(centerX + std::cos(angle) * (radius - 7)),
+                      static_cast<int16_t>(centerY + std::sin(angle) * (radius - 7)), 4, gold);
+        drawClockDot(root,
+                     static_cast<int16_t>(centerX + std::cos(angle) * (radius - 3)),
+                     static_cast<int16_t>(centerY + std::sin(angle) * (radius - 3)), 8, gold);
+      }
+    }
+  }
+  const double minuteAngle = ((time.minute + time.second / 60.0) * 6.0 - 90.0) * 3.14159265358979323846 / 180.0;
+  const double hourAngle = ((time.hour % 12 + time.minute / 60.0) * 30.0 - 90.0) * 3.14159265358979323846 / 180.0;
+  const double secondAngle = (time.second * 6.0 - 90.0) * 3.14159265358979323846 / 180.0;
+  const lv_color_t handColor = face == 2 ? gold : white;
+  drawClockLine(root, centerX, centerY,
+                static_cast<int16_t>(centerX + std::cos(hourAngle) * 73),
+                static_cast<int16_t>(centerY + std::sin(hourAngle) * 73), 6, handColor);
+  drawClockLine(root, centerX, centerY,
+                static_cast<int16_t>(centerX + std::cos(minuteAngle) * 116),
+                static_cast<int16_t>(centerY + std::sin(minuteAngle) * 116), 4, handColor);
+  drawClockLine(root, centerX, centerY,
+                static_cast<int16_t>(centerX + std::cos(secondAngle) * 128),
+                static_cast<int16_t>(centerY + std::sin(secondAngle) * 128), 2, red);
+  drawClockDot(root, centerX, centerY, 12, face == 2 ? gold : muted);
+  drawClockText(root, date, 360, &lv_font_montserrat_16, white);
+  drawClockText(root, battery, 383, &lv_font_montserrat_16, white);
+}
+
 void drawMenuChevron(lv_obj_t* parent, int16_t x, int16_t y, bool expanded) {
   lv_obj_t* chevron = makeLabel(parent, expanded ? LV_SYMBOL_DOWN : LV_SYMBOL_RIGHT, &lv_font_montserrat_16,
                                 expanded ? accentBright() : lv_color_hex(0xD5E3FA));
@@ -608,7 +864,8 @@ void drawSubmenuChoice(lv_obj_t* viewport, const SduiComponent& component, const
       if (index >= 0 && index < 3) imageKey = keys[index];
       }
     } else {
-      const char* keys[] = {"clock-face-preview-0", "clock-face-preview-1", "clock-face-preview-2"};
+      // The registered crops correspond to minimal, classic, and gold analog.
+      const char* keys[] = {"clock-face-preview-2", "clock-face-preview-0", "clock-face-preview-1"};
       if (index >= 0 && index < 3) imageKey = keys[index];
     }
     const lv_image_dsc_t* source = resolveImage == nullptr ? nullptr : resolveImage(imageKey);
@@ -697,20 +954,20 @@ void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, Sh
     lv_obj_set_pos(object, x, y);
     return true;
   };
-  if (state.bluetoothConnected && !drawStatusAsset("settings-status-bluetooth-active", 153, 45)) {
+  if (state.bluetoothConnected && !drawStatusAsset("settings-status-bluetooth-active", generated_ui::kSharedStatusBluetoothX, generated_ui::kSharedStatusBluetoothY)) {
     // Clip the glyph to its 22x22 component bounds so the banner shell and
     // neighboring values cannot change when Bluetooth changes.
     lv_obj_t* bluetoothBounds = lv_obj_create(root);
     lv_obj_set_size(bluetoothBounds, 22, 22);
-    lv_obj_set_pos(bluetoothBounds, 153, 45);
+    lv_obj_set_pos(bluetoothBounds, generated_ui::kSharedStatusBluetoothX, generated_ui::kSharedStatusBluetoothY);
     lv_obj_set_style_bg_opa(bluetoothBounds, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(bluetoothBounds, 0, 0);
     lv_obj_t* bluetooth = makeLabel(bluetoothBounds, LV_SYMBOL_BLUETOOTH, &lv_font_montserrat_20, active);
     lv_obj_set_pos(bluetooth, 0, 0);
   }
-  if (state.wifiConnected && !drawStatusAsset("settings-status-wifi-active", 181, 45)) {
-    const int16_t centerX = 192;
-    const int16_t centerY = 56;
+  if (state.wifiConnected && !drawStatusAsset("settings-status-wifi-active", generated_ui::kSharedStatusWifiX, generated_ui::kSharedStatusWifiY)) {
+    const int16_t centerX = generated_ui::kSharedStatusWifiX + 11;
+    const int16_t centerY = generated_ui::kSharedStatusWifiY + 11;
     const int16_t radii[] = {10, 6};
     for (int16_t radius : radii) {
       static lv_point_precise_t points[13];
@@ -726,26 +983,26 @@ void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, Sh
       lv_obj_set_style_line_width(arc, 2, 0);
       lv_obj_set_style_line_rounded(arc, true, 0);
     }
-    lv_obj_t* dot = makePanel(root, 190, 61, 4, 4, 2, active);
+    lv_obj_t* dot = makePanel(root, 190, 65, 4, 4, 2, active);
   }
-  if (state.cloudConnected && !drawStatusAsset("settings-status-cloud-active", 264, 45)) {
-    drawPairedCircles(root, 264, 45, active, innerGlow);
+  if (state.cloudConnected && !drawStatusAsset("settings-status-cloud-active", generated_ui::kSharedStatusCloudX, generated_ui::kSharedStatusCloudY)) {
+    drawPairedCircles(root, generated_ui::kSharedStatusCloudX, generated_ui::kSharedStatusCloudY, active, innerGlow);
   }
-  lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, lv_color_hex(0xF4F7FC));
+  lv_obj_t* time = makeLabel(root, state.timeText == nullptr ? "--:--" : state.timeText, &lv_font_montserrat_20, rawColor565(generated_ui::kSharedStatusTimeColor));
   lv_obj_set_style_text_letter_space(time, -2, 0);
-  lv_obj_set_pos(time, 217, 50);
+  lv_obj_set_pos(time, generated_ui::kSharedStatusTimeX, generated_ui::kSharedStatusTimeY);
   char batteryText[8] = {};
   snprintf(batteryText, sizeof(batteryText), "%u%%", state.batteryPercent);
-  lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_12, lv_color_hex(0xDFE8F4));
-  lv_obj_set_pos(battery, 291, 52);
+  lv_obj_t* battery = makeLabel(root, batteryText, &lv_font_montserrat_12, rawColor565(generated_ui::kSharedStatusBatteryColor));
+  lv_obj_set_pos(battery, generated_ui::kSharedStatusBatteryX, generated_ui::kSharedStatusBatteryY);
 }
 
 void renderSharedStatusBanner(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage) {
-  const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage("settings-status-banner");
+  const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage(generated_ui::kSharedStatusBannerAsset);
   if (banner != nullptr) {
     lv_obj_t* image = lv_image_create(root);
     lv_image_set_src(image, banner);
-    lv_obj_set_pos(image, 143, 43);
+    lv_obj_set_pos(image, generated_ui::kSharedStatusBannerX, generated_ui::kSharedStatusBannerY);
   }
   renderSettingsLiveStatus(root, state, resolveImage);
 }
@@ -917,6 +1174,7 @@ void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver
 void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* selectedRowId, const SharedRenderState* state) {
   gAccentIndex = state == nullptr ? 4 : state->accentIndex;
   gDarkAppearance = state == nullptr || state->appearanceDark;
+  gHomeArt = state == nullptr ? 255 : state->backgroundArt;
   lv_obj_clean(root);
   lv_obj_remove_flag(root, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_bg_color(root, state != nullptr && !state->appearanceDark ? lv_color_white() : color565(screen.background), 0);
@@ -946,7 +1204,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   const bool backgroundEnabled = state == nullptr || state->backgroundMode != 0;
   // Keep the SDUI components as live hit targets over the selected Display
   // background and transparent Home control artwork.
-  const bool referenceHome = home;
+  const bool referenceHome = false;
   if (strcmp(screen.screenId, "device-additional-options") == 0) {
     drawSettingsWallpaper(root, resolveImage);
   }
@@ -961,32 +1219,22 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     const lv_image_dsc_t* source = resolveImage(artKeys[art]);
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   }
-  if (resolveImage != nullptr && home && customArt) {
-    const lv_image_dsc_t* source = resolveImage("home-controls-transparent");
-    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
-  } else if (resolveImage != nullptr && home && backgroundEnabled) {
+  if (resolveImage != nullptr && home && backgroundEnabled && !customArt) {
     const lv_image_dsc_t* source = resolveImage("chevron");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   } else if (resolveImage != nullptr && flower && backgroundEnabled && !customArt) {
     const lv_image_dsc_t* source = resolveImage("flower");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   }
-  if (resolveImage != nullptr && home) {
-    const lv_image_dsc_t* spotify = resolveImage("open-spotify");
-    if (spotify != nullptr) {
-      lv_obj_t* image = lv_image_create(root);
-      lv_image_set_src(image, spotify);
-      lv_image_set_scale(image, 140);
-      lv_obj_set_pos(image, 285, 276);
-    }
-  }
   if (resolveImage != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
     const lv_image_dsc_t* source = resolveImage("open-weather");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 196, 83); }
   }
+  if (clock && state != nullptr) drawWatchFace(root, *state);
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (referenceHome) continue;
+    if (clock && state != nullptr && strcmp(component.id, "sky-time") == 0) continue;
     if (strcmp(screen.screenId, "sky-weather") == 0 && (strcmp(component.id, "weather-title") == 0 || strcmp(component.id, "weather-location") == 0 || strcmp(component.id, "weather-units") == 0)) continue;
     if (component.type == ComponentType::kText) {
       const lv_font_t* textFont = fontForSize(component.size);
@@ -1017,15 +1265,20 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
           ? makeHomeButton(root, component, selectedRowId)
           : makeButton(root, component, selectedRowId);
       const lv_image_dsc_t* source = resolveImage == nullptr ? nullptr : resolveImage(component.id);
+      const uint16_t neutralHomeColor = !gDarkAppearance && gHomeArt != 2 && component.color == 0xFFFF
+          ? generated_ui::kHomeLightNeutralIcon
+          : component.color;
       if (strcmp(component.icon, "x") == 0) {
-        lv_obj_t* placeholder = makeLabel(button, "X", &lv_font_montserrat_28, color565(component.color));
+        lv_obj_t* placeholder = makeLabel(button, "X", &lv_font_montserrat_28, color565(neutralHomeColor));
         lv_obj_center(placeholder);
       } else if (strcmp(component.icon, "gear") == 0) {
-        drawGear(button, color565(component.color));
-      } else if (source != nullptr && strcmp(component.id, "open-spotify") != 0) {
+        drawGear(button, color565(neutralHomeColor));
+      } else if (source != nullptr) {
         lv_obj_t* image = lv_image_create(button);
-        lv_image_set_src(image, source);
+        const bool neutralIcon = strcmp(component.id, "open-clock") == 0 || strcmp(component.id, "open-weather") == 0;
+        lv_image_set_src(image, home && neutralIcon ? contrastHomeIcon(source) : source);
         lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0);
+        lv_image_set_scale(image, strcmp(component.id, "open-spotify") == 0 ? generated_ui::kHomeSpotifyAssetScale : 150);
         lv_obj_center(image);
       } else if (strcmp(component.icon, "usb") == 0) {
         drawUsb(button, color565(component.color));
@@ -1064,7 +1317,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   }
   if (state != nullptr && home) {
     drawStatus(root, screen, *state);
-  } else if (state != nullptr) {
+  } else if (state != nullptr && !clock) {
     renderSharedStatusBanner(root, *state, resolveImage);
   }
 }

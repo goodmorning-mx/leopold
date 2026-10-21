@@ -77,7 +77,7 @@ export default function Simulator() {
   const captureConnected = captureState === 'connected' ? true : captureState === 'disconnected' ? false : null;
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
   const [screenIndex, setScreenIndex] = useState(() => {
-    const screenRoutes: Record<string, string> = { home: 'sky-home', weather: 'sky-weather', navigation: 'sky-navigation', spotify: 'spotify-player', usb: 'computer-controls' };
+    const screenRoutes: Record<string, string> = { home: 'sky-home', watch: 'sky-clock', weather: 'sky-weather', navigation: 'sky-navigation', spotify: 'spotify-player', usb: 'computer-controls' };
     const initialScreen = startSettingsMode ? (referenceSettingsMode || ['settings', 'wifi'].includes(query.get('screen') ?? '') ? 'device-control-center' : 'device-additional-options') : screenRoutes[query.get('screen') ?? ''] ?? 'sky-home';
     const initialIndex = sampleDocument.screens.findIndex((item) => item.id === initialScreen);
     return initialIndex >= 0 ? initialIndex : 0;
@@ -229,6 +229,7 @@ export default function Simulator() {
   }, []);
   useEffect(() => {
     let active = true;
+    if (localPanel === 'none') return () => { active = false; };
     void Promise.all([
       ...Object.entries(assetManifest.assets).map(async ([key, asset]) => [key, await decodeFirmwareAsset(`/firmware-assets/${asset.file}`, asset.width, asset.height)] as const),
       ...referenceManifest.states.map(async (state) => [`reference-${state.name}`, `/firmware-assets/${state.generated_asset.file.split('/').pop()}`] as const),
@@ -239,10 +240,11 @@ export default function Simulator() {
       ['settings-sound-pressed-exact', '/firmware-assets/settings-sound-pressed-322x56.png?asset-revision=phase1-pressed-v2'] as const,
     ]).then((entries) => { if (active) setImages(Object.fromEntries(entries)); }).catch(() => addEvent('asset', 'Firmware asset loading failed; using text fallback.'));
     return () => { active = false; };
-  }, []);
+  }, [localPanel]);
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []);
   const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: !clock24 });
   const settingsTimeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateText = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }).toUpperCase();
   const addEvent = (kind: string, detail: string, payload: Record<string, unknown> = {}) => setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind, detail, payload: JSON.stringify(payload) }, ...current].slice(0, 30));
   const emitTap = (componentId: string, payload: Record<string, unknown> = {}) => {
     const occurredAt = new Date().toISOString();
@@ -266,7 +268,7 @@ export default function Simulator() {
     try {
       const params = new URLSearchParams({ country: weatherCountry, postal_code: normalizedCode });
       const response = await fetch(`${apiUrl}/v1/weather/geocode?${params.toString()}`);
-      const payload = await response.json() as { detail?: string; name?: string; admin1?: string | null };
+      const payload = await response.json() as { detail?: string; name?: string; admin1?: string | null; provider?: string };
       if (!response.ok) {
         const message = response.status === 404
           ? (spanishLanguage ? 'No se encontró. Se conserva la ubicación anterior.' : 'No match found. Previous location kept.')
@@ -278,8 +280,9 @@ export default function Simulator() {
       setConfirmedWeatherLocation(`${weatherCountry}:${normalizedCode}`);
       setPostalDraft(digits);
       setKeypadOpen(false);
-      setPostalStatus(spanishLanguage ? `Encontrado: ${payload.name}${payload.admin1 ? `, ${payload.admin1}` : ''}.` : `Found: ${payload.name}${payload.admin1 ? `, ${payload.admin1}` : ''}.`);
-      addEvent('weather-location', `Cloud lookup confirmed ${normalizedCode}`, { country: weatherCountry, name: payload.name });
+      const locationLabel = `${payload.name}${payload.admin1 ? `, ${payload.admin1}` : ''}`;
+      setPostalStatus(spanishLanguage ? `Encontrado: ${locationLabel}. ${payload.provider ?? 'GeoNames'}.` : `Found: ${locationLabel}. ${payload.provider ?? 'GeoNames'}.`);
+      addEvent('weather-location', `Cloud lookup confirmed ${normalizedCode}`, { country: weatherCountry, name: payload.name, provider: payload.provider });
     } catch {
       const message = spanishLanguage ? 'Sin conexion a la nube. Se conserva la ubicacion anterior.' : 'Cloud is offline. Previous location kept.';
       setPostalStatus(message);
@@ -351,7 +354,7 @@ export default function Simulator() {
     }
     if (buttonId === 'clock-format-12') setClock24(false);
     else if (buttonId === 'clock-format-24') setClock24(true);
-    else if (/^clock-face-[0-2]$/.test(buttonId)) setClockFace(Number(buttonId.slice(-1)));
+    else if (/^clock-face-[0-4]$/.test(buttonId)) setClockFace(Number(buttonId.slice(-1)));
     else if (/^clock-background-[0-2]$/.test(buttonId)) setClockBackground(Number(buttonId.slice(-1)));
     else if (buttonId === 'clock-weather-yes') setClockShowWeather(true);
     else if (buttonId === 'clock-weather-no') setClockShowWeather(false);
@@ -464,6 +467,11 @@ export default function Simulator() {
     if (gesture === 'swipe-left') { setLocalPanel('none'); setScreenIndex((index) => (index + 1) % document.screens.length); }
     else if (gesture === 'swipe-right') { setLocalPanel('none'); setScreenIndex((index) => (index + document.screens.length - 1) % document.screens.length); }
     else if (gesture === 'swipe-up') { const home = document.screens.findIndex((item) => item.id === interaction.behaviour.swipe_up_screen); setLocalPanel('none'); setScreenIndex(home >= 0 ? home : 0); }
+    else if (gesture === 'tap' && localPanel === 'none' && screenId === 'sky-home' && point.y >= 205 && point.y <= 255 && point.x >= 167 && point.x <= 300) {
+      const panel = point.x < 193 ? 'bluetooth' : point.x < 224 ? 'wifi' : 'cloud';
+      setLocalPanel(panel);
+      addEvent('navigation', `Home status icon opened ${panel}`);
+    }
     else if (gesture === 'long-press' && screenId === 'sky-clock') { setClock24((value) => !value); addEvent('state', `Clock format: ${clock24 ? '12-hour' : '24-hour'}`); }
     else if (gesture === 'tap' && localPanel !== 'none') {
       const back = containsPoint(interaction.local_panels.back, point);
@@ -540,7 +548,7 @@ export default function Simulator() {
     <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Local working-copy preview using the shared firmware renderer. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
     <div className="simulator-grid">
       <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; submenuGesture.current = null; sliderDrag.current = false; settingsContact.current.cancelled = true; setPressed(null); }}>
-    {(framebufferCaptureMode && localPanel === 'none') || (['device-control-center', 'device-additional-options', 'device-clock-options'].includes(screen.id) && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} backgroundArt={backgroundArt} appearanceDark={appearanceDark} accentColor={accentColor} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={appearanceDark} backgroundArt={backgroundArt} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} wifiEnabled={wifiEnabled} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
+    {localPanel === 'none' && !calibrationMode ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={screen.id === 'sky-clock' && !clock24 ? timeText : settingsTimeText} dateText={dateText} clockSecond={now.getSeconds()} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} backgroundArt={backgroundArt} appearanceDark={appearanceDark} accentColor={accentColor} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={appearanceDark} backgroundArt={backgroundArt} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} wifiEnabled={wifiEnabled} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
         <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>{cloudConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Connected (mock)' : 'Disconnected (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setCloudConnected((value) => !value)}>Cloud</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>
