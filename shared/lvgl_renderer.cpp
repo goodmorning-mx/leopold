@@ -378,10 +378,10 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
       snprintf(clock, sizeof(clock), "%s", live);
     }
     lv_obj_t* time = makeLabel(root, clock, &lv_font_montserrat_20, gray);
-    lv_obj_set_pos(time, 218, 214);
+    lv_obj_set_pos(time, generated_ui::kStatusTimeX, generated_ui::kStatusTimeY);
     if (period[0] != '\0') {
       lv_obj_t* meridiem = makeLabel(root, period, &lv_font_montserrat_12, gray);
-      lv_obj_set_pos(meridiem, 247, 234);
+      lv_obj_set_pos(meridiem, 247, generated_ui::kStatusTimePeriodY);
     }
     return;
   }
@@ -467,6 +467,152 @@ void drawStatus(lv_obj_t* root, const SduiScreen& screen, const SharedRenderStat
 }
 
 const SduiComponent* findComponent(const SduiScreen& screen, const char* id);
+void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage);
+void drawSettingsWallpaper(lv_obj_t* root, SharedImageResolver resolveImage);
+
+void drawMenuChevron(lv_obj_t* parent, int16_t x, int16_t y, bool expanded) {
+  lv_obj_t* chevron = makeLabel(parent, expanded ? LV_SYMBOL_DOWN : LV_SYMBOL_RIGHT, &lv_font_montserrat_16,
+                                lv_color_hex(expanded ? 0x00D2FF : 0xD5E3FA));
+  lv_obj_set_pos(chevron, x, y - 1);
+}
+
+const char* displayMenuIconKey(const char* componentId) {
+  if (strstr(componentId, "background") != nullptr) return "display-icon-background";
+  if (strstr(componentId, "appearance") != nullptr) return "display-icon-appearance";
+  if (strstr(componentId, "clock") != nullptr) return "display-icon-clock";
+  if (strstr(componentId, "units") != nullptr) return "display-icon-units";
+  if (strstr(componentId, "language") != nullptr) return "display-icon-language";
+  if (strstr(componentId, "weather-location") != nullptr) return "display-icon-weather-location";
+  return "display-icon-display";
+}
+
+void drawSubmenuRow(lv_obj_t* viewport, const SduiComponent& component, const char* pressedComponentId, SharedImageResolver resolveImage) {
+  const int16_t x = static_cast<int16_t>(component.x - 58);
+  const int16_t y = static_cast<int16_t>(component.y - 139);
+  const bool expanded = strcmp(component.icon, "expanded") == 0;
+  const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
+  lv_obj_t* row = makePanel(viewport, x, y, component.width, component.height, component.height / 2, lv_color_hex(0x121721));
+  lv_obj_set_style_bg_opa(row, LV_OPA_90, 0);
+  lv_obj_set_style_border_width(row, expanded || pressed ? 2 : 1, 0);
+  lv_obj_set_style_border_color(row, lv_color_hex(expanded || pressed ? 0x00D2FF : 0x2B3545), 0);
+  if (expanded || pressed) {
+    lv_obj_set_style_shadow_width(row, 8, 0);
+    lv_obj_set_style_shadow_color(row, lv_color_hex(0x0084C8), 0);
+    lv_obj_set_style_shadow_opa(row, LV_OPA_50, 0);
+  }
+  const char* iconKey = displayMenuIconKey(component.id);
+  const lv_image_dsc_t* iconSource = resolveImage == nullptr ? nullptr : resolveImage(iconKey);
+  if (iconSource != nullptr) {
+    lv_obj_t* icon = lv_image_create(row);
+    lv_image_set_src(icon, iconSource);
+    lv_obj_align(icon, LV_ALIGN_LEFT_MID, 8, 0);
+  }
+  lv_obj_t* label = makeLabel(row, component.text, &lv_font_montserrat_20, lv_color_white());
+  lv_obj_set_width(label, component.width - 106);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+  lv_obj_set_pos(label, 49, (component.height - 24) / 2);
+  drawMenuChevron(row, component.width - 28, (component.height - 16) / 2, expanded);
+}
+
+void drawSubmenuChoice(lv_obj_t* viewport, const SduiComponent& component, const char* pressedComponentId, SharedImageResolver resolveImage) {
+  const int16_t x = static_cast<int16_t>(component.x - 58);
+  const int16_t y = static_cast<int16_t>(component.y - 139);
+  const bool selected = component.color == 0x069F;
+  const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
+  const bool backgroundPreview = strncmp(component.icon, "bgprev-", 7) == 0;
+  const bool clockBackgroundPreview = strncmp(component.icon, "clkbg-", 6) == 0;
+  const bool clockFacePreview = strncmp(component.icon, "clkface-", 8) == 0;
+  const int16_t radius = backgroundPreview || clockBackgroundPreview || clockFacePreview ? 12 : component.height > 35 ? component.height / 2 : 9;
+  lv_obj_t* choice = makePanel(viewport, x, y, component.width, component.height, radius, lv_color_hex(component.id[0] == 'p' && strstr(component.id, "postal") != nullptr ? 0x171A1F : 0x121721));
+  lv_obj_set_style_bg_opa(choice, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(choice, selected || pressed ? 2 : 1, 0);
+  lv_obj_set_style_border_color(choice, lv_color_hex(selected || pressed ? 0x00D2FF : 0x2B3545), 0);
+  if (backgroundPreview || clockBackgroundPreview || clockFacePreview) {
+    const char* imageKey = nullptr;
+    const char* indexText = strrchr(component.icon, '-') + 1;
+    const int index = indexText[0] - '0';
+    if (backgroundPreview || clockBackgroundPreview) {
+      if (clockBackgroundPreview) {
+        const char* keys[] = {"clock-background-preview-flower", "clock-background-preview-chevron", "clock-background-preview-mechanical"};
+        if (index >= 0 && index < 3) imageKey = keys[index];
+      } else {
+      const char* keys[] = {"background-preview-flower", "background-preview-chevron", "background-preview-mechanical"};
+      if (index >= 0 && index < 3) imageKey = keys[index];
+      }
+    } else {
+      const char* keys[] = {"clock-face-preview-0", "clock-face-preview-1", "clock-face-preview-2"};
+      if (index >= 0 && index < 3) imageKey = keys[index];
+    }
+    const lv_image_dsc_t* source = resolveImage == nullptr ? nullptr : resolveImage(imageKey);
+    if (source != nullptr) {
+      lv_obj_t* image = lv_image_create(choice);
+      lv_image_set_src(image, source);
+      lv_obj_align(image, LV_ALIGN_TOP_MID, 0, 2);
+    }
+    lv_obj_t* caption = makeLabel(choice, component.text, &lv_font_montserrat_12, lv_color_white());
+    lv_obj_set_width(caption, component.width - 4);
+    lv_obj_set_style_text_align(caption, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(caption, LV_ALIGN_BOTTOM_MID, 0, 0);
+  } else {
+    lv_obj_t* label = makeLabel(choice, component.text, &lv_font_montserrat_14, lv_color_white());
+    lv_obj_set_width(label, component.width - 8);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+    lv_obj_center(label);
+  }
+}
+
+void renderSettingsSubmenu(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* pressedComponentId, const SharedRenderState* state) {
+  lv_obj_set_style_bg_color(root, lv_color_black(), 0);
+  drawSettingsWallpaper(root, resolveImage);
+  const bool clockView = strcmp(screen.screenId, "device-clock-options") == 0;
+  const char* titleText = clockView ? "CLOCK" : "DISPLAY";
+  for (uint8_t index = 0; index < screen.componentCount; ++index) {
+    const SduiComponent& component = screen.components[index];
+    if (strcmp(component.id, "submenu-title") == 0) titleText = component.text;
+  }
+  lv_obj_t* back = makePanel(root, 48, 87, 48, 46, 23, lv_color_hex(0x121721));
+  lv_obj_set_style_border_width(back, 1, 0);
+  lv_obj_set_style_border_color(back, lv_color_hex(0x2B3545), 0);
+  lv_obj_t* backText = makeLabel(back, LV_SYMBOL_LEFT, &lv_font_montserrat_24, lv_color_white());
+  lv_obj_center(backText);
+  lv_obj_t* title = makeLabel(root, titleText, &lv_font_montserrat_24, lv_color_white());
+  lv_obj_set_pos(title, 196, 91);
+  const lv_image_dsc_t* titleIcon = resolveImage == nullptr ? nullptr : resolveImage(clockView ? "display-icon-clock" : "display-icon-display");
+  if (titleIcon != nullptr) {
+    lv_obj_t* icon = lv_image_create(root);
+    lv_image_set_src(icon, titleIcon);
+    lv_obj_set_pos(icon, 150, 89);
+  }
+
+  lv_obj_t* viewport = lv_obj_create(root);
+  lv_obj_set_pos(viewport, 58, 139);
+  lv_obj_set_size(viewport, 350, 327);
+  lv_obj_remove_flag(viewport, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_remove_flag(viewport, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_bg_opa(viewport, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(viewport, 0, 0);
+  lv_obj_set_style_pad_all(viewport, 0, 0);
+  const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage("settings-status-banner");
+  if (banner != nullptr) {
+    lv_obj_t* bannerImage = lv_image_create(root);
+    lv_image_set_src(bannerImage, banner);
+    lv_obj_set_pos(bannerImage, 143, 43);
+  }
+  if (state != nullptr) renderSettingsLiveStatus(root, *state, resolveImage);
+  for (uint8_t index = 0; index < screen.componentCount; ++index) {
+    const SduiComponent& component = screen.components[index];
+    if (strncmp(component.id, "display-row-", 12) == 0) {
+      drawSubmenuRow(viewport, component, pressedComponentId, resolveImage);
+    } else if (strncmp(component.id, "display-", 8) == 0 || strncmp(component.id, "postal-key-", 11) == 0 || strncmp(component.id, "clock-", 6) == 0) {
+      if (component.type == ComponentType::kButton) drawSubmenuChoice(viewport, component, pressedComponentId, resolveImage);
+      else if (component.type == ComponentType::kText) {
+        lv_obj_t* label = makeLabel(root, component.text, fontForSize(component.size), color565(component.color));
+        lv_obj_set_pos(label, component.x, component.y);
+      }
+    }
+  }
+}
 
 void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage) {
   // Keep the banner shell and its live text in the neutral base. Each active
@@ -619,7 +765,14 @@ const SduiComponent* findComponent(const SduiScreen& screen, const char* id) {
   return nullptr;
 }
 
-void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* pressedComponentId) {
+void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* pressedComponentId, const SharedRenderState* state) {
+  const SduiComponent* toggle = findComponent(screen, "spotify-toggle");
+  const bool playing = toggle != nullptr && strcmp(toggle->icon, "pause") == 0;
+  if (!playing && state != nullptr && state->backgroundArt < 3 && resolveImage != nullptr) {
+    const char* keys[] = {"background-flower", "background-chevron", "background-mechanical-flower"};
+    const lv_image_dsc_t* source = resolveImage(keys[state->backgroundArt]);
+    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
+  }
   lv_obj_t* arc = lv_arc_create(root);
   lv_obj_set_pos(arc, 42, 42);
   lv_obj_set_size(arc, 382, 382);
@@ -661,8 +814,6 @@ void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver
   lv_obj_t* artistLabel = makeLabel(root, artist == nullptr ? "Abre Spotify" : artist->text, &lv_font_montserrat_14, lv_color_hex(0xD1D1D6));
   lv_obj_align(artistLabel, LV_ALIGN_TOP_MID, 0, 286);
 
-  const SduiComponent* toggle = findComponent(screen, "spotify-toggle");
-  const bool playing = toggle != nullptr && strcmp(toggle->icon, "pause") == 0;
   const int16_t controlX[] = {83, 191, 313};
   const int16_t controlSize[] = {70, 84, 70};
   const char* controlSymbols[] = {LV_SYMBOL_PREV, playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY, LV_SYMBOL_NEXT};
@@ -687,7 +838,7 @@ void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver
 void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* selectedRowId, const SharedRenderState* state) {
   lv_obj_clean(root);
   lv_obj_remove_flag(root, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_set_style_bg_color(root, color565(screen.background), 0);
+  lv_obj_set_style_bg_color(root, state != nullptr && !state->appearanceDark ? lv_color_white() : color565(screen.background), 0);
   lv_obj_set_style_bg_opa(root, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(root, 0, 0);
 
@@ -696,8 +847,13 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     return;
   }
 
+  if (strcmp(screen.screenId, "device-additional-options") == 0 || strcmp(screen.screenId, "device-clock-options") == 0) {
+    renderSettingsSubmenu(root, screen, resolveImage, selectedRowId, state);
+    return;
+  }
+
   if (strcmp(screen.screenId, "spotify-player") == 0) {
-    renderSpotify(root, screen, resolveImage, selectedRowId);
+    renderSpotify(root, screen, resolveImage, selectedRowId, state);
     return;
   }
 
@@ -711,22 +867,56 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   if (strcmp(screen.screenId, "device-additional-options") == 0) {
     drawSettingsWallpaper(root, resolveImage);
   }
-  if (resolveImage != nullptr && home && referenceHome) {
+  const bool clock = strcmp(screen.screenId, "sky-clock") == 0;
+  const SduiComponent* spotifyToggle = findComponent(screen, "spotify-toggle");
+  const bool spotifyPlaying = spotifyToggle != nullptr && strcmp(spotifyToggle->icon, "pause") == 0;
+  const bool artScreen = home || flower || strcmp(screen.screenId, "computer-controls") == 0 || strcmp(screen.screenId, "sky-navigation") == 0 || (strcmp(screen.screenId, "spotify-player") == 0 && !spotifyPlaying);
+  const int art = clock && state != nullptr ? state->clockBackground : (state != nullptr ? state->backgroundArt : 255);
+  const char* artKeys[] = {"background-flower", "background-chevron", "background-mechanical-flower"};
+  const bool customArt = artScreen && art < 3;
+  if (customArt && resolveImage != nullptr) {
+    const lv_image_dsc_t* source = resolveImage(artKeys[art]);
+    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
+  }
+  if (resolveImage != nullptr && home && customArt) {
+    const lv_image_dsc_t* source = resolveImage("home-controls-transparent");
+    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
+  } else if (resolveImage != nullptr && home && referenceHome) {
     const lv_image_dsc_t* source = resolveImage("home");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   } else if (resolveImage != nullptr && home && backgroundEnabled) {
     const lv_image_dsc_t* source = resolveImage("chevron");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
-  } else if (resolveImage != nullptr && flower && backgroundEnabled) {
+  } else if (resolveImage != nullptr && flower && backgroundEnabled && !customArt) {
     const lv_image_dsc_t* source = resolveImage("flower");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
+  }
+  if (resolveImage != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
+    const lv_image_dsc_t* source = resolveImage("open-weather");
+    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 196, 83); }
+  }
+  if (state != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
+    const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage("settings-status-banner");
+    if (banner != nullptr) {
+      lv_obj_t* bannerImage = lv_image_create(root);
+      lv_image_set_src(bannerImage, banner);
+      lv_obj_set_pos(bannerImage, 143, 43);
+    }
   }
 
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (referenceHome) continue;
+    if (strcmp(screen.screenId, "sky-weather") == 0 && (strcmp(component.id, "weather-title") == 0 || strcmp(component.id, "weather-location") == 0 || strcmp(component.id, "weather-units") == 0)) continue;
     if (component.type == ComponentType::kText) {
-      lv_obj_t* text = makeLabel(root, component.text, fontForSize(component.size), color565(component.color));
+      const lv_font_t* textFont = fontForSize(component.size);
+      if (state != nullptr && strcmp(screen.screenId, "sky-clock") == 0 && strcmp(component.id, "sky-time") == 0) {
+        textFont = state->clockFace == 1 ? &lv_font_montserrat_28 : state->clockFace == 2 ? &lv_font_montserrat_32 : &lv_font_montserrat_48;
+      }
+      lv_color_t componentColor = color565(component.color);
+      if (state != nullptr && !state->appearanceDark && component.color == 0xFFFF) componentColor = lv_color_hex(0x202833);
+      if (state != nullptr && !state->appearanceDark && component.color == 0x8C72) componentColor = lv_color_hex(0x566273);
+      lv_obj_t* text = makeLabel(root, component.text, textFont, componentColor);
       if (component.align == TextAlign::kCenter) {
         // LVGL's intrinsic label width is not valid until layout has run.
         // Positioning by that width caused the simulator and device to drift.
@@ -786,7 +976,15 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
       lv_obj_set_style_bg_color(bar, color565(component.color), LV_PART_INDICATOR);
     }
   }
-  if (state != nullptr && (strcmp(screen.screenId, "sky-home") == 0 || strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0 || strcmp(screen.screenId, "device-control-center") == 0)) {
+  if (state != nullptr && strcmp(screen.screenId, "sky-clock") == 0 && state->clockShowWeather) {
+    lv_obj_t* weather = makeLabel(root, "WEATHER  --°", &lv_font_montserrat_14, lv_color_hex(0xA7A7A7));
+    lv_obj_set_width(weather, 466);
+    lv_obj_set_style_text_align(weather, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(weather, 0, 276);
+  }
+  if (state != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
+    renderSettingsLiveStatus(root, *state, resolveImage);
+  } else if (state != nullptr && (strcmp(screen.screenId, "sky-home") == 0 || strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "device-control-center") == 0)) {
     drawStatus(root, screen, *state);
   }
 }

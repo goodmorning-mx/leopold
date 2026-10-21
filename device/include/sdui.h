@@ -11,7 +11,9 @@ class String;
 namespace leopold {
 
 constexpr size_t kMaxSduiBytes = 32768;
-constexpr size_t kMaxSduiComponents = 12;
+// Inline Display/Weather Location expands a single screen into a full keypad
+// while retaining all menu rows and fixed header controls.
+constexpr size_t kMaxSduiComponents = 32;
 constexpr size_t kMaxSduiScreens = 12;
 constexpr size_t kMaxComponentText = 96;
 constexpr size_t kMaxComponentId = 32;

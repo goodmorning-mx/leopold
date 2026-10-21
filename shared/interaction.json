@@ -27,6 +27,14 @@
     }
   },
   "local_panels": {"back": {"x": 90, "y": 60, "width": 62, "height": 46}, "wifi_password_field": {"x": 34, "y": 110, "width": 398, "height": 44}},
+  "settings_submenu": {
+    "back": {"x": 48, "y": 87, "width": 48, "height": 46},
+    "list_viewport": {"x": 58, "y": 139, "width": 350, "height": 327},
+    "row_height": 64,
+    "row_gap": 5,
+    "gesture_start_threshold": 16,
+    "gallery": {"x": 68, "width": 310}
+  },
   "behaviour": {
     "swipe_up_screen": "sky-home",
     "clock_long_press_action": "toggle-clock-format",

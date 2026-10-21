@@ -2,14 +2,14 @@ import { useEffect, useRef } from 'react';
 import { SduiScreen } from './contract';
 import assetManifest from '../shared/asset-manifest.json';
 
-type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean; onFramebufferCapture?: (dataUrl: string) => void };
+type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean; backgroundArt?: number; appearanceDark?: boolean; clockBackground?: number; clockFace?: number; clockShowWeather?: boolean; onFramebufferCapture?: (dataUrl: string) => void };
 type Module = {
   HEAPU8: Uint8Array;
   _lvgl_wasm_init: () => void;
   _lvgl_wasm_begin: (id: number, background: number) => void;
   _lvgl_wasm_set_asset: (index: number, pointer: number, size: number, width: number, height: number) => void;
   _lvgl_wasm_set_pressed: (id: number) => void;
-  _lvgl_wasm_set_state: (timeText: number, battery: number, wifi: number, cloud: number, bluetooth: number, bluetoothConnected: number, brightness: number, backgroundMode: number) => void;
+  _lvgl_wasm_set_state: (...values: number[]) => void;
   _lvgl_wasm_render: () => void;
   _lvgl_wasm_framebuffer: () => number;
   _lvgl_wasm_framebuffer_size: () => number;
@@ -55,6 +55,12 @@ async function loadAssets(module: Module) {
         'settings-sound-pressed-icon-mask', 'settings-sound-pressed-chevron-mask',
         'settings-status-bluetooth-active',
         'settings-status-wifi-active', 'settings-status-cloud-active', 'settings-gears-base', 'settings-gears-wallpaper',
+        'background-flower', 'background-chevron', 'background-mechanical-flower', 'home-controls-transparent',
+        'display-icon-background', 'display-icon-appearance', 'display-icon-clock', 'display-icon-units',
+        'display-icon-language', 'display-icon-weather-location', 'display-icon-display', 'settings-status-banner',
+        'background-preview-flower', 'background-preview-chevron', 'background-preview-mechanical',
+        'clock-background-preview-flower', 'clock-background-preview-chevron', 'clock-background-preview-mechanical',
+        'clock-face-preview-0', 'clock-face-preview-1', 'clock-face-preview-2',
       ].indexOf(key);
       if (assetIndex < 0) return;
       const bytes = new Uint8Array(await (await fetch(`/firmware-assets/${asset.file}`)).arrayBuffer());
@@ -80,7 +86,7 @@ function paint(canvas: HTMLCanvasElement, module: Module) {
   canvas.getContext('2d')?.putImageData(image, 0, 0);
 }
 
-export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, onFramebufferCapture }: Props) {
+export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, backgroundArt = 255, appearanceDark = true, clockBackground = 255, clockFace = 0, clockShowWeather = false, onFramebufferCapture }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -105,7 +111,7 @@ export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherF
         if (component.type === 'slider') callString(module, 'lvgl_wasm_add_slider', [component.id, component.x, component.y, component.width, component.height, component.value, 100, rgb565(component.color)]);
       });
       callString(module, 'lvgl_wasm_set_pressed', [pressed ?? '']);
-      callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness, backgroundMode]);
+      callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness, backgroundMode, backgroundArt, appearanceDark ? 1 : 0, clockBackground, clockFace, clockShowWeather ? 1 : 0]);
       module._lvgl_wasm_render();
       paint(canvas.current, module);
       const dataUrl = canvas.current.toDataURL('image/png');
@@ -113,6 +119,6 @@ export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherF
       onFramebufferCapture?.(dataUrl);
     });
     return () => { active = false; };
-  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, onFramebufferCapture]);
+  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, backgroundArt, appearanceDark, clockBackground, clockFace, clockShowWeather, onFramebufferCapture]);
   return <canvas ref={canvas} width={466} height={466} className="firmware-canvas" aria-label="LVGL firmware framebuffer" />;
 }

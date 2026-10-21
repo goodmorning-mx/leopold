@@ -17,6 +17,11 @@ struct SharedRenderState {
   bool bluetoothConnected;
   uint8_t brightnessPercent;
   uint8_t backgroundMode;
+  uint8_t backgroundArt = 255;
+  bool appearanceDark = true;
+  uint8_t clockBackground = 255;
+  uint8_t clockFace = 0;
+  bool clockShowWeather = false;
 };
 
 void renderSharedLvglScreen(

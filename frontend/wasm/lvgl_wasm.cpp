@@ -12,8 +12,8 @@ static uint16_t framebuffer[kWidth * kHeight];
 static uint16_t drawBuffer[kWidth * kHeight];
 static leopold::SduiScreen screen;
 static char pressedId[leopold::kMaxComponentId + 1];
-static lv_image_dsc_t assets[24];
-static bool assetReady[24];
+static lv_image_dsc_t assets[45];
+static bool assetReady[45];
 static char renderTime[16] = "--:--";
 static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
 
@@ -34,8 +34,14 @@ static int assetIndex(const char* key) {
       "settings-sound-pressed-icon-mask", "settings-sound-pressed-chevron-mask",
       "settings-status-bluetooth-active",
       "settings-status-wifi-active", "settings-status-cloud-active", "settings-gears-base", "settings-gears-wallpaper",
+      "background-flower", "background-chevron", "background-mechanical-flower", "home-controls-transparent",
+      "display-icon-background", "display-icon-appearance", "display-icon-clock", "display-icon-units",
+      "display-icon-language", "display-icon-weather-location", "display-icon-display", "settings-status-banner",
+      "background-preview-flower", "background-preview-chevron", "background-preview-mechanical",
+      "clock-background-preview-flower", "clock-background-preview-chevron", "clock-background-preview-mechanical",
+      "clock-face-preview-0", "clock-face-preview-1", "clock-face-preview-2",
   };
-  for (int index = 0; index < 24; ++index) if (strcmp(keys[index], key) == 0) return index;
+  for (int index = 0; index < 45; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;
 }
 
@@ -59,7 +65,7 @@ void lvgl_wasm_init() {
 }
 
 void lvgl_wasm_set_asset(int index, const uint8_t* data, uint32_t size, uint16_t width, uint16_t height) {
-  if (index < 0 || index >= 24 || data == nullptr || size == 0) return;
+  if (index < 0 || index >= 45 || data == nullptr || size == 0) return;
   assets[index] = {
       .header = {
           .magic = LV_IMAGE_HEADER_MAGIC,
@@ -108,7 +114,7 @@ void lvgl_wasm_add_slider(const char* id, int16_t x, int16_t y, int16_t width, i
 
 void lvgl_wasm_set_pressed(const char* id) { strncpy(pressedId, id == nullptr ? "" : id, sizeof(pressedId) - 1); pressedId[sizeof(pressedId) - 1] = '\0'; }
 
-void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode) {
+void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode, uint8_t backgroundArt, bool appearanceDark, uint8_t clockBackground, uint8_t clockFace, bool clockShowWeather) {
   strncpy(renderTime, timeText == nullptr ? "--:--" : timeText, sizeof(renderTime) - 1);
   renderTime[sizeof(renderTime) - 1] = '\0';
   renderState.timeText = renderTime;
@@ -119,6 +125,11 @@ void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool 
   renderState.bluetoothConnected = bluetoothConnected;
   renderState.brightnessPercent = brightness;
   renderState.backgroundMode = backgroundMode;
+  renderState.backgroundArt = backgroundArt;
+  renderState.appearanceDark = appearanceDark;
+  renderState.clockBackground = clockBackground;
+  renderState.clockFace = clockFace;
+  renderState.clockShowWeather = clockShowWeather;
 }
 
 void lvgl_wasm_render() {

@@ -2,35 +2,611 @@
   "schema_version": 1,
   "directory": "shared/assets",
   "assets": {
-    "home": {"file": "home-controls-outward-10-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "home-controls-outward-10-466.png", "source": "references/home-reference-466-source-derivative.png", "state": "home-gears-controls-outward-10"},
-    "flower": {"file": "sky_flower.bin", "width": 466, "height": 466, "format": "rgb565a8"},
-    "chevron": {"file": "sky_chevron.bin", "width": 466, "height": 466, "format": "rgb565a8"},
-    "open-clock": {"file": "icon_clock.bin", "width": 80, "height": 80, "format": "rgb565a8"},
-    "open-weather": {"file": "icon_weather.bin", "width": 75, "height": 75, "format": "rgb565a8"},
-    "open-navigation": {"file": "icon_nav.bin", "width": 80, "height": 80, "format": "rgb565a8"},
-    "open-whatsapp": {"file": "icon_whatsapp.bin", "width": 72, "height": 72, "format": "rgb565a8"},
-    "open-spotify": {"file": "icon_spotify.bin", "width": 84, "height": 84, "format": "rgb565a8"},
-    "spotify-large": {"file": "icon_spotify_large.bin", "width": 97, "height": 100, "format": "rgb565a8"},
-    "exact-home-device": {"file": "home-controls-outward-10-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "home-controls-outward-10-466.png"},
-    "settings-gears-base": {"file": "settings-glass-gears-v1-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-glass-gears-v1-466.png", "source": "references/settings-glass-gears-2026-10-20/source.png", "state": "settings-neutral-glass-gears"},
-    "settings-gears-wallpaper": {"file": "settings-gears-wallpaper-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-gears-wallpaper-466.png", "source": "references/settings-glass-gears-2026-10-20/source.jpeg", "state": "settings-submenu-wallpaper"},
-    "settings-neutral": {"file": "settings-neutral-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-neutral-466.png", "state": "settings-neutral", "source": "references/phase1-settings/settings-neutral-466.png"},
-    "settings-pressed-border-mask": {"file": "settings-glass-pressed-border-mask-322x56-v1.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-pressed-border-mask-322x56-v1.png", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "bounds": [72, 127, 322, 56], "state": "settings-row-pressed-border"},
-    "settings-status-bluetooth-active": {"file": "settings-glass-status-bluetooth-active-22x22-v1.bin", "width": 22, "height": 22, "format": "rgb565a8", "derived_from": "settings-glass-status-bluetooth-active-22x22-v1.png", "source": "references/phase1-settings/settings-neutral-466.png", "bounds": [153, 45, 22, 22]},
-    "settings-status-wifi-active": {"file": "settings-glass-status-wifi-active-22x22-v1.bin", "width": 22, "height": 22, "format": "rgb565a8", "derived_from": "settings-glass-status-wifi-active-22x22-v1.png", "source": "references/phase1-settings/settings-neutral-466.png", "bounds": [181, 45, 22, 22]},
-    "settings-status-cloud-active": {"file": "settings-glass-status-cloud-active-24x24-v1.bin", "width": 24, "height": 24, "format": "rgb565a8", "derived_from": "settings-glass-status-cloud-active-24x24-v1.png", "source": "references/phase1-settings/settings-neutral-466.png", "bounds": [264, 45, 24, 24]},
-    "settings-wifi-pressed-icon-mask": {"file": "settings-glass-wifi-pressed-icon-mask-61x56-v1.bin", "width": 61, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-wifi-pressed-icon-mask-61x56-v1.png", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "bounds": [72, 127, 61, 56]},
-    "settings-wifi-pressed-chevron-mask": {"file": "settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin", "width": 39, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-wifi-pressed-chevron-mask-39x56-v1.png", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "bounds": [355, 127, 39, 56]},
-    "settings-bluetooth-pressed-icon-mask": {"file": "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin", "width": 61, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.png", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "bounds": [72, 181, 61, 56]},
-    "settings-bluetooth-pressed-chevron-mask": {"file": "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin", "width": 39, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.png", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "bounds": [355, 181, 39, 56]},
-    "settings-display-pressed-icon-mask": {"file": "settings-glass-display-pressed-icon-mask-61x56-v1.bin", "width": 61, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-display-pressed-icon-mask-61x56-v1.png", "source": "references/phase1-settings/settings-display-pressed-466.png", "bounds": [72, 235, 61, 56]},
-    "settings-display-pressed-chevron-mask": {"file": "settings-glass-display-pressed-chevron-mask-39x56-v1.bin", "width": 39, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-display-pressed-chevron-mask-39x56-v1.png", "source": "references/phase1-settings/settings-glass-display-pressed-chevron-mask-39x56-v1.png", "bounds": [355, 235, 39, 56]},
-    "settings-sound-pressed-icon-mask": {"file": "settings-glass-sound-pressed-icon-mask-61x56-v1.bin", "width": 61, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-sound-pressed-icon-mask-61x56-v1.png", "source": "references/phase1-settings/settings-sound-pressed-466.png", "bounds": [72, 289, 61, 56]},
-    "settings-sound-pressed-chevron-mask": {"file": "settings-glass-sound-pressed-chevron-mask-39x56-v1.bin", "width": 39, "height": 56, "format": "rgb565a8", "derived_from": "settings-glass-sound-pressed-chevron-mask-39x56-v1.png", "source": "references/phase1-settings/settings-glass-sound-pressed-chevron-mask-39x56-v1.png", "bounds": [355, 289, 39, 56]},
-    "settings-wifi-pressed": {"file": "settings-wifi-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-wifi-pressed-322x56.png", "state": "settings-wifi-pressed", "source": "references/phase1-settings/settings-wifi-pressed-466.png", "bounds": [72, 127, 322, 56]},
-    "settings-bluetooth-pressed": {"file": "settings-bluetooth-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-bluetooth-pressed-322x56.png", "state": "settings-bluetooth-pressed", "source": "references/phase1-settings/settings-bluetooth-pressed-466.png", "bounds": [72, 181, 322, 56]},
-    "settings-display-pressed": {"file": "settings-display-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-display-pressed-322x56.png", "state": "settings-display-pressed", "source": "references/phase1-settings/settings-display-pressed-466.png", "bounds": [72, 235, 322, 56]},
-    "settings-sound-pressed": {"file": "settings-sound-pressed-322x56.bin", "width": 322, "height": 56, "format": "rgb565a8", "derived_from": "settings-sound-pressed-322x56.png", "state": "settings-sound-pressed", "source": "references/phase1-settings/settings-sound-pressed-466.png", "bounds": [72, 289, 322, 56]},
-    "exact-settings-device-legacy": {"file": "settings-reference-466.bin", "width": 466, "height": 466, "format": "rgb565a8", "derived_from": "settings-reference-466.png", "state": "legacy-settings-reference", "active": false}
+    "home": {
+      "file": "home-controls-outward-10-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "home-controls-outward-10-466.png",
+      "source": "references/home-reference-466-source-derivative.png",
+      "state": "home-gears-controls-outward-10"
+    },
+    "flower": {
+      "file": "sky_flower.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8"
+    },
+    "chevron": {
+      "file": "sky_chevron.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8"
+    },
+    "open-clock": {
+      "file": "icon_clock.bin",
+      "width": 80,
+      "height": 80,
+      "format": "rgb565a8"
+    },
+    "open-weather": {
+      "file": "icon_weather.bin",
+      "width": 75,
+      "height": 75,
+      "format": "rgb565a8"
+    },
+    "open-navigation": {
+      "file": "icon_nav.bin",
+      "width": 80,
+      "height": 80,
+      "format": "rgb565a8"
+    },
+    "open-whatsapp": {
+      "file": "icon_whatsapp.bin",
+      "width": 72,
+      "height": 72,
+      "format": "rgb565a8"
+    },
+    "open-spotify": {
+      "file": "icon_spotify.bin",
+      "width": 84,
+      "height": 84,
+      "format": "rgb565a8"
+    },
+    "spotify-large": {
+      "file": "icon_spotify_large.bin",
+      "width": 97,
+      "height": 100,
+      "format": "rgb565a8"
+    },
+    "exact-home-device": {
+      "file": "home-controls-outward-10-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "home-controls-outward-10-466.png"
+    },
+    "settings-gears-base": {
+      "file": "settings-glass-gears-v1-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-gears-v1-466.png",
+      "source": "references/settings-glass-gears-2026-10-20/source.png",
+      "state": "settings-neutral-glass-gears"
+    },
+    "settings-gears-wallpaper": {
+      "file": "settings-gears-wallpaper-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "settings-gears-wallpaper-466.png",
+      "source": "references/settings-glass-gears-2026-10-20/source.jpeg",
+      "state": "settings-submenu-wallpaper"
+    },
+    "settings-neutral": {
+      "file": "settings-neutral-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "settings-neutral-466.png",
+      "state": "settings-neutral",
+      "source": "references/phase1-settings/settings-neutral-466.png"
+    },
+    "settings-pressed-border-mask": {
+      "file": "settings-glass-pressed-border-mask-322x56-v1.bin",
+      "width": 322,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-pressed-border-mask-322x56-v1.png",
+      "source": "references/phase1-settings/settings-wifi-pressed-466.png",
+      "bounds": [
+        72,
+        127,
+        322,
+        56
+      ],
+      "state": "settings-row-pressed-border"
+    },
+    "settings-status-bluetooth-active": {
+      "file": "settings-glass-status-bluetooth-active-22x22-v1.bin",
+      "width": 22,
+      "height": 22,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-status-bluetooth-active-22x22-v1.png",
+      "source": "references/phase1-settings/settings-neutral-466.png",
+      "bounds": [
+        153,
+        45,
+        22,
+        22
+      ]
+    },
+    "settings-status-wifi-active": {
+      "file": "settings-glass-status-wifi-active-22x22-v1.bin",
+      "width": 22,
+      "height": 22,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-status-wifi-active-22x22-v1.png",
+      "source": "references/phase1-settings/settings-neutral-466.png",
+      "bounds": [
+        181,
+        45,
+        22,
+        22
+      ]
+    },
+    "settings-status-cloud-active": {
+      "file": "settings-glass-status-cloud-active-24x24-v1.bin",
+      "width": 24,
+      "height": 24,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-status-cloud-active-24x24-v1.png",
+      "source": "references/phase1-settings/settings-neutral-466.png",
+      "bounds": [
+        264,
+        45,
+        24,
+        24
+      ]
+    },
+    "settings-wifi-pressed-icon-mask": {
+      "file": "settings-glass-wifi-pressed-icon-mask-61x56-v1.bin",
+      "width": 61,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-wifi-pressed-icon-mask-61x56-v1.png",
+      "source": "references/phase1-settings/settings-wifi-pressed-466.png",
+      "bounds": [
+        72,
+        127,
+        61,
+        56
+      ]
+    },
+    "settings-wifi-pressed-chevron-mask": {
+      "file": "settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin",
+      "width": 39,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-wifi-pressed-chevron-mask-39x56-v1.png",
+      "source": "references/phase1-settings/settings-wifi-pressed-466.png",
+      "bounds": [
+        355,
+        127,
+        39,
+        56
+      ]
+    },
+    "settings-bluetooth-pressed-icon-mask": {
+      "file": "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin",
+      "width": 61,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.png",
+      "source": "references/phase1-settings/settings-bluetooth-pressed-466.png",
+      "bounds": [
+        72,
+        181,
+        61,
+        56
+      ]
+    },
+    "settings-bluetooth-pressed-chevron-mask": {
+      "file": "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin",
+      "width": 39,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.png",
+      "source": "references/phase1-settings/settings-bluetooth-pressed-466.png",
+      "bounds": [
+        355,
+        181,
+        39,
+        56
+      ]
+    },
+    "settings-display-pressed-icon-mask": {
+      "file": "settings-glass-display-pressed-icon-mask-61x56-v1.bin",
+      "width": 61,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-display-pressed-icon-mask-61x56-v1.png",
+      "source": "references/phase1-settings/settings-display-pressed-466.png",
+      "bounds": [
+        72,
+        235,
+        61,
+        56
+      ]
+    },
+    "settings-display-pressed-chevron-mask": {
+      "file": "settings-glass-display-pressed-chevron-mask-39x56-v1.bin",
+      "width": 39,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-display-pressed-chevron-mask-39x56-v1.png",
+      "source": "references/phase1-settings/settings-glass-display-pressed-chevron-mask-39x56-v1.png",
+      "bounds": [
+        355,
+        235,
+        39,
+        56
+      ]
+    },
+    "settings-sound-pressed-icon-mask": {
+      "file": "settings-glass-sound-pressed-icon-mask-61x56-v1.bin",
+      "width": 61,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-sound-pressed-icon-mask-61x56-v1.png",
+      "source": "references/phase1-settings/settings-sound-pressed-466.png",
+      "bounds": [
+        72,
+        289,
+        61,
+        56
+      ]
+    },
+    "settings-sound-pressed-chevron-mask": {
+      "file": "settings-glass-sound-pressed-chevron-mask-39x56-v1.bin",
+      "width": 39,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-glass-sound-pressed-chevron-mask-39x56-v1.png",
+      "source": "references/phase1-settings/settings-glass-sound-pressed-chevron-mask-39x56-v1.png",
+      "bounds": [
+        355,
+        289,
+        39,
+        56
+      ]
+    },
+    "settings-wifi-pressed": {
+      "file": "settings-wifi-pressed-322x56.bin",
+      "width": 322,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-wifi-pressed-322x56.png",
+      "state": "settings-wifi-pressed",
+      "source": "references/phase1-settings/settings-wifi-pressed-466.png",
+      "bounds": [
+        72,
+        127,
+        322,
+        56
+      ]
+    },
+    "settings-bluetooth-pressed": {
+      "file": "settings-bluetooth-pressed-322x56.bin",
+      "width": 322,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-bluetooth-pressed-322x56.png",
+      "state": "settings-bluetooth-pressed",
+      "source": "references/phase1-settings/settings-bluetooth-pressed-466.png",
+      "bounds": [
+        72,
+        181,
+        322,
+        56
+      ]
+    },
+    "settings-display-pressed": {
+      "file": "settings-display-pressed-322x56.bin",
+      "width": 322,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-display-pressed-322x56.png",
+      "state": "settings-display-pressed",
+      "source": "references/phase1-settings/settings-display-pressed-466.png",
+      "bounds": [
+        72,
+        235,
+        322,
+        56
+      ]
+    },
+    "settings-sound-pressed": {
+      "file": "settings-sound-pressed-322x56.bin",
+      "width": 322,
+      "height": 56,
+      "format": "rgb565a8",
+      "derived_from": "settings-sound-pressed-322x56.png",
+      "state": "settings-sound-pressed",
+      "source": "references/phase1-settings/settings-sound-pressed-466.png",
+      "bounds": [
+        72,
+        289,
+        322,
+        56
+      ]
+    },
+    "exact-settings-device-legacy": {
+      "file": "settings-reference-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "settings-reference-466.png",
+      "state": "legacy-settings-reference",
+      "active": false
+    },
+    "background-flower": {
+      "file": "background-flower-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "background-flower-466.png",
+      "source": "shared/references/transparent-backgrounds/01-blue-red-flower-transparent-1254.png",
+      "source_sha256": "a16e3ea387ba65686964dffb9d5d7751eb32b55990746835161aa2d8cbcce1ed",
+      "png_sha256": "2c979c1f8188f4bef3ebaa288d1ef9045825f728ef3a4bc97c8449834ed20d47",
+      "device_sha256": "656f193cba3ca18102783303d876a7d1b90c43c9790ca88591e3158a71a3920e",
+      "resampling": "Pillow Lanczos, full canvas, no crop, RGBA preserved"
+    },
+    "background-chevron": {
+      "file": "background-chevron-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "background-chevron-466.png",
+      "source": "shared/references/transparent-backgrounds/02-chevron-transparent-1254.png",
+      "source_sha256": "82d266cc430e2ba0b2461ff361a7217cb32a8a2883c8294849365c85916f9100",
+      "png_sha256": "b29259c888be306cc90dd2e06ccd0b327ea6318051a2c9dc0fc0c52d85e32783",
+      "device_sha256": "b19cabfa96a61339e7e5907ab20363832b62095b4e6bf04f6910b2085da1ae2e",
+      "resampling": "Pillow Lanczos, full canvas, no crop, RGBA preserved"
+    },
+    "background-mechanical-flower": {
+      "file": "background-mechanical-flower-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "background-mechanical-flower-466.png",
+      "source": "shared/references/transparent-backgrounds/03-mechanical-flower-transparent-1254.png",
+      "source_sha256": "2fd075a6b699a1c03621b71446cfd01bdd3f0d6b46f6d7f48cdd25ffab39bd50",
+      "png_sha256": "ed8762a69da870e0addec401ec34802c8f2361e45f1b55a4a41d5a2a1c451054",
+      "device_sha256": "ae3d0ca851d74031c6bedc0e5503cd25ec686e620962d8ea6e33b1f300f19e76",
+      "resampling": "Pillow Lanczos, full canvas, no crop, RGBA preserved"
+    },
+    "home-controls-transparent": {
+      "file": "home-controls-outward-10-466-transparent.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "home-controls-outward-10-466-transparent.png",
+      "source": "shared/assets/home-controls-outward-10-466.png",
+      "source_sha256": "b71b2649d0179fdec5de1c5a3b3dd92f0e34ff4dfa487e37784407fd3b40912d",
+      "png_sha256": "b71b2649d0179fdec5de1c5a3b3dd92f0e34ff4dfa487e37784407fd3b40912d",
+      "device_sha256": "5fee4c5916a565c119eb94bf48742870400b3c163a178cbdb9c725e806b54a95",
+      "resampling": "no scaling; exact pure-black RGB pixels made transparent, all other RGBA samples preserved"
+    },
+    "display-icon-background": {
+      "file": "display-icon-background.bin",
+      "width": 30,
+      "height": 30,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-background.svg",
+      "source": "shared/assets/display-icon-background.svg",
+      "source_sha256": "fa1710405bde17d8c0336a456ae5d9478701fc4c249cf58222f3eaa3320662a5",
+      "png_sha256": "e9ebd821784f721923fe8973fe9a86b5bbdc150fd5e7d340cbb2f2c4c2052e4c",
+      "device_sha256": "8c6570dc007ee67b83ec7395f931201113ac517f4d761c8200bffd1dfd00c26f",
+      "resampling": "4x antialiased vector rasterization at native 30x30"
+    },
+    "display-icon-appearance": {
+      "file": "display-icon-appearance.bin",
+      "width": 32,
+      "height": 32,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-appearance.png",
+      "source": "shared/references/display-assets/icon_appearance.png",
+      "source_sha256": "feb3d349b36b13d5cbda75e712fe7b60c57eeedb5f6d9e3f0e3a39fd00befc4e",
+      "png_sha256": "ddb503abc7f71063058293e4b04a7052a020cf9fe2814df7d2814ac39123160d",
+      "device_sha256": "67749ae28b159ab175123654fe26951930a037ecf4517d542b9ded34f5dcd6f2",
+      "resampling": "no scaling; source pixels preserved"
+    },
+    "display-icon-clock": {
+      "file": "display-icon-clock.bin",
+      "width": 31,
+      "height": 31,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-clock.png",
+      "source": "shared/references/display-assets/icon_clock.png",
+      "source_sha256": "099ac3e8948276b7ed230ffa9de2ca1670e4e2592368e69d778ebd602ae2fd02",
+      "png_sha256": "866e99267e0a178491d103c052083b4b0895685f06d3fbf006bb26354fe3bb12",
+      "device_sha256": "6ccf06c7a311492112b0e4a96c4ac26a6571f1233e2c555de09b0fb50c2eaf3e",
+      "resampling": "no scaling; source pixels preserved"
+    },
+    "display-icon-units": {
+      "file": "display-icon-units.bin",
+      "width": 33,
+      "height": 33,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-units.png",
+      "source": "shared/references/display-assets/icon_units.png",
+      "source_sha256": "f8dcb26ade2f1a0ee4834828c8613d616d15c7588fdc1b72c3d664ef5dc4e634",
+      "png_sha256": "10bfa5a8eb9713fbe66a2dfa17b00017f3babd478e84b52244a4a480914f3b4c",
+      "device_sha256": "f315203b850cd8bc926181b233a0bf1f706573126efb08f607e4d0b3b0feab12",
+      "resampling": "no scaling; source pixels preserved"
+    },
+    "display-icon-language": {
+      "file": "display-icon-language.bin",
+      "width": 31,
+      "height": 31,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-language.png",
+      "source": "shared/references/display-assets/icon_language.png",
+      "source_sha256": "646acbf29bc91c043c5688a28fe642576550250d6e3c72587aa421b5abd30c16",
+      "png_sha256": "7e4c307c40d4dbf2da09269529102f7730ca5d8d42239c877385e664225b0d05",
+      "device_sha256": "9e9a58582a4da3ab16cd7e9f99981149f4e61ac55540cb0efba17d0de53dad97",
+      "resampling": "no scaling; source pixels preserved"
+    },
+    "display-icon-weather-location": {
+      "file": "display-icon-weather-location.bin",
+      "width": 28,
+      "height": 31,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-weather-location.png",
+      "source": "shared/references/display-assets/icon_weather_location.png",
+      "source_sha256": "2b9e8b00903b13c26309bd57f326fc8996b426d515f2d5a9d8f174a0c56840bf",
+      "png_sha256": "f2682ca33ac961e6c19c060c3cc55f8ae6e5f9d241120717cac5addb04cb778e",
+      "device_sha256": "3106778f0a633f66fa0c395697d05458cf7da51584967c1b6c19b87e698f94ba",
+      "resampling": "no scaling; source pixels preserved"
+    },
+    "display-icon-display": {
+      "file": "display-icon-display.bin",
+      "width": 30,
+      "height": 30,
+      "format": "rgb565a8",
+      "derived_from": "display-icon-display.png",
+      "source": "shared/references/display-assets/icon_display.png",
+      "source_sha256": "77db66b39388a8cce55a624920653493b0bfebc0a054e4872c6601c1a2664ffb",
+      "png_sha256": "fa43e995f7363ea9d7405bde26f16a048cf1c0ef363099fc63211a704ce9db0e",
+      "device_sha256": "c53c80432cdfc57264bcff2d27089ee48820ef526e721b4728722a06e3d0edc4",
+      "resampling": "no scaling; source pixels preserved"
+    },
+    "settings-status-banner": {
+      "file": "settings-status-banner-181x28.bin",
+      "width": 181,
+      "height": 28,
+      "format": "rgb565a8",
+      "derived_from": "settings-status-banner-181x28.png",
+      "source": "shared/assets/settings-gears-base-466.png",
+      "source_sha256": "4e62f977f82341fe2065cbd7c1069603fe3fa26ed9c32ecf4a41b5190b858792",
+      "crop": [
+        143,
+        43,
+        324,
+        71
+      ],
+      "alpha_mask": "rounded rectangle radius 14px",
+      "png_sha256": "785b8772bbbf9ef7dcd4dec21ff4e5805dbe6667fb74e572b39c477ae8b53e74",
+      "device_sha256": "3b03c86c69d8a442811bff1a77a5c94413e3e5b3eac59143c5953daa59dcc26d",
+      "resampling": "exact 181x28 crop at Settings status pill bounds with transparent rounded corners; no scaling"
+    },
+    "background-preview-flower": {
+      "file": "background-preview-flower.bin",
+      "width": 88,
+      "height": 88,
+      "format": "rgb565a8",
+      "derived_from": "background-flower-466.png",
+      "source": "shared/assets/background-flower-466.png",
+      "source_sha256": "2c979c1f8188f4bef3ebaa288d1ef9045825f728ef3a4bc97c8449834ed20d47",
+      "png_sha256": "cec4d9c95ab58c84025991506bba7ae0bb3df441fe93877f4720c03737df093a",
+      "device_sha256": "82b60fcdfded360613bb985ba17944791fc3495df22fa0089c9ed978b5ec9a76",
+      "resampling": "Lanczos thumbnail composited over #08101B at native 88x88"
+    },
+    "background-preview-chevron": {
+      "file": "background-preview-chevron.bin",
+      "width": 88,
+      "height": 88,
+      "format": "rgb565a8",
+      "derived_from": "background-chevron-466.png",
+      "source": "shared/assets/background-chevron-466.png",
+      "source_sha256": "b29259c888be306cc90dd2e06ccd0b327ea6318051a2c9dc0fc0c52d85e32783",
+      "png_sha256": "e7117275af069c189f17713730d6f633ea319e68e24127c4a1fa6f7eab032d1d",
+      "device_sha256": "adfde207bb8acfb51d8aeadc9c4ebdbbc0738f1359536e2e883b5f897160bfc6",
+      "resampling": "Lanczos thumbnail composited over #08101B at native 88x88"
+    },
+    "background-preview-mechanical": {
+      "file": "background-preview-mechanical.bin",
+      "width": 88,
+      "height": 88,
+      "format": "rgb565a8",
+      "derived_from": "background-mechanical-flower-466.png",
+      "source": "shared/assets/background-mechanical-flower-466.png",
+      "source_sha256": "ed8762a69da870e0addec401ec34802c8f2361e45f1b55a4a41d5a2a1c451054",
+      "png_sha256": "00a80e4b9634c8fb3a08356f48213775e5030723beb0c281b127262884460301",
+      "device_sha256": "868a31049c248ab5bd5041339b5a5fd043521fd8550a760df1fb4d87074d6f67",
+      "resampling": "Lanczos thumbnail composited over #08101B at native 88x88"
+    },
+    "clock-background-preview-flower": {
+      "file": "clock-background-preview-flower.bin",
+      "width": 88,
+      "height": 32,
+      "format": "rgb565a8",
+      "derived_from": "background-flower-466.png",
+      "source": "shared/assets/background-flower-466.png",
+      "source_sha256": "2c979c1f8188f4bef3ebaa288d1ef9045825f728ef3a4bc97c8449834ed20d47",
+      "png_sha256": "d07fb31bb5ca8cc26791096419500757553d954992f0cc8e28dbfa55f6abda65",
+      "device_sha256": "e3332a976d8cbab14d3ca46c7b6265ae5a700a7bd208214f3e89489838a179ab",
+      "resampling": "Lanczos thumbnail composited over #08101B at native 88x32"
+    },
+    "clock-background-preview-chevron": {
+      "file": "clock-background-preview-chevron.bin",
+      "width": 88,
+      "height": 32,
+      "format": "rgb565a8",
+      "derived_from": "background-chevron-466.png",
+      "source": "shared/assets/background-chevron-466.png",
+      "source_sha256": "b29259c888be306cc90dd2e06ccd0b327ea6318051a2c9dc0fc0c52d85e32783",
+      "png_sha256": "b04d7b8ed366f753e36a89285fdf32300169014a79dceb93d0b87317c2b5c7a4",
+      "device_sha256": "7c944a07bfdc3d6b741d67b1d65c9d4db7e15e0ddd3d5d5e6c3794a1fdb4ca5e",
+      "resampling": "Lanczos thumbnail composited over #08101B at native 88x32"
+    },
+    "clock-background-preview-mechanical": {
+      "file": "clock-background-preview-mechanical.bin",
+      "width": 88,
+      "height": 32,
+      "format": "rgb565a8",
+      "derived_from": "background-mechanical-flower-466.png",
+      "source": "shared/assets/background-mechanical-flower-466.png",
+      "source_sha256": "ed8762a69da870e0addec401ec34802c8f2361e45f1b55a4a41d5a2a1c451054",
+      "png_sha256": "8e098e5c0dd20e2c7b1343b78ff5ce955cbc38fadd330b252495223dc3ce7be6",
+      "device_sha256": "e7acf5f220d1656c4bddba3e4987e5ef6fac17ae302032b5c9759054c52873f6",
+      "resampling": "Lanczos thumbnail composited over #08101B at native 88x32"
+    },
+    "clock-face-preview-0": {
+      "file": "clock-face-preview-0.bin",
+      "width": 46,
+      "height": 46,
+      "format": "rgb565a8",
+      "derived_from": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "crop": [
+        54,
+        177,
+        94,
+        217
+      ],
+      "png_sha256": "cb29997c2b5e641692e104bdf2b772a6b82d044727a1320bc0c2ea4793796b43",
+      "device_sha256": "783f0617180bfccbc6f0952d13cad12a4715fdd42ba490311f32bf644b65c2d4",
+      "resampling": "reference crop resized Lanczos to 46x46 with circular alpha mask"
+    },
+    "clock-face-preview-1": {
+      "file": "clock-face-preview-1.bin",
+      "width": 46,
+      "height": 46,
+      "format": "rgb565a8",
+      "derived_from": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "crop": [
+        101,
+        177,
+        141,
+        217
+      ],
+      "png_sha256": "bd353469497d7714089fd7b6a37cf3e47ff4f2a3882ef8e508e57f8abccf27e9",
+      "device_sha256": "7ebc2694d8abbe2d76ffddc1d63f62aa77338f943e2963a24641d5086751089c",
+      "resampling": "reference crop resized Lanczos to 46x46 with circular alpha mask"
+    },
+    "clock-face-preview-2": {
+      "file": "clock-face-preview-2.bin",
+      "width": 46,
+      "height": 46,
+      "format": "rgb565a8",
+      "derived_from": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "crop": [
+        148,
+        177,
+        188,
+        217
+      ],
+      "png_sha256": "58a7bc9cb6ac741e433ff856a5870c0a7228488414ee47257145821a4649cfd9",
+      "device_sha256": "c7c3f5c3d7b80e496a827631b62e844d586c2c05dad91b62824ffd35c2889b2f",
+      "resampling": "reference crop resized Lanczos to 46x46 with circular alpha mask"
+    }
   }
 }

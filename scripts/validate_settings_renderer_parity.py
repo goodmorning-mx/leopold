@@ -123,7 +123,7 @@ def main() -> None:
     legacy_canvas = (ROOT / "frontend/src/simulator/FirmwareCanvas.tsx").read_text(encoding="utf-8")
     wasm = (ROOT / "frontend/wasm/lvgl_wasm.cpp").read_text(encoding="utf-8")
     build = (ROOT / "scripts/build_lvgl_wasm.py").read_text(encoding="utf-8")
-    contains(simulator, "(framebufferCaptureMode && localPanel === 'none') || (['device-control-center', 'device-additional-options'].includes(screen.id) && localPanel === 'none') ? <FirmwareLvglCanvas", "normal and capture Settings LVGL/WASM path")
+    contains(simulator, "['device-control-center', 'device-additional-options', 'device-clock-options'].includes(screen.id) && localPanel === 'none'", "normal and capture Settings LVGL/WASM path")
     if "function drawSettings(" in legacy_canvas:
         fail("a second Settings renderer remains in the legacy browser canvas")
     contains(lvgl_canvas, "settings-neutral", "browser exact Settings asset mapping")

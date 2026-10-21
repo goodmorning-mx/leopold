@@ -7,6 +7,11 @@ import calibrationContract from '../shared/calibration.json';
 import referenceManifest from '../shared/reference-manifest.json';
 
 export type FirmwareImages = Record<string, string>;
+export const SIMULATOR_WIFI_NETWORKS = [
+  { name: 'Mock network A', requiresPassword: true },
+  { name: 'Mock network B', requiresPassword: false },
+  { name: 'Mock network C', requiresPassword: true },
+] as const;
 
 type Props = {
   demoWifiName: string;
@@ -21,8 +26,13 @@ type Props = {
   localPanel: string;
   pressed: string | null;
   darkBackground: boolean;
+  backgroundArt: number;
+  clockBackground: number;
+  clockFace: number;
+  clockShowWeather: boolean;
   spanishLanguage: boolean;
   wifiConnected: boolean;
+  wifiEnabled: boolean;
   cloudConnected: boolean;
   bluetoothEnabled: boolean;
   batteryPercent: number;
@@ -81,7 +91,7 @@ function drawWhiteAsset(ctx: CanvasRenderingContext2D, images: FirmwareImages, k
 
 function componentValue(component: SduiText, clock24: boolean, weatherFahrenheit: boolean, darkBackground: boolean, spanishLanguage: boolean) {
   if (component.id === 'sky-time') return clock24 ? '20:42' : '8:42 PM';
-  if (component.id === 'weather-temp') return weatherFahrenheit ? '73 F' : '23 C';
+  if (component.id === 'weather-temp') return weatherFahrenheit ? '72 F' : '22 C';
   if (component.id === 'options-title') return spanishLanguage ? 'OPCIONES' : 'ADDITIONAL OPTIONS';
   if (component.id === 'background-toggle') return spanishLanguage ? (darkBackground ? 'FONDO OSCURO' : 'FONDO COLOR') : (darkBackground ? 'DARK BACKGROUND' : 'COLOR BACKGROUND');
   if (component.id === 'language-toggle') return spanishLanguage ? 'IDIOMA: ESPANOL' : 'LANGUAGE: ENGLISH';
@@ -122,8 +132,8 @@ function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boo
     const match = live.match(/^(.*?)(?:\s(AM|PM))$/);
     // The shared Home asset clears only its declared live-clock mask while
     // preserving the pill pixels, so the live value needs no backing shape.
-    text(ctx, match ? match[1] : live, status.time.x, 214, fonts[status.time.size], status.text_color);
-    if (match) text(ctx, match[2], status.time.x + 29, 234, 8, status.text_color);
+    text(ctx, match ? match[1] : live, status.time.x, status.time.y, fonts[status.time.size], status.text_color);
+    if (match) text(ctx, match[2], status.time.x + 29, status.time.period_y, 8, status.text_color);
     return;
   }
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, status.height);
@@ -132,6 +142,15 @@ function drawStatus(ctx: CanvasRenderingContext2D, isHome: boolean, clock24: boo
   drawCloud(ctx, status.cloud.x, status.cloud.y, cloudConnected);
   if (!isHome) text(ctx, `${batteryPercent}%`, status.battery.x, status.battery.y, fonts[status.battery.size], status.text_color);
   text(ctx, timeText || (clock24 ? '20:42' : '8:42'), status.time.x, status.time.y, fonts[status.time.size], status.text_color);
+}
+
+function drawSettingsStatusBanner(ctx: CanvasRenderingContext2D, images: FirmwareImages, timeText: string, batteryPercent: number, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean) {
+  drawAsset(ctx, images, 'settings-status-banner', 143, 43, 181, 28);
+  if (bluetoothEnabled) drawAsset(ctx, images, 'settings-status-bluetooth-active', 153, 45, 22, 22);
+  if (wifiConnected) drawAsset(ctx, images, 'settings-status-wifi-active', 181, 45, 22, 22);
+  if (cloudConnected) drawAsset(ctx, images, 'settings-status-cloud-active', 264, 45, 24, 24);
+  text(ctx, timeText, 217, 50, 20, '#F4F7FC');
+  text(ctx, `${batteryPercent}%`, 291, 52, 12, '#DFE8F4');
 }
 
 function drawWhatsapp(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -153,8 +172,12 @@ function drawUsb(ctx: CanvasRenderingContext2D, x: number, y: number, stroke: st
   });
 }
 
-function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, pressed: string | null) {
-  drawAsset(ctx, images, 'reference-home', 0, 0, W, H);
+function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, darkBackground: boolean, backgroundArt: number, pressed: string | null) {
+  if (backgroundArt >= 0 && backgroundArt <= 2) {
+    ctx.fillStyle = darkBackground ? '#000000' : '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+    drawAsset(ctx, images, ['background-flower', 'background-chevron', 'background-mechanical-flower'][backgroundArt], 0, 0, W, H);
+    drawAsset(ctx, images, 'home-controls-transparent', 0, 0, W, H);
+  } else drawAsset(ctx, images, 'reference-home', 0, 0, W, H);
 }
 
 function drawExactClock(ctx: CanvasRenderingContext2D, stateName: 'home' | 'settings', value: string) {
@@ -193,21 +216,29 @@ function drawExactClock(ctx: CanvasRenderingContext2D, stateName: 'home' | 'sett
   ctx.restore();
 }
 
-function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, clock24: boolean, weatherFahrenheit: boolean, darkBackground: boolean, spanishLanguage: boolean, pressed: string | null) {
+function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: FirmwareImages, clock24: boolean, weatherFahrenheit: boolean, darkBackground: boolean, spanishLanguage: boolean, pressed: string | null, backgroundArt: number, clockBackground: number, clockFace: number, clockShowWeather: boolean, playing: boolean, timeText: string, settingsTimeText: string) {
   const flower = ['sky-clock', 'sky-voltage', 'sky-weather'].includes(screen.id);
-  if (flower) {
+  const isClock = screen.id === 'sky-clock';
+  const isGlobalArtScreen = ['sky-weather', 'computer-controls', 'sky-navigation'].includes(screen.id) || (screen.id === 'spotify-player' && !playing);
+  const artIndex = isClock ? clockBackground : isGlobalArtScreen ? backgroundArt : -1;
+  if (artIndex >= 0 && artIndex <= 2) {
+    ctx.fillStyle = darkBackground ? '#000000' : '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+    drawAsset(ctx, images, ['background-flower', 'background-chevron', 'background-mechanical-flower'][artIndex], 0, 0, W, H);
+  } else if (flower) {
     if (!darkBackground) { drawAsset(ctx, images, 'flower', 0, 0, W, H); ctx.fillStyle = 'rgba(0,0,0,.20)'; ctx.fillRect(0, 0, W, H); }
     if (screen.id === 'sky-voltage') drawAsset(ctx, images, 'open-voltage', 193, 45, 80, 80);
-    if (screen.id === 'sky-weather') drawAsset(ctx, images, 'open-weather', 196, 45, 75, 75);
   } else if (screen.id === 'device-additional-options') {
     drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H);
   } else { ctx.fillStyle = screen.background || '#000'; ctx.fillRect(0, 0, W, H); }
+  if (screen.id === 'sky-weather') drawAsset(ctx, images, 'open-weather', 196, 83, 75, 75);
   screen.components.forEach((component) => {
     if (flower && ['voltage-symbol', 'weather-symbol'].includes(component.id)) return;
+    if (screen.id === 'sky-weather' && ['weather-title', 'weather-location', 'weather-units'].includes(component.id)) return;
     if (component.type === 'text') {
       const size = fonts[component.size] || 20;
       const align = component.align === 'center' ? 'center' : 'left';
-      text(ctx, componentValue(component, clock24, weatherFahrenheit, darkBackground, spanishLanguage), component.x, component.y, size, color(component.color), align);
+      const visibleText = component.id === 'sky-time' ? (clock24 ? settingsTimeText : timeText) : componentValue(component, clock24, weatherFahrenheit, darkBackground, spanishLanguage);
+      text(ctx, visibleText, component.x, component.y, component.id === 'sky-time' && clockFace === 1 ? Math.max(24, size - 8) : size, color(component.color), align);
     } else if (component.type === 'button') {
       rounded(ctx, component.x, component.y, component.width, component.height, component.height / 2, pressed === component.id ? '#2C2C30' : '#141416', color(component.color), 2);
       if (component.icon === 'whatsapp') drawWhatsapp(ctx, component.x, component.y);
@@ -218,6 +249,7 @@ function drawGeneric(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: 
       rounded(ctx, component.x, component.y, component.width * Math.min(1, component.value / Math.max(1, component.max || 100)), component.height || 8, 4, color(component.color));
     }
   });
+  if (isClock && clockShowWeather) centered(ctx, 'WEATHER  --°', 233, 280, 14, '#A7A7A7');
 }
 
 function drawControlCenter(ctx: CanvasRenderingContext2D, brightness: number, wifiConnected: boolean, cloudConnected: boolean, bluetoothEnabled: boolean, pressed: string | null, spanishLanguage: boolean) {
@@ -267,35 +299,51 @@ function drawBack(ctx: CanvasRenderingContext2D, x = interaction.local_panels.ba
   rounded(ctx, x, y, w, h, h / 2, '#1C1C1E'); centered(ctx, '‹', x + w / 2, y + 8, 32);
 }
 
-function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages, localPanel: string, connected: boolean, networkName: string) {
+function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages, localPanel: string, connected: boolean, networkName: string, wifiEnabled: boolean) {
   const wifi = localPanel === 'wifi';
   const bluetooth = localPanel === 'bluetooth';
   const title = wifi ? 'Wi-Fi' : bluetooth ? 'Bluetooth' : 'GoodMorning Cloud';
-  drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H);
+  ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
   drawBack(ctx);
-  centered(ctx, title, 233, 51, 24);
+  centered(ctx, title, 233, 58, 24);
   const accent = connected ? '#30D158' : '#0A84FF';
-  rounded(ctx, 149, wifi || bluetooth ? 112 : 119, 168, 168, 84, '#1C1C1E', accent, 5);
-  centered(ctx, wifi ? '⌁' : bluetooth ? 'ᛒ' : '↥', 233, wifi || bluetooth ? 158 : 165, 36, accent);
-  centered(ctx, wifi ? (connected ? 'Connected (mock)' : 'Offline (mock)') : bluetooth ? 'Listo para buscar' : 'Conectado', 233, wifi || bluetooth ? 207 : 214, 20);
-  centered(ctx, wifi ? (connected ? `${networkName} | -42 dBm (mock)` : 'Choose a demo network') : bluetooth ? 'Accesorios Bluetooth Low Energy' : 'Leopold esta conectado al servidor', 233, 307, 14, '#D1D1D6');
-  centered(ctx, wifi ? 'Simulator only — no device connection' : bluetooth ? '' : 'Heartbeats y UI remota activos', 233, 333, 12, '#8E8E93');
-  rounded(ctx, wifi ? 47 : 82, 372, wifi ? 174 : 302, 62, 31, '#0A84FF');
-  centered(ctx, wifi ? 'Reintentar' : bluetooth ? 'Buscar dispositivos' : 'Reintentar', wifi ? 134 : 233, 393, 16);
-  if (wifi) { rounded(ctx, 245, 372, 174, 62, 31, '#2C2C2E'); centered(ctx, 'Cambiar red', 332, 393, 16); }
+  if (wifi) {
+    rounded(ctx, 60, 104, 346, 64, 24, '#0D1520', '#287AC8', 1.5); rounded(ctx, 73, 114, 44, 44, 22, '#15263A', '#69B9FF', 1.5); drawWifi(ctx, 95, 134, connected);
+    text(ctx, 'Wi-Fi', 132, 119, 18); text(ctx, wifiEnabled ? 'On' : 'Off', 312, 122, 15, '#BBD7F5', 'right');
+    rounded(ctx, 333, 116, 58, 34, 17, wifiEnabled ? '#087BFF' : '#333944'); rounded(ctx, 336 + (wifiEnabled ? 25 : 0), 119, 28, 28, 14, '#F6FAFF');
+    if (connected) {
+      rounded(ctx, 60, 181, 346, 58, 21, '#0D1520', '#287AC8', 1.5); rounded(ctx, 73, 189, 42, 42, 21, '#15263A', '#69B9FF', 1.5); drawWifi(ctx, 94, 209, true);
+      text(ctx, networkName, 128, 194, 15); text(ctx, 'Connected (mock)', 128, 216, 11, '#A9C9F4'); centered(ctx, '✓', 372, 199, 23, '#00D2FF');
+    }
+    centered(ctx, 'Available Networks', 233, connected ? 259 : 246, 17, '#BBD7F5');
+    centered(ctx, 'Use Change network to scan demo results', 233, connected ? 285 : 272, 12, '#8E9BAE');
+    rounded(ctx, 48, 376, 174, 56, 28, '#087BFF'); centered(ctx, 'Scan networks', 135, 394, 14);
+    rounded(ctx, 244, 376, 174, 56, 28, '#172332', '#338DFF', 1); centered(ctx, 'Change network', 331, 394, 14);
+    centered(ctx, 'Simulator only · network state is mocked', 233, 445, 10, '#8E9BAE');
+  } else {
+    rounded(ctx, 149, 112, 168, 168, 84, '#1C1C1E', accent, 5);
+    centered(ctx, bluetooth ? 'ᛒ' : '↥', 233, 158, 36, accent);
+    centered(ctx, bluetooth ? 'Listo para buscar' : 'Conectado', 233, 207, 20);
+    centered(ctx, bluetooth ? 'Accesorios Bluetooth Low Energy' : 'Leopold esta conectado al servidor', 233, 307, 14, '#D1D1D6');
+    centered(ctx, bluetooth ? '' : 'Heartbeats y UI remota activos', 233, 333, 12, '#8E8E93');
+    rounded(ctx, 82, 372, 302, 62, 31, '#0A84FF'); centered(ctx, bluetooth ? 'Buscar dispositivos' : 'Reintentar', 233, 393, 16);
+  }
 }
 
 function drawNetworkList(ctx: CanvasRenderingContext2D, images: FirmwareImages, bluetooth: boolean, saved: string[]) {
-  drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
+  ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H); drawBack(ctx);
   centered(ctx, bluetooth ? 'Bluetooth' : 'Elegir Wi-Fi', 233, 43, 24);
   centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Demo networks — no real scan', 233, 80, 12, '#8E8E93');
-  const names = bluetooth ? ['Leopold Companion', 'MacBook Pro'] : ['Leopold Wi-Fi', 'GoodMorning Guest', 'Casa'];
-  names.forEach((name, index) => { const y = 111 + index * 57; rounded(ctx, 34, y, 398, 49, 17, '#1C1C1E'); centered(ctx, bluetooth ? 'ᛒ' : '⌁', 66, y + 14, 20, '#0A84FF'); text(ctx, name, 88, y + 14, 16); text(ctx, bluetooth ? '-42' : saved.includes(name) ? 'Saved' : index === 1 ? 'Open' : 'Secured', 382, y + 17, 12, '#8E8E93', 'right'); });
+  const names = bluetooth ? ['Nearby device A', 'Nearby device B'] : SIMULATOR_WIFI_NETWORKS.map((network) => network.name);
+  names.forEach((name, index) => { const y = 111 + index * 57; rounded(ctx, 34, y, 398, 49, 17, '#101923', '#27507C', 1.5); rounded(ctx, 43, y + 7, 34, 34, 17, '#172B40', '#65B7FF', 1); centered(ctx, bluetooth ? 'ᛒ' : '⌁', 60, y + 12, 18, '#BBD7F5'); text(ctx, name, 88, y + 14, 16); text(ctx, bluetooth ? 'Nearby' : saved.includes(name) ? 'Saved demo' : SIMULATOR_WIFI_NETWORKS[index]?.requiresPassword ? 'Password' : 'Open demo', 382, y + 17, 12, '#BBD7F5', 'right'); });
   rounded(ctx, 111, 410, 244, 45, 23, '#2C2C2E'); centered(ctx, bluetooth ? 'Buscar otra vez' : 'Buscar otra vez', 233, 424, 14);
 }
 
-function drawSpotify(ctx: CanvasRenderingContext2D, images: FirmwareImages, screen: SduiScreen, playing: boolean) {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+function drawSpotify(ctx: CanvasRenderingContext2D, images: FirmwareImages, screen: SduiScreen, playing: boolean, backgroundArt: number, darkBackground: boolean) {
+  if (!playing && backgroundArt >= 0 && backgroundArt <= 2) {
+    ctx.fillStyle = darkBackground ? '#000000' : '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+    drawAsset(ctx, images, ['background-flower', 'background-chevron', 'background-mechanical-flower'][backgroundArt], 0, 0, W, H);
+  } else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
   const arc = rendering.spotify.arc;
   const center = arc.x + arc.size / 2;
   const radius = arc.size / 2;
@@ -336,7 +384,7 @@ function drawYoutube(ctx: CanvasRenderingContext2D, screen: SduiScreen) {
   rounded(ctx, 139, 381, 188, 54, 27, '#FF453A'); centered(ctx, 'Actualizar', 233, 397, 16);
 }
 
-export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSavedWifi, screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture }: Props) {
+export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSavedWifi, screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, backgroundArt, clockBackground, clockFace, clockShowWeather, spanishLanguage, wifiConnected, wifiEnabled, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
@@ -344,7 +392,7 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
     const render = () => {
       ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
       if (calibration) drawCalibration(ctx);
-      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, images, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName);
+      else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, images, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName, wifiEnabled);
       else if (localPanel === 'wifi-password') {
         drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
         centered(ctx, 'Demo Wi-Fi', 233, 55, 24);
@@ -356,13 +404,16 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       }
       else if (localPanel === 'wifi-networks') drawNetworkList(ctx, images, false, demoSavedWifi);
       else if (localPanel === 'bluetooth-devices') drawNetworkList(ctx, images, true, []);
-      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
-      else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing);
+      else if (screen.id === 'sky-home') { drawHome(ctx, screen, images, darkBackground, backgroundArt, pressed); drawExactClock(ctx, 'home', settingsTimeText); }
+      else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing, backgroundArt, darkBackground);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
-      else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed);
-      if (localPanel === 'none' && screen.id !== 'device-control-center' && screen.id !== 'sky-home' && rendering.status_bar.visible_screens.includes(screen.id)) {
+      else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed, backgroundArt, clockBackground, clockFace, clockShowWeather, playing, timeText, settingsTimeText);
+      if (localPanel === 'none' && screen.id === 'sky-weather') {
+        drawSettingsStatusBanner(ctx, images, timeText || (clock24 ? '20:42' : '8:42'), batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled);
+      } else if (localPanel === 'none' && screen.id !== 'device-control-center' && screen.id !== 'sky-home' && rendering.status_bar.visible_screens.includes(screen.id)) {
         drawStatus(ctx, screen.id === 'sky-home', clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       }
+      if (localPanel === 'wifi') drawStatus(ctx, false, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       if (new URLSearchParams(window.location.search).get('capture') === '1') {
         const dataUrl = canvas.toDataURL('image/png');
         canvas.dataset.framebufferPng = dataUrl;
@@ -383,6 +434,6 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       redrawTimers = [100, 300, 700].map((delay) => window.setTimeout(render, delay));
     });
     return () => { cancelled = true; redrawTimers.forEach((timer) => window.clearTimeout(timer)); };
-  }, [demoWifiName, demoPendingWifi, demoSavedWifi, screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, spanishLanguage, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture]);
+  }, [demoWifiName, demoPendingWifi, demoSavedWifi, screen, images, clock24, weatherFahrenheit, brightness, playing, localPanel, pressed, darkBackground, backgroundArt, clockBackground, clockFace, clockShowWeather, spanishLanguage, wifiConnected, wifiEnabled, cloudConnected, bluetoothEnabled, batteryPercent, timeText, settingsTimeText, calibration, onFramebufferCapture]);
   return <canvas ref={ref} width={W} height={H} className="firmware-canvas" aria-label={`Firmware screen ${screen.id}`} />;
 }

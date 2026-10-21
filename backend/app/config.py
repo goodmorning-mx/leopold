@@ -9,7 +9,10 @@ class Settings(BaseSettings):
 
     app_name: str = Field(default="GoodMorning MVP Template API", alias="APP_NAME")
     app_env: str = Field(default="local", alias="APP_ENV")
-    cors_origins: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://localhost:5174,http://127.0.0.1:5174",
+        alias="CORS_ORIGINS",
+    )
     database_url: str = Field(
         default="postgresql+psycopg://goodmorning:goodmorning_local_password@localhost:5432/goodmorning_mvp",
         alias="DATABASE_URL",
@@ -25,6 +28,13 @@ class Settings(BaseSettings):
     )
     heartbeat_interval_seconds: int = Field(
         default=30, ge=5, le=3600, alias="LEOPOLD_HEARTBEAT_INTERVAL_SECONDS"
+    )
+    weather_geocoding_url: str = Field(
+        default="https://geocoding-api.open-meteo.com/v1/search",
+        alias="WEATHER_GEOCODING_URL",
+    )
+    weather_geocoding_api_key: str | None = Field(
+        default=None, alias="WEATHER_GEOCODING_API_KEY"
     )
     spotify_client_id: str | None = Field(default=None, alias="SPOTIFY_CLIENT_ID")
     spotify_client_secret: str | None = Field(

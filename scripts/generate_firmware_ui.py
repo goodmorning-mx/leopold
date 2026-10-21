@@ -129,6 +129,7 @@ lines.extend([
     f"constexpr uint16_t kStatusTextColor = {rgb565(status['text_color'])};",
     f"constexpr int16_t kStatusTimeX = {status['time']['x']};",
     f"constexpr int16_t kStatusTimeY = {status['time']['y']};",
+    f"constexpr int16_t kStatusTimePeriodY = {status['time']['period_y']};",
     f"constexpr int16_t kStatusBatteryX = {status['battery']['x']};",
     f"constexpr int16_t kStatusBatteryY = {status['battery']['y']};",
     f"constexpr int16_t kStatusBluetoothX = {status['bluetooth']['x']};",

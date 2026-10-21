@@ -19,7 +19,7 @@
     },
     "home_time_font": 20,
     "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
-    "time": {"x": 218, "y": 218, "size": 2},
+    "time": {"x": 218, "y": 218, "size": 2, "period_y": 230},
     "battery": {"x": 303, "y": 220, "size": 1},
     "bluetooth": {"x": 174, "y": 228},
     "wifi": {"x": 199, "y": 228},
@@ -40,6 +40,25 @@
     ],
     "slider": {"x": 98, "y": 358, "width": 272, "height": 28, "radius": 14, "knob_radius": 17, "track": "#113B63", "fill": "#BBD7F5", "fill_start": "#C0E0FA", "fill_end": "#177FD4", "accent": "#33ACFB"},
     "brightness_label": {"x": 233, "y": 400, "font_size": 16}
+  },
+  "display_submenu": {
+    "back": {"x": 48, "y": 87, "width": 48, "height": 46},
+    "title": {"x": 196, "y": 92, "font_size": 25},
+    "viewport": {"x": 72, "y": 124, "width": 322, "height": 290},
+    "row_height": 64,
+    "row_gap": 5,
+    "row_fill": "#121721",
+    "row_border": "#2B3545",
+    "active": "#00D2FF",
+    "secondary": "#A0ACB9"
+  },
+  "clock_settings": {
+    "viewport": {"x": 72, "y": 124, "width": 322, "height": 290},
+    "row_height": 48,
+    "row_gap": 8,
+    "row_fill": "#121721",
+    "row_border": "#2B3545",
+    "active": "#00D2FF"
   },
   "home": {
     "glass_button": {

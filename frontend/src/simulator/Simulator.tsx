@@ -1,8 +1,9 @@
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { SduiButton, SduiDocument, SduiSlider, validateSdui } from './contract';
-import FirmwareCanvas, { FirmwareImages } from './FirmwareCanvas';
+import FirmwareCanvas, { FirmwareImages, SIMULATOR_WIFI_NETWORKS } from './FirmwareCanvas';
 import FirmwareLvglCanvas from './FirmwareLvglCanvas';
 import { classifyGesture, containsPoint, sliderValue } from './interaction';
+import { clockSettingsScreen, displayMenuMaximumScroll, displayScreen } from './displaySettings';
 import { sampleDocument } from './sample';
 import interaction from '../shared/interaction.json';
 import persistence from '../shared/persistence.json';
@@ -18,6 +19,17 @@ function stored<T extends number | boolean>(key: string, fallback: T): T {
   if (typeof fallback === 'boolean') return (value === 'true') as T;
   const numeric = Number(value);
   return (Number.isFinite(numeric) ? numeric : fallback) as T;
+}
+
+function storedString(key: string, fallback: string): string {
+  return window.localStorage.getItem(`display:${key}`) ?? fallback;
+}
+
+function storedMeasurementSystem(): 'imperial' | 'metric' {
+  const value = window.localStorage.getItem('display:measurement_system');
+  if (value === 'imperial' || value === 'metric') return value;
+  const legacyFahrenheit = window.localStorage.getItem('display:weather_f');
+  return legacyFahrenheit === 'true' ? 'imperial' : 'metric';
 }
 
 async function decodeFirmwareAsset(path: string, width: number, height: number): Promise<string> {
@@ -40,10 +52,15 @@ async function decodeFirmwareAsset(path: string, width: number, height: number):
 
 export default function Simulator() {
   const query = new URLSearchParams(window.location.search);
+  const requestedScreen = query.get('screen');
   const referenceState = query.get('reference');
   const framebufferCaptureMode = query.get('capture') === '1';
+  const injectedState = query.get('capture-state') ?? referenceState ?? '';
+  const countryOverride = query.get('country');
+  const diagnosticState = framebufferCaptureMode || Boolean(referenceState) || ['art', 'appearance', 'language', 'units', 'face', 'clock-background', 'clock-weather', 'format', 'country', 'postal', 'keypad', 'gallery', 'expand', 'scroll'].some((key) => query.has(key));
   const referenceSettingsMode = framebufferCaptureMode && referenceState === 'settings';
-  const startSettingsMode = referenceSettingsMode || query.get('screen') === 'settings';
+  const submenuReference = ['display', 'display-background', 'display-appearance', 'display-clock', 'display-units', 'display-language', 'display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending', 'clock-settings'].includes(referenceState ?? '');
+  const startSettingsMode = referenceSettingsMode || submenuReference || ['display', 'display-background', 'display-appearance', 'display-clock', 'display-units', 'display-language', 'display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending', 'clock-settings'].includes(injectedState) || ['settings', 'display', 'clock', 'wifi'].includes(query.get('screen') ?? '');
   const captureState = framebufferCaptureMode ? query.get('capture-state') : null;
   const capturePressedByState: Record<string, string> = {
     'wifi-pressed': 'settings-wifi',
@@ -56,30 +73,57 @@ export default function Simulator() {
   const captureConnected = captureState === 'connected' ? true : captureState === 'disconnected' ? false : null;
   const [document, setDocument] = useState<SduiDocument>(sampleDocument);
   const [screenIndex, setScreenIndex] = useState(() => {
-    const initialScreen = startSettingsMode ? 'device-control-center' : 'sky-home';
+    const screenRoutes: Record<string, string> = { home: 'sky-home', weather: 'sky-weather', navigation: 'sky-navigation', spotify: 'spotify-player', usb: 'computer-controls' };
+    const initialScreen = startSettingsMode ? (referenceSettingsMode || ['settings', 'wifi'].includes(query.get('screen') ?? '') ? 'device-control-center' : 'device-additional-options') : screenRoutes[query.get('screen') ?? ''] ?? 'sky-home';
     const initialIndex = sampleDocument.screens.findIndex((item) => item.id === initialScreen);
     return initialIndex >= 0 ? initialIndex : 0;
   });
-  const [clock24, setClock24] = useState(() => stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
-  const [weatherFahrenheit, setWeatherFahrenheit] = useState(() => stored('weather_f', Boolean(persistence.settings.weather_fahrenheit.default)));
+  const [clock24, setClock24] = useState(() => query.has('format') ? query.get('format') === '24' : stored('clock_24', Boolean(persistence.settings.clock_24_hour.default)));
+  const [measurementSystem, setMeasurementSystem] = useState<'imperial' | 'metric'>(() => query.get('units') === 'imperial' || query.get('units') === 'metric' ? query.get('units') as 'imperial' | 'metric' : storedMeasurementSystem());
+  const weatherFahrenheit = measurementSystem === 'imperial';
   const [brightness, setBrightness] = useState(() => captureBrightness ?? stored('brightness', Number(persistence.settings.brightness.default)));
-  const [playing, setPlaying] = useState(false);
-  const [localPanel, setLocalPanel] = useState('none');
+  const [playing, setPlaying] = useState(injectedState === 'spotify-playing');
+  const [localPanel, setLocalPanel] = useState(() => query.get('screen') === 'wifi' ? 'wifi' : 'none');
   const [pressed, setPressed] = useState<string | null>(capturePressed);
   const [backgroundMode, setBackgroundMode] = useState(() => stored('background_mode', Number(persistence.settings.background_mode.default)));
-  const [spanishLanguage, setSpanishLanguage] = useState(() => stored('spanish', Boolean(persistence.settings.spanish_language.default)));
-  const [demoWifiName, setDemoWifiName] = useState('Leopold Wi-Fi');
+  const [backgroundArt, setBackgroundArt] = useState(() => query.has('art') ? Number(query.get('art')) : stored('background_art', Number(persistence.settings.background_art.default)));
+  const [appearanceDark, setAppearanceDark] = useState(() => query.has('appearance') ? query.get('appearance') !== 'light' : stored('appearance_dark', Boolean(persistence.settings.appearance_dark.default)));
+  const [spanishLanguage, setSpanishLanguage] = useState(() => query.has('language') ? query.get('language') === 'es' : stored('spanish', Boolean(persistence.settings.spanish_language.default)));
+  const [clockFace, setClockFace] = useState(() => query.has('face') ? Number(query.get('face')) : stored('clock_face', Number(persistence.settings.clock_face.default)));
+  const [clockBackground, setClockBackground] = useState(() => query.has('clock-background') ? Number(query.get('clock-background')) : stored('clock_background', Number(persistence.settings.clock_background.default)));
+  const [clockShowWeather, setClockShowWeather] = useState(() => query.has('clock-weather') ? query.get('clock-weather') === 'yes' : stored('clock_show_weather', Boolean(persistence.settings.clock_show_weather.default)));
+  const [weatherCountry, setWeatherCountry] = useState<'' | 'US' | 'MX'>(() => {
+    if (countryOverride === 'US' || countryOverride === 'MX') return countryOverride;
+    if (['display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending'].includes(injectedState)) return 'US';
+    const saved = storedString('weather_location_country', '');
+    return saved === 'US' || saved === 'MX' ? saved : '';
+  });
+  const [keypadOpen, setKeypadOpen] = useState(() => query.get('keypad') === '1' || ['display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending'].includes(injectedState));
+  const [confirmedWeatherLocation, setConfirmedWeatherLocation] = useState(() => storedString('weather_location_confirmed', ''));
+  const [postalDraft, setPostalDraft] = useState(() => query.get('postal') ?? '');
+  const [postalStatus, setPostalStatus] = useState(() => ({ 'display-invalid': 'Postal code is not valid.', 'display-not-found': 'No match found. Previous location kept.', 'display-offline': 'Cloud is offline. Previous location kept.', 'display-pending': 'Looking up postal code…' }[injectedState] ?? ''));
+  const [expandedDisplayRow, setExpandedDisplayRow] = useState<string | null>(() => ({
+    'display-background': 'background', 'display-appearance': 'appearance', 'display-units': 'units',
+    'display-language': 'language', 'display-location': 'weather-location', 'display-keypad': 'weather-location',
+    'display-invalid': 'weather-location', 'display-not-found': 'weather-location', 'display-offline': 'weather-location',
+  }[injectedState] ?? (['background', 'appearance', 'units', 'language', 'weather-location'].includes(query.get('expand') ?? '') ? query.get('expand') : null)));
+  const [displayScrollOffset, setDisplayScrollOffset] = useState(() => Number(query.get('scroll') ?? 0));
+  const [backgroundGalleryOffset, setBackgroundGalleryOffset] = useState(() => query.get('gallery') === '1' ? 1 : 0);
+  const [optionsView, setOptionsView] = useState<'display' | 'clock'>(() => query.get('screen') === 'clock' || injectedState === 'clock-settings' ? 'clock' : 'display');
+  const [postalLookupPending, setPostalLookupPending] = useState(injectedState === 'display-pending');
+  const [demoWifiName, setDemoWifiName] = useState('Mock network A');
   const [demoSavedWifi, setDemoSavedWifi] = useState<string[]>([]);
   const [demoPendingWifi, setDemoPendingWifi] = useState('');
   const [wifiConnected, setWifiConnected] = useState(captureConnected ?? false);
+  const [wifiEnabled, setWifiEnabled] = useState(true);
   const [cloudConnected, setCloudConnected] = useState(captureConnected ?? false);
   const [bluetoothEnabled, setBluetoothEnabled] = useState(captureConnected ?? false);
   const [batteryPercent, setBatteryPercent] = useState(82);
   useEffect(() => {
-    if (framebufferCaptureMode || calibrationMode || startSettingsMode) return;
+    if (framebufferCaptureMode || calibrationMode || startSettingsMode || requestedScreen) return;
     const homeIndex = sampleDocument.screens.findIndex((item) => item.id === 'sky-home');
     if (homeIndex >= 0) setScreenIndex(homeIndex);
-  }, [framebufferCaptureMode, startSettingsMode]);
+  }, [framebufferCaptureMode, startSettingsMode, requestedScreen]);
   const [now, setNow] = useState(() => new Date());
   const [etag, setEtag] = useState(`"mock-ui-${sampleDocument.revision}"`);
   const [pollCount, setPollCount] = useState(0);
@@ -92,9 +136,32 @@ export default function Simulator() {
   const [images, setImages] = useState<FirmwareImages>({});
   const settingsContact = useRef<{ row: string | null; cancelled: boolean }>({ row: null, cancelled: true });
   const pointer = useRef<{ x: number; y: number; at: number } | null>(null);
+  const submenuGesture = useRef<{ owner: 'list' | 'gallery' | 'none'; startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null>(null);
   const lastSliderValue = useRef<number | null>(null);
   const sliderDrag = useRef(false);
-  const screen = document.screens[screenIndex] ?? document.screens[0];
+  const baseScreen = document.screens[screenIndex] ?? document.screens[0];
+  const displayPreferences = {
+    expanded: expandedDisplayRow,
+    scrollOffset: displayScrollOffset,
+    backgroundArt,
+    appearanceDark,
+    measurementSystem,
+    spanishLanguage,
+    country: weatherCountry as '' | 'US' | 'MX',
+    keypadOpen,
+    weatherLocation: confirmedWeatherLocation,
+    postalDraft,
+    postalStatus: postalLookupPending ? (spanishLanguage ? 'Buscando…' : 'Looking up…') : postalStatus,
+    clock24,
+    clockFace,
+    clockBackground,
+    clockShowWeather,
+    backgroundGalleryOffset,
+  };
+  const optionsScreen = baseScreen?.id === 'device-additional-options'
+    ? optionsView === 'clock' ? clockSettingsScreen(baseScreen, displayPreferences) : displayScreen(baseScreen, displayPreferences)
+    : baseScreen;
+  const screen = optionsScreen;
   const screenId = screen?.id ?? '';
   useEffect(() => {
     if (!captureUrl) return;
@@ -126,11 +193,27 @@ export default function Simulator() {
       link.click();
     }
   }
-  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:brightness`, String(brightness)); }, [brightness]);
-  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:clock_24`, String(clock24)); }, [clock24]);
-  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:weather_f`, String(weatherFahrenheit)); }, [weatherFahrenheit]);
-  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:background_mode`, String(backgroundMode)); }, [backgroundMode]);
-  useEffect(() => { window.localStorage.setItem(`${persistence.namespace}:spanish`, String(spanishLanguage)); }, [spanishLanguage]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:brightness`, String(brightness)); }, [brightness, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:clock_24`, String(clock24)); }, [clock24, diagnosticState]);
+  useEffect(() => {
+    if (diagnosticState) return;
+    window.localStorage.setItem(`${persistence.namespace}:measurement_system`, measurementSystem);
+    window.localStorage.setItem(`${persistence.namespace}:weather_f`, String(weatherFahrenheit));
+  }, [measurementSystem, weatherFahrenheit, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:background_mode`, String(backgroundMode)); }, [backgroundMode, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:background_art`, String(backgroundArt)); }, [backgroundArt, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:appearance_dark`, String(appearanceDark)); }, [appearanceDark, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:spanish`, String(spanishLanguage)); }, [spanishLanguage, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:clock_face`, String(clockFace)); }, [clockFace, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:clock_background`, String(clockBackground)); }, [clockBackground, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:clock_show_weather`, String(clockShowWeather)); }, [clockShowWeather, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:weather_location_country`, weatherCountry); }, [weatherCountry, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:weather_location_confirmed`, confirmedWeatherLocation); }, [confirmedWeatherLocation, diagnosticState]);
+  useEffect(() => {
+    if (['display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending'].includes(injectedState)) {
+      setDisplayScrollOffset(displayMenuMaximumScroll('weather-location', { ...displayPreferences, country: weatherCountry, keypadOpen, expanded: 'weather-location' }));
+    }
+  }, []);
   useEffect(() => {
     let active = true;
     void Promise.all([
@@ -156,10 +239,114 @@ export default function Simulator() {
   };
   const pointFor = (event: PointerEvent<HTMLDivElement>) => { const rect = event.currentTarget.getBoundingClientRect(); return { x: Math.round(((event.clientX - rect.left) / rect.width) * 466), y: Math.round(((event.clientY - rect.top) / rect.height) * 466) }; };
 
+  async function lookupPostalCode() {
+    const digits = postalDraft.replace(/\D/g, '');
+    const normalizedCode = weatherCountry === 'US' && digits.length === 9 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    const valid = weatherCountry === 'US' ? /^\d{5}(?:-\d{4})?$/.test(normalizedCode) : weatherCountry === 'MX' ? /^\d{5}$/.test(normalizedCode) : false;
+    if (!valid) {
+      setPostalStatus(spanishLanguage ? 'Codigo postal no valido.' : 'Postal code is not valid.');
+      return;
+    }
+    setPostalLookupPending(true);
+    setPostalStatus('');
+    const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+    try {
+      const params = new URLSearchParams({ country: weatherCountry, postal_code: normalizedCode });
+      const response = await fetch(`${apiUrl}/v1/weather/geocode?${params.toString()}`);
+      const payload = await response.json() as { detail?: string; name?: string; admin1?: string | null };
+      if (!response.ok) {
+        const message = response.status === 404
+          ? (spanishLanguage ? 'No se encontró. Se conserva la ubicación anterior.' : 'No match found. Previous location kept.')
+          : (spanishLanguage ? 'La busqueda en la nube no esta disponible.' : 'Cloud lookup is unavailable.');
+        setPostalStatus(message);
+        addEvent('weather-location', `${message} ${payload.detail ?? ''}`.trim(), { country: weatherCountry });
+        return;
+      }
+      setConfirmedWeatherLocation(`${weatherCountry}:${normalizedCode}`);
+      setPostalDraft(digits);
+      setKeypadOpen(false);
+      setPostalStatus(spanishLanguage ? `Encontrado: ${payload.name}${payload.admin1 ? `, ${payload.admin1}` : ''}.` : `Found: ${payload.name}${payload.admin1 ? `, ${payload.admin1}` : ''}.`);
+      addEvent('weather-location', `Cloud lookup confirmed ${normalizedCode}`, { country: weatherCountry, name: payload.name });
+    } catch {
+      const message = spanishLanguage ? 'Sin conexion a la nube. Se conserva la ubicacion anterior.' : 'Cloud is offline. Previous location kept.';
+      setPostalStatus(message);
+      addEvent('weather-location', message, { country: weatherCountry });
+    } finally {
+      setPostalLookupPending(false);
+    }
+  }
+
+  function handleSubmenuButton(buttonId: string) {
+    if (buttonId === 'menu-back') {
+      setPressed(null);
+      if (optionsView === 'clock') setOptionsView('display');
+      else {
+        setLocalPanel('none');
+        const settingsIndex = document.screens.findIndex((item) => item.id === 'device-control-center');
+        if (settingsIndex >= 0) setScreenIndex(settingsIndex);
+      }
+      return;
+    }
+    if (optionsView === 'display') {
+      const rowId = buttonId.startsWith('display-row-') ? buttonId.slice('display-row-'.length) : '';
+      if (rowId === 'clock') {
+        setOptionsView('clock');
+        return;
+      }
+      if (rowId) {
+        const next = expandedDisplayRow === rowId ? null : rowId;
+        setKeypadOpen(false);
+        setExpandedDisplayRow(next);
+        const maxScroll = displayMenuMaximumScroll(next, { ...displayPreferences, expanded: next });
+        setDisplayScrollOffset((offset) => Math.min(offset, maxScroll));
+        return;
+      }
+      if (/^display-background-[0-2]$/.test(buttonId)) setBackgroundArt(Number(buttonId.slice(-1)));
+      else if (buttonId === 'display-appearance-light') setAppearanceDark(false);
+      else if (buttonId === 'display-appearance-dark') setAppearanceDark(true);
+      else if (buttonId === 'display-units-imperial') setMeasurementSystem('imperial');
+      else if (buttonId === 'display-units-metric') setMeasurementSystem('metric');
+      else if (buttonId === 'display-language-en') setSpanishLanguage(false);
+      else if (buttonId === 'display-language-es') setSpanishLanguage(true);
+      else if (buttonId === 'display-country-US' || buttonId === 'display-country-MX') {
+        const nextCountry = buttonId.endsWith('US') ? 'US' : 'MX';
+        setWeatherCountry(nextCountry);
+        setKeypadOpen(false);
+        setPostalDraft(''); setPostalStatus('');
+        const maxScroll = displayMenuMaximumScroll('weather-location', { ...displayPreferences, country: nextCountry, keypadOpen: false, expanded: 'weather-location' });
+        setDisplayScrollOffset(maxScroll);
+      } else if (buttonId === 'display-country') {
+        setWeatherCountry(''); setPostalDraft(''); setPostalStatus('');
+        setKeypadOpen(false);
+      } else if (buttonId === 'display-postal-field') {
+        setKeypadOpen(true);
+        const maxScroll = displayMenuMaximumScroll('weather-location', { ...displayPreferences, keypadOpen: true, expanded: 'weather-location' });
+        setDisplayScrollOffset(maxScroll);
+      } else if (buttonId.startsWith('postal-key-')) {
+        const key = buttonId.slice('postal-key-'.length);
+        if (key === 'delete') setPostalDraft((value) => value.slice(0, -1));
+        else if (key === 'clear') setPostalDraft('');
+        else setPostalDraft((value) => value.length >= (weatherCountry === 'US' ? 9 : 5) ? value : `${value}${key}`);
+      } else if (buttonId === 'display-postal-cancel') {
+        setPostalDraft(''); setPostalStatus(''); setKeypadOpen(false);
+        setDisplayScrollOffset(displayMenuMaximumScroll('weather-location', { ...displayPreferences, keypadOpen: false, expanded: 'weather-location' }));
+      } else if (buttonId === 'display-postal-apply' && !postalLookupPending) {
+        void lookupPostalCode();
+      }
+      return;
+    }
+    if (buttonId === 'clock-format-12') setClock24(false);
+    else if (buttonId === 'clock-format-24') setClock24(true);
+    else if (/^clock-face-[0-2]$/.test(buttonId)) setClockFace(Number(buttonId.slice(-1)));
+    else if (/^clock-background-[0-2]$/.test(buttonId)) setClockBackground(Number(buttonId.slice(-1)));
+    else if (buttonId === 'clock-weather-yes') setClockShowWeather(true);
+    else if (buttonId === 'clock-weather-no') setClockShowWeather(false);
+  }
+
   function buttonAction(component: SduiButton) {
     emitTap(component.id);
     addEvent('tap', `${component.id} on ${screenId}`, { revision: document.revision, component_id: component.id, type: 'tap' });
-    if (component.id === 'weather-units') setWeatherFahrenheit((value) => !value);
+    if (component.id === 'weather-units') setMeasurementSystem((value) => value === 'imperial' ? 'metric' : 'imperial');
     if (component.id === 'spotify-toggle') setPlaying((value) => !value);
     const localTargets: Record<string, string> = {
       'open-home': 'sky-home', 'open-clock': 'sky-clock', 'open-navigation': 'sky-navigation', 'open-voltage': 'sky-voltage',
@@ -191,6 +378,12 @@ export default function Simulator() {
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointFor(event); pointer.current = { ...point, at: Date.now() }; lastSliderValue.current = null;
+    const submenuScreen = localPanel === 'none' && (screenId === 'device-additional-options' || screenId === 'device-clock-options');
+    let owner: 'list' | 'gallery' | 'none' = 'none';
+    if (submenuScreen && point.x >= 72 && point.x < 394 && point.y >= 124 && point.y < 414) {
+      owner = screen.components.some((item) => item.type === 'button' && item.id.startsWith('display-background-') && containsPoint(item, point)) ? 'gallery' : 'list';
+    }
+    submenuGesture.current = { owner, startX: point.x, startY: point.y, lastX: point.x, lastY: point.y, moved: false };
     const padding = interaction.touch.slider_touch_padding;
     sliderDrag.current = localPanel === 'none' && screen.components.some((item) => item.type === 'slider' && point.x >= item.x - padding && point.x <= item.x + item.width + padding && point.y >= item.y - padding && point.y <= item.y + item.height + padding);
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
@@ -201,6 +394,26 @@ export default function Simulator() {
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!pointer.current) return;
     const point = pointFor(event);
+    const gestureOwner = submenuGesture.current;
+    if (gestureOwner && gestureOwner.owner !== 'none') {
+      const deltaX = point.x - gestureOwner.lastX;
+      const deltaY = point.y - gestureOwner.lastY;
+      const totalX = point.x - gestureOwner.startX;
+      const totalY = point.y - gestureOwner.startY;
+      const threshold = interaction.settings_submenu.gesture_start_threshold;
+      if (!gestureOwner.moved && Math.max(Math.abs(totalX), Math.abs(totalY)) >= threshold) {
+        gestureOwner.moved = true;
+        settingsContact.current.cancelled = true;
+      }
+      if (gestureOwner.moved && gestureOwner.owner === 'list' && Math.abs(totalY) >= Math.abs(totalX)) {
+        const maxScroll = displayMenuMaximumScroll(expandedDisplayRow, { ...displayPreferences, expanded: expandedDisplayRow });
+        setDisplayScrollOffset((offset) => Math.max(0, Math.min(maxScroll, offset - deltaY)));
+      }
+      gestureOwner.lastX = point.x;
+      gestureOwner.lastY = point.y;
+      setPressed(gestureOwner.moved ? null : pressed);
+      return;
+    }
     const button = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
     if (screenId === 'device-control-center') {
       if (button?.id !== settingsContact.current.row) settingsContact.current.cancelled = true;
@@ -212,7 +425,21 @@ export default function Simulator() {
     const start = pointer.current; pointer.current = null; if (!start) return;
     setPressed(null);
     const point = pointFor(event); const gesture = classifyGesture(start, { ...point, at: Date.now() });
+    const capturedOwner = submenuGesture.current;
+    submenuGesture.current = null;
     if (sliderDrag.current) { sliderDrag.current = false; updateSlider(point); return; }
+    if (capturedOwner?.moved) {
+      if (capturedOwner.owner === 'gallery' && Math.abs(point.x - capturedOwner.startX) >= interaction.settings_submenu.gesture_start_threshold) {
+        setBackgroundGalleryOffset(point.x < capturedOwner.startX ? 1 : 0);
+      }
+      addEvent('gesture', `${capturedOwner.owner} scroll consumed; parent navigation cancelled`);
+      return;
+    }
+    const submenuScreen = localPanel === 'none' && (screenId === 'device-additional-options' || screenId === 'device-clock-options');
+    if (submenuScreen && gesture.startsWith('swipe-')) {
+      addEvent('gesture', `${gesture} cancelled by settings submenu owner`);
+      return;
+    }
     addEvent('gesture', `${gesture} (${point.x}, ${point.y})`);
     if (gesture === 'swipe-left') { setLocalPanel('none'); setScreenIndex((index) => (index + 1) % document.screens.length); }
     else if (gesture === 'swipe-right') { setLocalPanel('none'); setScreenIndex((index) => (index + document.screens.length - 1) % document.screens.length); }
@@ -221,7 +448,7 @@ export default function Simulator() {
     else if (gesture === 'tap' && localPanel !== 'none') {
       const back = containsPoint(interaction.local_panels.back, point);
       const connectDemo = (name: string) => {
-        setDemoWifiName(name); setWifiConnected(true); setCloudConnected(false);
+        setDemoWifiName(name); setWifiEnabled(true); setWifiConnected(true); setCloudConnected(false);
         setDemoSavedWifi((saved) => [name, ...saved.filter((item) => item !== name)].slice(0, 3));
         setDemoPendingWifi(''); setLocalPanel('wifi');
         addEvent('mock-wifi', 'Simulated connection; device network not accessed');
@@ -229,17 +456,21 @@ export default function Simulator() {
       if (back) {
         setLocalPanel(localPanel === 'wifi-networks' ? 'wifi' : localPanel === 'wifi-password' ? 'wifi-networks' : localPanel === 'bluetooth-devices' ? 'bluetooth' : 'none');
         setDemoPendingWifi('');
+      } else if (localPanel === 'wifi' && point.y >= 104 && point.y <= 168) {
+        setWifiEnabled((value) => { const next = !value; if (!next) setWifiConnected(false); return next; });
+        addEvent('mock-wifi', `Wi-Fi ${wifiEnabled ? 'disabled' : 'enabled'}; device network not accessed`);
       } else if (localPanel === 'wifi' && point.y >= 372 && point.y <= 434) {
         if (point.x >= 245 && point.x <= 419) setLocalPanel('wifi-networks');
         else if (point.x >= 47 && point.x <= 221) {
-          if (demoSavedWifi.length) connectDemo(demoSavedWifi[0]);
-          else { setLocalPanel('wifi-networks'); addEvent('mock-wifi', 'No saved demo network; choose a network'); }
+          setLocalPanel('wifi-networks'); addEvent('mock-wifi', demoSavedWifi.length ? 'Mock scan started; saved demo networks are available' : 'No saved demo network; mock scan started');
         }
       } else if (localPanel === 'wifi-networks' && point.x >= 34 && point.x <= 432 && point.y >= 111 && point.y < 282) {
         const row = Math.floor((point.y - 111) / 57);
         if ((point.y - 111) % 57 < 49) {
-          const name = ['Leopold Wi-Fi', 'GoodMorning Guest', 'Casa'][row];
-          if (row === 1 || demoSavedWifi.includes(name)) connectDemo(name);
+          const network = SIMULATOR_WIFI_NETWORKS[row];
+          if (!network) return;
+          const name = network.name;
+          if (!network.requiresPassword || demoSavedWifi.includes(name)) connectDemo(name);
           else { setDemoPendingWifi(name); setLocalPanel('wifi-password'); }
         }
       } else if (localPanel === 'wifi-password' && point.x >= 111 && point.x <= 355 && point.y >= 360 && point.y <= 420) {
@@ -248,6 +479,13 @@ export default function Simulator() {
         addEvent('mock-wifi', 'Demo scan refreshed; no real networks scanned');
       } else if ((localPanel === 'cloud' || localPanel === 'bluetooth') && point.y >= 356) {
         setLocalPanel(localPanel === 'bluetooth' ? 'bluetooth-devices' : 'cloud');
+      }
+    } else if (gesture === 'tap' && localPanel === 'none' && (screenId === 'device-additional-options' || screenId === 'device-clock-options')) {
+      const submenuButton = screen.components.find((item): item is SduiButton => item.type === 'button' && containsPoint(item, point));
+      const inMenuViewport = point.x >= 72 && point.x < 394 && point.y >= 124 && point.y < 414;
+      if (submenuButton && (submenuButton.id === 'menu-back' || inMenuViewport)) {
+        emitTap(submenuButton.id);
+        handleSubmenuButton(submenuButton.id);
       }
     } else if (gesture === 'tap' || (screenId === 'device-control-center' && localPanel === 'none' && interaction.behaviour.settings_release.gestures.includes(gesture))) {
       if (screenId === 'device-control-center') {
@@ -258,7 +496,7 @@ export default function Simulator() {
         if (action === 'bluetooth-panel') { setLocalPanel('bluetooth'); return; }
         if (action === 'open-additional-options') {
           const index = document.screens.findIndex((item) => item.id === 'device-additional-options');
-          if (index >= 0) setScreenIndex(index);
+          if (index >= 0) { setOptionsView('display'); setLocalPanel('none'); setScreenIndex(index); }
           return;
         }
         if (settingsButton && action === 'undefined') {
@@ -281,8 +519,8 @@ export default function Simulator() {
   return <main className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
     <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Local working-copy preview using the shared firmware renderer. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
     <div className="simulator-grid">
-      <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; sliderDrag.current = false; setPressed(null); }}>
-        {(framebufferCaptureMode && localPanel === 'none') || (['device-control-center', 'device-additional-options'].includes(screen.id) && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={backgroundMode === 2} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
+      <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; submenuGesture.current = null; sliderDrag.current = false; settingsContact.current.cancelled = true; setPressed(null); }}>
+        {(framebufferCaptureMode && localPanel === 'none') || (['device-control-center', 'device-additional-options', 'device-clock-options'].includes(screen.id) && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} backgroundArt={backgroundArt} appearanceDark={appearanceDark} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={appearanceDark} backgroundArt={backgroundArt} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} wifiEnabled={wifiEnabled} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
         <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>{cloudConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Connected (mock)' : 'Disconnected (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setCloudConnected((value) => !value)}>Cloud</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>

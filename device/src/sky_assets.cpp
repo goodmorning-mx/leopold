@@ -49,6 +49,23 @@ lv_image_dsc_t kSpotifyLargeIcon = {};
 lv_image_dsc_t kSettingsNeutral = {};
 lv_image_dsc_t kSettingsGearsWallpaper = {};
 lv_image_dsc_t kSettingsGears = {};
+lv_image_dsc_t kSettingsStatusBanner = {};
+lv_image_dsc_t kBackgroundPreviewFlower = {};
+lv_image_dsc_t kBackgroundPreviewChevron = {};
+lv_image_dsc_t kBackgroundPreviewMechanical = {};
+lv_image_dsc_t kClockBackgroundPreviewFlower = {};
+lv_image_dsc_t kClockBackgroundPreviewChevron = {};
+lv_image_dsc_t kClockBackgroundPreviewMechanical = {};
+lv_image_dsc_t kClockFacePreview0 = {};
+lv_image_dsc_t kClockFacePreview1 = {};
+lv_image_dsc_t kClockFacePreview2 = {};
+lv_image_dsc_t kDisplayBackgroundIcon = {};
+lv_image_dsc_t kDisplayAppearanceIcon = {};
+lv_image_dsc_t kDisplayClockIcon = {};
+lv_image_dsc_t kDisplayUnitsIcon = {};
+lv_image_dsc_t kDisplayLanguageIcon = {};
+lv_image_dsc_t kDisplayWeatherLocationIcon = {};
+lv_image_dsc_t kDisplayIcon = {};
 lv_image_dsc_t kSettingsStatusBluetoothActive = {};
 lv_image_dsc_t kSettingsStatusWifiActive = {};
 lv_image_dsc_t kSettingsStatusCloudActive = {};
@@ -80,6 +97,23 @@ AssetSlot assets[] = {
     {"spotify-large", "icon_spotify_large.bin", 97, 100, &kSpotifyLargeIcon},
     {"settings-gears-base", "settings-glass-gears-v1-466.bin", 466, 466, &kSettingsGears},
     {"settings-gears-wallpaper", "settings-gears-wallpaper-466.bin", 466, 466, &kSettingsGearsWallpaper},
+    {"settings-status-banner", "settings-status-banner-181x28.bin", 181, 28, &kSettingsStatusBanner},
+    {"display-icon-background", "display-icon-background.bin", 30, 30, &kDisplayBackgroundIcon},
+    {"display-icon-appearance", "display-icon-appearance.bin", 32, 32, &kDisplayAppearanceIcon},
+    {"display-icon-clock", "display-icon-clock.bin", 31, 31, &kDisplayClockIcon},
+    {"display-icon-units", "display-icon-units.bin", 33, 33, &kDisplayUnitsIcon},
+    {"display-icon-language", "display-icon-language.bin", 31, 31, &kDisplayLanguageIcon},
+    {"display-icon-weather-location", "display-icon-weather-location.bin", 28, 31, &kDisplayWeatherLocationIcon},
+    {"display-icon-display", "display-icon-display.bin", 30, 30, &kDisplayIcon},
+    {"background-preview-flower", "background-preview-flower.bin", 88, 88, &kBackgroundPreviewFlower},
+    {"background-preview-chevron", "background-preview-chevron.bin", 88, 88, &kBackgroundPreviewChevron},
+    {"background-preview-mechanical", "background-preview-mechanical.bin", 88, 88, &kBackgroundPreviewMechanical},
+    {"clock-background-preview-flower", "clock-background-preview-flower.bin", 88, 32, &kClockBackgroundPreviewFlower},
+    {"clock-background-preview-chevron", "clock-background-preview-chevron.bin", 88, 32, &kClockBackgroundPreviewChevron},
+    {"clock-background-preview-mechanical", "clock-background-preview-mechanical.bin", 88, 32, &kClockBackgroundPreviewMechanical},
+    {"clock-face-preview-0", "clock-face-preview-0.bin", 46, 46, &kClockFacePreview0},
+    {"clock-face-preview-1", "clock-face-preview-1.bin", 46, 46, &kClockFacePreview1},
+    {"clock-face-preview-2", "clock-face-preview-2.bin", 46, 46, &kClockFacePreview2},
     {"settings-neutral", "settings-neutral-466.bin", 466, 466, &kSettingsNeutral},
     {"settings-status-bluetooth-active", "settings-glass-status-bluetooth-active-22x22-v1.bin", 22, 22, &kSettingsStatusBluetoothActive},
     {"settings-status-wifi-active", "settings-glass-status-wifi-active-22x22-v1.bin", 22, 22, &kSettingsStatusWifiActive},

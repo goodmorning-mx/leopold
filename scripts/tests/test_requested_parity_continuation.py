@@ -169,11 +169,21 @@ class RequestedParityContinuationTests(unittest.TestCase):
         renderer = (ROOT / 'shared/lvgl_renderer.cpp').read_text()
         home_status = renderer[renderer.index('if (strcmp(screen.screenId, "sky-home") == 0)'):renderer.index('const bool top =', renderer.index('if (strcmp(screen.screenId, "sky-home") == 0)'))]
         self.assertNotIn('makePanel(', home_status)
-        self.assertIn('lv_obj_set_pos(time, 218, 214)', home_status)
+        self.assertIn('generated_ui::kStatusTimeX, generated_ui::kStatusTimeY', home_status)
+        self.assertIn('generated_ui::kStatusTimePeriodY', home_status)
         browser = (ROOT / 'frontend/src/simulator/FirmwareCanvas.tsx').read_text()
         self.assertNotIn("ctx.fillStyle = '#555C6A'; ctx.fillRect(211, 208, 68, 31)", browser)
+        self.assertIn('status.time.y', browser)
+        self.assertIn('status.time.period_y', browser)
+        rendering = read_json('shared/rendering.json')['status_bar']['time']
         mask = read_json('shared/reference-manifest.json')['states'][0]['dynamic_masks'][0]
         self.assertEqual((mask['x'], mask['y'], mask['width'], mask['height']), (211, 219, 56, 22))
+        self.assertEqual(rendering['y'], 218)
+        self.assertEqual(rendering['period_y'], 230)
+        self.assertGreaterEqual(rendering['y'] + 4, mask['y'])
+        self.assertLess(rendering['y'] + 20, mask['y'] + mask['height'])
+        self.assertGreaterEqual(rendering['period_y'] + 2, mask['y'])
+        self.assertLess(rendering['period_y'] + 10, mask['y'] + mask['height'])
 
 if __name__ == '__main__':
     unittest.main()
