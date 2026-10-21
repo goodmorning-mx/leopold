@@ -5,21 +5,31 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from SCons.Script import Import
+try:
+    from SCons.Script import Import
+except ModuleNotFoundError:
+    Import = None
 
-Import("env")
-root = Path(env.subst("$PROJECT_DIR")).resolve().parent
+if Import is not None:
+    Import("env")
+    root = Path(env.subst("$PROJECT_DIR")).resolve().parent
+else:
+    root = Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0, str(root / "scripts"))
 from sync_shared_assets import sync
 sync()
 source = root / "shared" / "firmware-ui.json"
 target = root / "device" / "include" / "generated_firmware_ui.h"
+home_asset_target = root / "device" / "include" / "generated_home_asset.h"
+settings_asset_target = root / "device" / "include" / "generated_settings_asset.h"
+display_asset_target = root / "device" / "include" / "generated_display_asset.h"
 document = json.loads(source.read_text(encoding="utf-8"))
 interaction = json.loads((root / "shared" / "interaction.json").read_text(encoding="utf-8"))
 persistence = json.loads((root / "shared" / "persistence.json").read_text(encoding="utf-8"))
 typography = json.loads((root / "shared" / "typography.json").read_text(encoding="utf-8"))
 rendering = json.loads((root / "shared" / "rendering.json").read_text(encoding="utf-8"))
+calibration = json.loads((root / "shared" / "calibration.json").read_text(encoding="utf-8"))
 
 
 def q(value: object) -> str:
@@ -35,6 +45,15 @@ def rgb565(value: str) -> str:
 
 
 status = rendering["status_bar"]
+shared_status_banner = status["shared_banner"]
+settings = rendering["settings"]
+settings_title = settings["title"]
+settings_slider = settings["slider"]
+settings_cloud = settings["status_cloud"]
+settings_bubble = settings["icon_bubble"]
+settings_center = settings["icon_center"]
+settings_selected_overlay = settings["selected_overlay"]
+settings_chevron = settings["chevron"]
 spotify_rendering = rendering["spotify"]
 arc = spotify_rendering["arc"]
 cover = spotify_rendering["cover"]
@@ -42,15 +61,27 @@ seek = spotify_rendering["seek"]
 controls = spotify_rendering["controls"]
 actions = spotify_rendering["actions"]
 usb = rendering["home"]["usb_icon"]
+theme_accents = list(rendering["theme"]["accents"].values())
 
 
 lines = [
     "#pragma once",
+    "#ifndef LEOPOLD_WASM",
     "#include <Arduino.h>",
+    "#endif",
     "#include \"sdui.h\"",
     "",
     "namespace leopold {",
     "namespace generated_ui {",
+    f"constexpr int16_t kWifiPasswordFieldX = {interaction['local_panels']['wifi_password_field']['x']};",
+    f"constexpr int16_t kWifiPasswordFieldY = {interaction['local_panels']['wifi_password_field']['y']};",
+    f"constexpr int16_t kWifiPasswordFieldWidth = {interaction['local_panels']['wifi_password_field']['width']};",
+    f"constexpr int16_t kWifiPasswordFieldHeight = {interaction['local_panels']['wifi_password_field']['height']};",
+    f"constexpr int16_t kConnectivityBackX = {interaction['local_panels']['back']['x']};",
+    f"constexpr int16_t kConnectivityBackY = {interaction['local_panels']['back']['y']};",
+    f"constexpr int16_t kConnectivityBackWidth = {interaction['local_panels']['back']['width']};",
+    f"constexpr int16_t kConnectivityBackHeight = {interaction['local_panels']['back']['height']};",
+    f"constexpr uint32_t kUiRevision = {document['revision']};",
     f"constexpr int16_t kSwipeUpDistance = {interaction['touch']['swipe_up_distance']};",
     f"constexpr int16_t kSwipeHorizontalDistance = {interaction['touch']['swipe_horizontal_distance']};",
     f"constexpr int16_t kSwipeDirectionRatio = {int(interaction['touch']['swipe_direction_ratio'] * 10)};",
@@ -64,6 +95,35 @@ lines = [
     f"constexpr uint8_t kBrightnessMinimum = {interaction['behaviour']['brightness_minimum']};",
     f"constexpr uint8_t kBrightnessMaximum = {interaction['behaviour']['brightness_maximum']};",
     f"constexpr uint8_t kDefaultBrightness = {persistence['settings']['brightness']['default']};",
+    "struct SettingsRowBounds { const char* id; int16_t x; int16_t y; int16_t width; int16_t height; };",
+    f"constexpr bool kSettingsReleaseTap = {str('tap' in interaction['behaviour']['settings_release']['gestures']).lower()};",
+    f"constexpr bool kSettingsReleaseLongPress = {str('long-press' in interaction['behaviour']['settings_release']['gestures']).lower()};",
+    f"constexpr bool kSettingsReleaseNeutral = {str('release' in interaction['behaviour']['settings_release']['gestures']).lower()};",
+    "constexpr SettingsRowBounds kSettingsRowBounds[] = {",
+]
+for row in interaction["touch"]["settings_row_bounds"]:
+    lines.append(
+        f'    {{"{row["id"]}", {row["x"]}, {row["y"]}, {row["width"]}, {row["height"]}}},'
+    )
+lines.extend([
+    "};",
+    "constexpr uint8_t kSettingsInteractionRowCount = sizeof(kSettingsRowBounds) / sizeof(kSettingsRowBounds[0]);",
+    f"constexpr int16_t kCalibrationWidth = {calibration['width']};",
+    f"constexpr int16_t kCalibrationHeight = {calibration['height']};",
+    f"constexpr uint16_t kCalibrationBackground = {rgb565(calibration['background'])};",
+    f"constexpr uint16_t kCalibrationBorderColor = {rgb565(calibration['border']['color'])};",
+    f"constexpr uint8_t kCalibrationBorderWidth = {calibration['border']['width']};",
+    f"constexpr uint16_t kCalibrationMarkerColor = {rgb565(calibration['corner_markers']['color'])};",
+    f"constexpr uint8_t kCalibrationMarkerSize = {calibration['corner_markers']['size']};",
+    f"constexpr uint16_t kCalibrationGridColor = {rgb565(calibration['grid']['color'])};",
+    f"constexpr uint8_t kCalibrationGridSpacing = {calibration['grid']['spacing']};",
+    f"constexpr uint8_t kCalibrationGridWidth = {calibration['grid']['width']};",
+    f"constexpr uint16_t kCalibrationCrosshairColor = {rgb565(calibration['crosshair']['color'])};",
+    f"constexpr uint8_t kCalibrationCrosshairWidth = {calibration['crosshair']['width']};",
+    f"constexpr uint16_t kCalibrationCircleColor = {rgb565(calibration['circles']['color'])};",
+    f"constexpr uint8_t kCalibrationCircleWidth = {calibration['circles']['width']};",
+    f"constexpr uint16_t kCalibrationRadii[] = {{{', '.join(str(radius) for radius in calibration['circles']['radii'])}}};",
+    f"constexpr uint8_t kCalibrationRadiusCount = {len(calibration['circles']['radii'])};",
     f"constexpr uint8_t kFontSize1 = {typography['sizes']['1']['lvgl']};",
     f"constexpr uint8_t kFontSize2 = {typography['sizes']['2']['lvgl']};",
     f"constexpr uint8_t kFontSize3 = {typography['sizes']['3']['lvgl']};",
@@ -72,6 +132,7 @@ lines = [
     f"constexpr uint16_t kStatusTextColor = {rgb565(status['text_color'])};",
     f"constexpr int16_t kStatusTimeX = {status['time']['x']};",
     f"constexpr int16_t kStatusTimeY = {status['time']['y']};",
+    f"constexpr int16_t kStatusTimePeriodY = {status['time']['period_y']};",
     f"constexpr int16_t kStatusBatteryX = {status['battery']['x']};",
     f"constexpr int16_t kStatusBatteryY = {status['battery']['y']};",
     f"constexpr int16_t kStatusBluetoothX = {status['bluetooth']['x']};",
@@ -80,12 +141,101 @@ lines = [
     f"constexpr int16_t kStatusWifiY = {status['wifi']['y']};",
     f"constexpr int16_t kStatusCloudX = {status['cloud']['x']};",
     f"constexpr int16_t kStatusCloudY = {status['cloud']['y']};",
+    f'constexpr char kSharedStatusBannerAsset[] = "{shared_status_banner["asset_key"]}";',
+    f"constexpr int16_t kSharedStatusBannerX = {shared_status_banner['x']};",
+    f"constexpr int16_t kSharedStatusBannerY = {shared_status_banner['y']};",
+    f"constexpr int16_t kSharedStatusBluetoothX = {shared_status_banner['bluetooth']['x']};",
+    f"constexpr int16_t kSharedStatusBluetoothY = {shared_status_banner['bluetooth']['y']};",
+    f"constexpr int16_t kSharedStatusWifiX = {shared_status_banner['wifi']['x']};",
+    f"constexpr int16_t kSharedStatusWifiY = {shared_status_banner['wifi']['y']};",
+    f"constexpr int16_t kSharedStatusCloudX = {shared_status_banner['cloud']['x']};",
+    f"constexpr int16_t kSharedStatusCloudY = {shared_status_banner['cloud']['y']};",
+    f"constexpr int16_t kSharedStatusTimeX = {shared_status_banner['time']['x']};",
+    f"constexpr int16_t kSharedStatusTimeY = {shared_status_banner['time']['y']};",
+    f"constexpr uint16_t kSharedStatusTimeColor = {rgb565(shared_status_banner['time']['color'])};",
+    f"constexpr int16_t kSharedStatusBatteryX = {shared_status_banner['battery']['x']};",
+    f"constexpr int16_t kSharedStatusBatteryY = {shared_status_banner['battery']['y']};",
+    f"constexpr uint16_t kSharedStatusBatteryColor = {rgb565(shared_status_banner['battery']['color'])};",
+    f"constexpr int16_t kSettingsStatusX = {settings['status_pill']['x']};",
+    f"constexpr int16_t kSettingsStatusY = {settings['status_pill']['y']};",
+    f"constexpr int16_t kSettingsStatusWidth = {settings['status_pill']['width']};",
+    f"constexpr int16_t kSettingsStatusHeight = {settings['status_pill']['height']};",
+    f"constexpr int16_t kSettingsStatusRadius = {settings['status_pill']['radius']};",
+    f"constexpr int16_t kSettingsCloudX = {settings_cloud['x']};",
+    f"constexpr int16_t kSettingsCloudY = {settings_cloud['y']};",
+    f"constexpr int16_t kSettingsCloudGlowBlur = {settings_cloud['glow_blur']};",
+    f"constexpr int16_t kSettingsBubbleXOffset = {settings_bubble['x_offset']};",
+    f"constexpr int16_t kSettingsBubbleYOffset = {settings_bubble['y_offset']};",
+    f"constexpr int16_t kSettingsBubbleDiameter = {settings_bubble['diameter']};",
+    f"constexpr int16_t kSettingsBubbleRadius = {settings_bubble['radius']};",
+    f"constexpr uint32_t kSettingsBubbleInner = 0x{settings_bubble['gradient_inner'].replace('#', '')};",
+    f"constexpr uint32_t kSettingsBubbleOuter = 0x{settings_bubble['gradient_outer'].replace('#', '')};",
+    f"constexpr uint32_t kSettingsBubbleActiveInner = 0x{settings_bubble['active_gradient_inner'].replace('#', '')};",
+    f"constexpr uint32_t kSettingsBubbleActiveOuter = 0x{settings_bubble['active_gradient_outer'].replace('#', '')};",
+    f"constexpr int16_t kSettingsIconCenterXOffset = {settings_center['x_offset']};",
+    f"constexpr int16_t kSettingsIconCenterYOffset = {int(settings_center['y_offset'] * 2)};",
+    f"constexpr float kSettingsIconScale = {settings_center['scale']:.2f}f;",
+    f"constexpr uint32_t kSettingsIconColor = 0x{settings_center['color'].replace('#', '')};",
+    f"constexpr uint32_t kSettingsIconActiveColor = 0x{settings_center['active_color'].replace('#', '')};",
+    f"constexpr uint32_t kSettingsIconActiveInnerGlow = 0x{settings_center['active_inner_glow'].replace('#', '')};",
+    f"constexpr uint8_t kSettingsSelectedBorderOpacity = {settings_selected_overlay['border_opacity']};",
+    f"constexpr uint32_t kThemeAccentBright[] = {{{', '.join('0x' + color['accentBright'].replace('#', '') for color in theme_accents)}}};",
+    f"constexpr uint32_t kThemeAccent[] = {{{', '.join('0x' + color['accent'].replace('#', '') for color in theme_accents)}}};",
+    f"constexpr uint16_t kThemeAccent565[] = {{{', '.join(rgb565(color['accent']) for color in theme_accents)}}};",
+    f"constexpr uint8_t kThemeAccentCount = {len(theme_accents)};",
+    f"constexpr int16_t kSettingsChevronXOffset = {settings_chevron['x_offset']};",
+    f"constexpr int16_t kSettingsChevronYOffset = {settings_chevron['y_offset']};",
+    f"constexpr int16_t kSettingsChevronMidX = {settings_chevron['points'][1][0]};",
+    f"constexpr int16_t kSettingsChevronMidY = {settings_chevron['points'][1][1]};",
+    f"constexpr int16_t kSettingsChevronEndY = {settings_chevron['points'][2][1]};",
+    f"constexpr int16_t kSettingsChevronStroke = {int(settings_chevron['stroke'] + 0.5)};",
+    f"constexpr int16_t kSettingsGearX = {settings_title['gear_x']};",
+    f"constexpr int16_t kSettingsGearY = {settings_title['gear_y']};",
+    f"constexpr int16_t kSettingsGearDiameter = {settings_title['gear_diameter']};",
+    f"constexpr int16_t kSettingsTitleX = {settings_title['text_x']};",
+    f"constexpr int16_t kSettingsTitleY = {settings_title['text_y']};",
+    f"constexpr int16_t kSettingsTitleFontSize = {settings_title['font_size']};",
+    f"constexpr int16_t kSettingsRowX[] = {{{', '.join(str(row['x']) for row in settings['rows'])}}};",
+    f"constexpr int16_t kSettingsRowY[] = {{{', '.join(str(row['y']) for row in settings['rows'])}}};",
+    f"constexpr int16_t kSettingsRowWidth[] = {{{', '.join(str(row['width']) for row in settings['rows'])}}};",
+    f"constexpr int16_t kSettingsRowHeight[] = {{{', '.join(str(row['height']) for row in settings['rows'])}}};",
+    f"constexpr uint8_t kSettingsRowCount = {len(settings['rows'])};",
+    f"constexpr int16_t kSettingsSliderX = {settings_slider['x']};",
+    f"constexpr int16_t kSettingsSliderY = {settings_slider['y']};",
+    f"constexpr int16_t kSettingsSliderWidth = {settings_slider['width']};",
+    f"constexpr int16_t kSettingsSliderHeight = {settings_slider['height']};",
+    f"constexpr int16_t kSettingsSliderRadius = {settings_slider['radius']};",
+    f"constexpr int16_t kSettingsSliderKnobRadius = {settings_slider['knob_radius']};",
+    f"constexpr uint16_t kSettingsSliderTrack = {rgb565(settings_slider['track'])};",
+    f"constexpr uint16_t kSettingsSliderFill = {rgb565(settings_slider['fill'])};",
+    f"constexpr uint16_t kSettingsSliderFillStart = {rgb565(settings_slider['fill_start'])};",
+    f"constexpr uint16_t kSettingsSliderFillEnd = {rgb565(settings_slider['fill_end'])};",
+    f"constexpr uint16_t kSettingsSliderAccent = {rgb565(settings_slider['accent'])};",
+    f"constexpr int16_t kSettingsBrightnessLabelX = {settings['brightness_label']['x']};",
+    f"constexpr int16_t kSettingsBrightnessLabelY = {settings['brightness_label']['y']};",
+    f"constexpr int16_t kSettingsBrightnessLabelFontSize = {settings['brightness_label']['font_size']};",
     "inline bool statusBarVisible(const char* screenId) {",
     "  return " + " || ".join(f'strcmp(screenId, {q(screen_id)}) == 0' for screen_id in status["visible_screens"]) + ";",
     "}",
     f"constexpr uint16_t kHomeSpotifyAssetScale = {rendering['home']['spotify_asset_scale']};",
     f"constexpr int16_t kHomeSpotifyAssetWidth = {rendering['home']['spotify_asset_width']};",
     f"constexpr int16_t kHomeSpotifyAssetHeight = {rendering['home']['spotify_asset_height']};",
+    f"constexpr uint16_t kHomeGlassFill = {rgb565(rendering['home']['glass_button']['fill'])};",
+    f"constexpr uint8_t kHomeGlassFillOpacity = {rendering['home']['glass_button']['fill_opa']};",
+    f"constexpr uint16_t kHomeGlassBorder = {rgb565(rendering['home']['glass_button']['border'])};",
+    f"constexpr uint8_t kHomeGlassBorderOpacity = {rendering['home']['glass_button']['border_opa']};",
+    f"constexpr uint16_t kHomeGlassLightFill = {rgb565(rendering['home']['glass_button']['light_fill'])};",
+    f"constexpr uint8_t kHomeGlassLightFillOpacity = {rendering['home']['glass_button']['light_fill_opa']};",
+    f"constexpr uint16_t kHomeGlassLightBorder = {rgb565(rendering['home']['glass_button']['light_border'])};",
+    f"constexpr uint8_t kHomeGlassLightBorderOpacity = {rendering['home']['glass_button']['light_border_opa']};",
+    f"constexpr uint16_t kHomeGlassLightInset = {rgb565(rendering['home']['glass_button']['light_inset'])};",
+    f"constexpr uint8_t kHomeGlassLightInsetOpacity = {rendering['home']['glass_button']['light_inset_opa']};",
+    f"constexpr uint16_t kHomeLightNeutralIcon = {rgb565(rendering['home']['glass_button']['light_neutral_icon'])};",
+    f"constexpr uint8_t kHomeGlassBorderWidth = {rendering['home']['glass_button']['border_width']};",
+    f"constexpr uint8_t kHomeGlassInsetOpacity = {rendering['home']['glass_button']['inset_opa']};",
+    f"constexpr uint8_t kHomeGlassPressedShadowWidth = {rendering['home']['glass_button']['pressed_shadow_width']};",
+    f"constexpr uint8_t kHomeGlassPressedShadowOpacity = {rendering['home']['glass_button']['pressed_shadow_opa']};",
+    f"constexpr uint8_t kHomeInnerHighlightOpacity = {rendering['home']['glass_button']['inner_highlight_opa']};",
     f"constexpr int16_t kUsbIconWidth = {usb['width']};",
     f"constexpr int16_t kUsbIconHeight = {usb['height']};",
     f"constexpr int16_t kUsbIconStroke = {usb['stroke']};",
@@ -140,7 +290,7 @@ lines = [
     "  component.x = x; component.y = y; component.width = width; component.height = height; component.value = value; component.maximum = 100; component.color = SduiParser::rgb565(color);",
     "}",
     "inline void appendFallbackScreens(SduiDocument& document, const SduiScreen* spotifyOverride) {",
-]
+])
 
 for screen in document["screens"]:
     if screen["id"] == "spotify-player":
@@ -169,3 +319,90 @@ lines.extend(["  }", "}", "}  // namespace generated_ui", "}  // namespace leopo
 generated = "\n".join(lines)
 if not target.exists() or target.read_text(encoding="utf-8") != generated:
     target.write_text(generated, encoding="utf-8")
+
+home_asset = (root / "shared" / "assets" / "home-controls-outward-10-466.bin").read_bytes()
+home_asset_lines = [
+    "#pragma once",
+    "#ifndef LEOPOLD_WASM",
+    "#include <Arduino.h>",
+    "#endif",
+    "",
+    "namespace leopold::sky {",
+    "const uint8_t kHomeAssetData[] PROGMEM = {",
+]
+for offset in range(0, len(home_asset), 16):
+    home_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in home_asset[offset : offset + 16]) + ",")
+home_asset_lines.extend([
+    "};",
+    "constexpr size_t kHomeAssetDataSize = sizeof(kHomeAssetData);",
+    "}  // namespace leopold::sky",
+    "",
+])
+home_asset_generated = "\n".join(home_asset_lines)
+if not home_asset_target.exists() or home_asset_target.read_text(encoding="utf-8") != home_asset_generated:
+    home_asset_target.write_text(home_asset_generated, encoding="utf-8")
+
+settings_asset = (root / "shared" / "assets" / "settings-neutral-466.bin").read_bytes()
+settings_asset_lines = [
+    "#pragma once",
+    "#ifndef LEOPOLD_WASM",
+    "#include <Arduino.h>",
+    "#endif",
+    "",
+    "namespace leopold::sky {",
+    "const uint8_t kSettingsAssetData[] PROGMEM = {",
+]
+for offset in range(0, len(settings_asset), 16):
+    settings_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in settings_asset[offset : offset + 16]) + ",")
+settings_asset_lines.extend([
+    "};",
+    "constexpr size_t kSettingsAssetDataSize = sizeof(kSettingsAssetData);",
+])
+for name, file in (
+    ("kSettingsWallpaperAssetData", "settings-gears-wallpaper-466.bin"),
+    ("kSettingsGearsAssetData", "settings-glass-gears-v1-466.bin"),
+    ("kSettingsGearsRainbowAssetData", "settings-gears-rainbow-466.bin"),
+    ("kSettingsStatusBluetoothActiveData", "settings-glass-status-bluetooth-active-22x22-v1.bin"),
+    ("kSettingsStatusWifiActiveData", "settings-glass-status-wifi-active-22x22-v1.bin"),
+    ("kSettingsStatusCloudActiveData", "settings-glass-status-cloud-active-24x24-v1.bin"),
+    ("kSettingsWifiPressedIconMaskData", "settings-glass-wifi-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsWifiPressedChevronMaskData", "settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsBluetoothPressedIconMaskData", "settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsBluetoothPressedChevronMaskData", "settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsDisplayPressedIconMaskData", "settings-glass-display-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsDisplayPressedChevronMaskData", "settings-glass-display-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsSoundPressedIconMaskData", "settings-glass-sound-pressed-icon-mask-61x56-v1.bin"),
+    ("kSettingsSoundPressedChevronMaskData", "settings-glass-sound-pressed-chevron-mask-39x56-v1.bin"),
+    ("kSettingsPressedBorderMaskData", "settings-glass-pressed-border-mask-322x56-v1.bin"),
+):
+    payload = (root / "shared" / "assets" / file).read_bytes()
+    settings_asset_lines.append(f"const uint8_t {name}[] PROGMEM = {{")
+    for offset in range(0, len(payload), 16):
+        settings_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in payload[offset : offset + 16]) + ",")
+    settings_asset_lines.extend(["};", f"constexpr size_t {name}Size = sizeof({name});"])
+settings_asset_lines.extend(["}  // namespace leopold::sky", ""])
+settings_asset_generated = "\n".join(settings_asset_lines)
+if not settings_asset_target.exists() or settings_asset_target.read_text(encoding="utf-8") != settings_asset_generated:
+    settings_asset_target.write_text(settings_asset_generated, encoding="utf-8")
+
+display_asset = (root / "shared" / "assets" / "display-reference-466.bin").read_bytes()
+display_asset_lines = [
+    "#pragma once",
+    "#ifndef LEOPOLD_WASM",
+    "#include <Arduino.h>",
+    "#endif",
+    "",
+    "namespace leopold::sky {",
+    "const uint8_t kDisplayAssetData[] PROGMEM = {",
+]
+for offset in range(0, len(display_asset), 16):
+    display_asset_lines.append("  " + ", ".join(f"0x{value:02X}" for value in display_asset[offset : offset + 16]) + ",")
+display_asset_lines.extend([
+    "};",
+    "constexpr size_t kDisplayAssetDataSize = sizeof(kDisplayAssetData);",
+    "}  // namespace leopold::sky",
+    "",
+])
+display_asset_generated = "\n".join(display_asset_lines)
+if not display_asset_target.exists() or display_asset_target.read_text(encoding="utf-8") != display_asset_generated:
+    display_asset_target.write_text(display_asset_generated, encoding="utf-8")

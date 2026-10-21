@@ -1,0 +1,74 @@
+{
+  "state": "home",
+  "reference": "shared/assets/home-reference-466.png",
+  "capture": "artifacts/parity/home-capture.png",
+  "dimensions": [
+    466,
+    466
+  ],
+  "profile": {
+    "capture": "raw canvas PNG from canvas.toDataURL('image/png')",
+    "allowed_color_delta": 0,
+    "maximum_mean_error": 0,
+    "maximum_pixels_over_delta_percent": 0
+  },
+  "dynamic_masks": [
+    {
+      "name": "live-clock",
+      "reason": "runtime clock is the only permitted visual difference",
+      "x": 211,
+      "y": 219,
+      "width": 56,
+      "height": 22
+    }
+  ],
+  "overall": {
+    "compared_pixels": 215924,
+    "mean_error": 0.0,
+    "maximum_color_delta": 0,
+    "pixels_over_delta": 0,
+    "pixels_over_delta_percent": 0.0,
+    "failure_bounding_box": null,
+    "passed": true
+  },
+  "regions": {
+    "full-static-frame": {
+      "compared_pixels": 215924,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "status-strip": {
+      "compared_pixels": 9256,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "primary-controls": {
+      "compared_pixels": 110912,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    },
+    "settings-button": {
+      "compared_pixels": 3025,
+      "mean_error": 0.0,
+      "maximum_color_delta": 0,
+      "pixels_over_delta": 0,
+      "pixels_over_delta_percent": 0.0,
+      "failure_bounding_box": null,
+      "passed": true
+    }
+  },
+  "difference": "artifacts/parity/home-difference.png",
+  "passed": true
+}

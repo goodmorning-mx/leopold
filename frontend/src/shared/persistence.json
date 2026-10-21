@@ -2,10 +2,19 @@
   "schema_version": 1,
   "namespace": "display",
   "settings": {
-    "brightness": {"key": "brightness", "type": "integer", "default": 70, "minimum": 5, "maximum": 100},
+    "brightness": {"key": "brightness", "type": "integer", "default": 100, "minimum": 5, "maximum": 100},
     "background_mode": {"key": "background_mode", "type": "integer", "default": 0, "minimum": 0, "maximum": 2},
     "spanish_language": {"key": "spanish", "type": "boolean", "default": false},
     "clock_24_hour": {"key": "clock_24", "type": "boolean", "default": false},
-    "weather_fahrenheit": {"key": "weather_f", "type": "boolean", "default": false}
+    "measurement_system": {"key": "measurement_system", "type": "enum", "default": "metric", "values": ["imperial", "metric"], "migrate_from": {"weather_f": {"true": "imperial", "false": "metric"}}},
+    "weather_fahrenheit": {"key": "weather_f", "type": "boolean", "default": false, "compatibility_only": true},
+    "background_art": {"key": "background_art", "type": "integer", "default": 0, "minimum": 0, "maximum": 2},
+    "appearance_dark": {"key": "appearance_dark", "type": "boolean", "default": true},
+    "accent_color": {"key": "accent_color", "type": "enum", "default": "blue", "values": ["red", "orange", "yellow", "green", "blue", "indigo", "violet"]},
+    "clock_face": {"key": "clock_face", "type": "integer", "default": 0, "minimum": 0, "maximum": 4},
+    "clock_background": {"key": "clock_background", "type": "integer", "default": -1, "minimum": -1, "maximum": 2},
+    "clock_show_weather": {"key": "clock_show_weather", "type": "boolean", "default": false},
+    "weather_location_country": {"key": "weather_location_country", "type": "string", "default": "", "values": ["US", "MX"]},
+    "weather_location_confirmed": {"key": "weather_location_confirmed", "type": "string", "default": ""}
   }
 }

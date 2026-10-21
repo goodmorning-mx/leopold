@@ -6,6 +6,53 @@ come from `shared/rendering.json`; its interaction constants, persistence
 defaults, typography mapping, and asset manifest come from the other files in
 `shared/`.
 
+## Exact-reference asset mode
+
+Home and Settings use the exact-reference asset mode declared in
+`shared/reference-manifest.json`. The immutable originals live in
+`shared/references/`; `scripts/generate_exact_reference_asset.py` creates the
+canonical 466×466 lossless PNGs with uniform contain scaling and no crop, plus
+RGB565A8 device derivatives. The browser renders the canonical PNGs directly.
+Hit targets, navigation, the brightness slider, persistence, and the live clock
+remain active above the bitmap layer.
+
+Regenerate and verify the assets with the pinned tooling dependency:
+
+```bash
+python3 -m pip install -r scripts/requirements.txt
+python3 scripts/generate_exact_reference_asset.py
+python3 scripts/generate_exact_reference_asset.py --check
+python3 scripts/check_settings_overlay_generation.py
+python3 scripts/sync_shared_assets.py
+python3 scripts/verify_shared_outputs.py
+```
+
+For pixel acceptance, load the simulator with `?reference=home&capture=1` or
+`?reference=settings&capture=1`, save the raw `data-framebuffer-png` value from
+the canvas, and run:
+
+```bash
+python3 scripts/compare_reference_capture.py home <home-capture.png> <report-directory>
+python3 scripts/compare_reference_capture.py settings <settings-capture.png> <report-directory>
+```
+
+The Settings profile is `shared/settings-acceptance-profile.json`, including
+explicit seam bounds and allowances. Dynamic masks include live status and
+brightness regions; they are not restricted to the clock. A normal simulator run must preserve the circular panel
+mask; capture mode exposes the square framebuffer only for measurement.
+
+## Reusable Home controls and status banner
+
+Use `docs/parity/home-screen-button-sop.md` when editing circular Home controls
+and `docs/parity/shared-status-banner-sop.md` when editing the shared pill. The
+Settings pill is the gold standard: the same complete 181 × 35 shell belongs on
+all pages except Home and Clock. Keep the entire lower edge visible. Home uses
+its separate centered status pill; Clock keeps its own screen treatment. Keep
+both controls and banner in the shared rendering/asset contract so the browser
+simulator and device renderer consume the same visual rules. The personal
+`leopold-home-controls` and `leopold-status-banner` skills provide focused
+workflows for these two project SOPs.
+
 ## Change workflow
 
 1. Edit the committed files in `shared/`.
@@ -13,17 +60,34 @@ defaults, typography mapping, and asset manifest come from the other files in
 3. Run `python3 scripts/sync_shared_assets.py` and
    `python3 scripts/verify_shared_outputs.py`.
 4. Run `cd frontend && npm run typecheck && npm run build`.
-5. Run the firmware build with the repository-local PlatformIO environment:
-   `device/.tools/platformio-venv/bin/pio run`.
+5. Treat the successful GitHub Actions firmware artifact as the only supported
+   firmware input. Use `scripts/flash_firmware.py` only after explicit hardware
+   authorization; local firmware compilation is not part of this workflow.
 6. Open `/simulator` and exercise every state in
    `shared/reference-states.json`.
-7. Capture a 466×466 reference image for each state when visual changes are
-   intentional. Keep references and their review notes in GitHub.
+7. For Settings, use `scripts/compare_settings_component_acceptance.py` and the
+   approved component profile, plus full-screen visual inspection. Preserve the
+   legacy full-row comparator as diagnostic; never loosen limits to hide errors.
+   The test fixtures contain a hash-recorded good simulator composition and a
+   real historical bad Wi-Fi seam. These are regression inputs, not new approved
+   design references or physical evidence.
 
-The browser may use a renderer-specific implementation for Canvas and the
-firmware may use LVGL, but neither may maintain a second screen definition.
-Renderer-specific code is limited to drawing primitives, dynamic state adapters,
-and hardware/browser integrations.
+Settings acceptance must use the same native LVGL renderer compiled to WASM
+and ESP32. A separate TypeScript/Canvas implementation is not sufficient.
+Platform-specific adapters remain limited to runtime state and hardware/browser
+integration. Compare themes, DPI, defaults, clipping, and pixel conversion too.
+
+Settings status RGBA inputs live in `shared/settings-overlay-sources/` with
+checksums in `shared/settings-overlay-sources.json`. They preserve the accepted
+bounded component alpha and cover pixels byte for byte. The generator reads
+these independent inputs, never its own generated outputs. The isolated
+generation check runs twice and fails if either run differs from committed
+assets; CI and release builds enforce it before synchronization/packaging.
+Row-mask RGBA pixels are independently derived from approved references and
+checked against immutable encoding checkpoints in the same source manifest.
+Only after pixel equality is proved are the checkpoint's exact PNG bytes
+emitted. This avoids macOS/Linux zlib encoding differences without relaxing
+byte checks or allowing a checkpoint to replace the reference-derived design.
 
 ## Pixel-accuracy definition
 

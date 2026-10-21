@@ -20,6 +20,8 @@
 #include "weather_client.h"
 #include "generated_firmware_ui.h"
 #include "wifi_portal.h"
+#include "wifi_scan.h"
+#include "settings_contact.h"
 #include "sky_assets.h"
 
 namespace {
@@ -125,11 +127,12 @@ LocalPanel localPanel = LocalPanel::kNone;
 WifiNetworkChoice wifiNetworks[kVisibleWifiNetworks];
 uint8_t wifiNetworkCount = 0;
 String selectedWifiName;
+String failedWifiName;
 String selectedWifiPassword;
 int8_t wifiKeyGroup = -1;
 bool wifiUppercase = false;
 uint32_t wifiSelectionStartedAt = 0;
-bool wifiScanRunning = false;
+WifiScan wifiScan;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
 char usbCommand[160] = {};
@@ -141,7 +144,7 @@ struct UsbAssetSpec {
 };
 
 constexpr UsbAssetSpec kUsbAssetSpecs[] = {
-    {"sky_home.bin", 466u * 466u * 3u},
+    {"home-controls-outward-10-466.bin", 466u * 466u * 3u},
     {"sky_flower.bin", 466u * 466u * 3u},
     {"sky_chevron.bin", 466u * 466u * 3u},
     {"icon_clock.bin", 80u * 80u * 3u},
@@ -235,6 +238,13 @@ void beginBluetoothScan() {
   Serial.println(started ? "BLE scan started" : "BLE scan could not start");
 }
 
+bool isConnectivityBack(const TouchPoint& point) {
+  return point.x >= generated_ui::kConnectivityBackX &&
+      point.x < generated_ui::kConnectivityBackX + generated_ui::kConnectivityBackWidth &&
+      point.y >= generated_ui::kConnectivityBackY &&
+      point.y < generated_ui::kConnectivityBackY + generated_ui::kConnectivityBackHeight;
+}
+
 void renderWifiNetworks(const char* message = nullptr) {
   const char* names[kVisibleWifiNetworks] = {};
   int32_t signals[kVisibleWifiNetworks] = {};
@@ -245,17 +255,16 @@ void renderWifiNetworks(const char* message = nullptr) {
     secured[index] = wifiNetworks[index].secured;
   }
   screen.showWifiNetworks(
-      names, signals, secured, wifiNetworkCount, wifiScanRunning, message);
+      names, signals, secured, wifiNetworkCount, wifiScan.searching(), message);
 }
 
 void beginWifiScan() {
-  wifi.prepareForScan();
-  WiFi.scanDelete();
+  if (wifiScan.busy()) return;
   wifiNetworkCount = 0;
-  wifiScanRunning = WiFi.scanNetworks(true, true) == WIFI_SCAN_RUNNING;
+  wifiScan.begin();
   localPanel = LocalPanel::kWifiNetworks;
-  renderWifiNetworks(wifiScanRunning ? nullptr : "No se pudo iniciar la busqueda");
-  Serial.println("On-device Wi-Fi scan started");
+  renderWifiNetworks();
+  Serial.println("On-device Wi-Fi scan requested");
 }
 
 void renderWifiPassword() {
@@ -542,6 +551,68 @@ void updateAdditionalOptionsLabels() {
   }
 }
 
+void buildDeviceDisplayMenu(SduiScreen& target) {
+  strlcpy(target.screenId, "device-additional-options", sizeof(target.screenId));
+  target.componentCount = 0;
+  memset(target.components, 0, sizeof(target.components));
+  addText(target, "submenu-title", screen.spanishLanguage() ? "PANTALLA" : "DISPLAY", 196, 91, 2, "#FFFFFF", TextAlign::kLeft);
+  addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
+  addButton(target, "display-row-background", screen.spanishLanguage() ? "Fondo" : "Background", 58, 139, 350, 54, "#D5E3FA");
+  addButton(target, "display-row-appearance", screen.spanishLanguage() ? "Apariencia" : "Appearance", 58, 201, 350, 54, "#D5E3FA");
+  addButton(target, "display-row-clock", screen.spanishLanguage() ? "Reloj" : "Clock", 58, 263, 350, 54, "#D5E3FA");
+  target.components[2].icon[0] = '\0';
+  target.components[3].icon[0] = '\0';
+  target.components[4].icon[0] = '\0';
+}
+
+void buildDeviceClockMenu(SduiScreen& target) {
+  static const char* names[] = {"Minimal", "Classic", "Gold", "Digital", "Segment"};
+  target.componentCount = 0;
+  memset(target.components, 0, sizeof(target.components));
+  strlcpy(target.screenId, "device-clock-options", sizeof(target.screenId));
+  addText(target, "submenu-title", screen.spanishLanguage() ? "RELOJ" : "CLOCK", 196, 91, 2, "#FFFFFF", TextAlign::kLeft);
+  addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
+  addText(target, "clock-face-label", screen.spanishLanguage() ? "Caratula" : "Face selection", 73, 151, 1, "#FFFFFF", TextAlign::kLeft);
+  for (uint8_t index = 0; index < 5; ++index) {
+    const uint8_t row = index < 3 ? 0 : 1;
+    const uint8_t column = row == 0 ? index : index - 3;
+    const int16_t x = row == 0 ? 74 + column * 100 : 124 + column * 100;
+    const int16_t y = row == 0 ? 174 : 228;
+    char id[24] = {};
+    char label[32] = {};
+    snprintf(id, sizeof(id), "clock-face-%u", index);
+    snprintf(label, sizeof(label), "%s%s", screen.clockFace() == index ? "[x] " : "", names[index]);
+    addButton(target, id, label, x, y, 96, 46, "#FFFFFF");
+    snprintf(target.components[target.componentCount - 1].icon,
+             sizeof(target.components[target.componentCount - 1].icon),
+             "clkface-%u", index);
+  }
+  addText(target, "clock-face-hint", screen.spanishLanguage() ? "La hora, fecha y bateria se actualizan en vivo" : "Time, date and battery update live", 73, 300, 1, "#A7A7A7", TextAlign::kLeft);
+}
+
+void buildDeviceAppearanceMenu(SduiScreen& target) {
+  static const char* names[] = {"Red", "Orange", "Yellow", "Green", "Blue", "Indigo", "Violet"};
+  static const char* colors[] = {"#D92D3A", "#C65313", "#8A6800", "#16834A", "#00739B", "#514CC2", "#9A45BD"};
+  const uint8_t selected = screen.accentIndex();
+  strlcpy(target.screenId, "device-appearance-options", sizeof(target.screenId));
+  target.componentCount = 0;
+  memset(target.components, 0, sizeof(target.components));
+  addText(target, "submenu-title", screen.spanishLanguage() ? "APARIENCIA" : "APPEARANCE", 196, 91, 2, "#FFFFFF", TextAlign::kLeft);
+  addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
+  addText(target, "display-appearance-hint", screen.spanishLanguage() ? "Color de acento: toque una opcion" : "Accent color: tap a named option", 73, 145, 1, "#F4F7FC", TextAlign::kLeft);
+  for (uint8_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
+    const uint8_t row = index < 4 ? 0 : 1;
+    const uint8_t column = row == 0 ? index : index - 4;
+    const int16_t width = row == 0 ? 78 : 104;
+    const int16_t x = row == 0 ? 64 + column * 82 : 64 + column * 108;
+    char id[32] = {};
+    char label[48] = {};
+    snprintf(id, sizeof(id), "display-accent-%s", index == 0 ? "red" : index == 1 ? "orange" : index == 2 ? "yellow" : index == 3 ? "green" : index == 4 ? "blue" : index == 5 ? "indigo" : "violet");
+    snprintf(label, sizeof(label), "%s%s", selected == index ? "[x] " : "", names[index]);
+    addButton(target, id, label, x, 182 + row * 36, width, 30, colors[index]);
+  }
+}
+
 void syncControlCenterScreen() {
   memset(&preservedSpotify, 0, sizeof(preservedSpotify));
   memset(&preservedSpotifyActions, 0, sizeof(preservedSpotifyActions));
@@ -618,9 +689,22 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
+  const bool wasDisplayMenu = strcmp(previousScreenId, "device-additional-options") == 0;
+  const bool wasAppearanceMenu = strcmp(previousScreenId, "device-appearance-options") == 0;
+  const bool wasClockMenu = strcmp(previousScreenId, "device-clock-options") == 0;
   syncControlCenterScreen();
 
-  if (previousScreenId[0] != '\0') {
+  if (wasDisplayMenu || wasAppearanceMenu || wasClockMenu) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, "device-additional-options") == 0) {
+        currentUi.activeScreen = index;
+        buildDeviceDisplayMenu(currentUi.active());
+        if (wasAppearanceMenu) buildDeviceAppearanceMenu(currentUi.active());
+        else if (wasClockMenu) buildDeviceClockMenu(currentUi.active());
+        break;
+      }
+    }
+  } else if (previousScreenId[0] != '\0') {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
       if (strcmp(currentUi.screens[index].screenId, previousScreenId) == 0) {
         currentUi.activeScreen = index;
@@ -870,6 +954,55 @@ bool isComputerControl(const char* componentId) {
       strcmp(componentId, "computer-screenshot") == 0;
 }
 
+const SduiComponent* findSettingsButtonAt(
+    const SduiScreen& screen,
+    int16_t x,
+    int16_t y) {
+  if (strcmp(screen.screenId, "device-control-center") != 0) return nullptr;
+  for (uint8_t index = 0; index < generated_ui::kSettingsInteractionRowCount; ++index) {
+    const generated_ui::SettingsRowBounds& bounds = generated_ui::kSettingsRowBounds[index];
+    if (x < bounds.x || x >= bounds.x + bounds.width ||
+        y < bounds.y || y >= bounds.y + bounds.height) continue;
+    for (uint8_t componentIndex = 0;
+         componentIndex < screen.componentCount;
+         ++componentIndex) {
+      const SduiComponent& component = screen.components[componentIndex];
+      if (component.type == ComponentType::kButton &&
+          strcmp(component.id, bounds.id) == 0) return &component;
+    }
+  }
+  return nullptr;
+}
+
+bool openLocalScreen(const char* componentId);
+
+bool handleSettingsTap(const SduiComponent& button, uint32_t now) {
+  if (strcmp(button.id, "settings-wifi") == 0) {
+    localPanel = LocalPanel::kWifi;
+    showLocalConnectivityPanel(now);
+    Serial.println("Wi-Fi details opened");
+    return true;
+  }
+  if (strcmp(button.id, "settings-bluetooth") == 0) {
+    localPanel = LocalPanel::kBluetooth;
+    showLocalConnectivityPanel(now);
+    Serial.println("Bluetooth details opened");
+    return true;
+  }
+  if (strcmp(button.id, "settings-display") == 0) {
+    if (openLocalScreen("open-additional-options")) {
+      buildDeviceDisplayMenu(currentUi.active());
+      screen.renderSduiScreen(currentUi);
+    }
+    return true;
+  }
+  if (strcmp(button.id, "settings-sound") == 0) {
+    Serial.printf("Settings row has no destination: %s\n", button.id);
+    return true;
+  }
+  return false;
+}
+
 void sendComputerControlOverUsb(const char* componentId) {
   if (!isComputerControl(componentId)) return;
   Serial.printf("LEOPOLD_CMD:%s\n", componentId);
@@ -883,6 +1016,23 @@ const SduiComponent* firstButton() {
     }
   }
   return nullptr;
+}
+
+void syncDisplayIndicators() {
+  char timeText[9] = {};
+  telemetry.formattedTime(timeText);
+  screen.drawIndicators(
+      wifi.connected(), cloudConnected, bluetooth.enabled(), bluetooth.connected(),
+      telemetry.batteryPercent(), timeText);
+  for (uint8_t screenIndex = 0; screenIndex < currentUi.screenCount; ++screenIndex) {
+    SduiScreen& liveScreen = currentUi.screens[screenIndex];
+    for (uint8_t componentIndex = 0; componentIndex < liveScreen.componentCount; ++componentIndex) {
+      SduiComponent& component = liveScreen.components[componentIndex];
+      if (strcmp(component.id, "sky-time") == 0) {
+        strlcpy(component.text, timeText, sizeof(component.text));
+      }
+    }
+  }
 }
 
 bool openLocalScreen(const char* componentId) {
@@ -907,6 +1057,7 @@ bool openLocalScreen(const char* componentId) {
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     if (strcmp(currentUi.screens[index].screenId, screenId) == 0) {
       currentUi.activeScreen = index;
+      syncDisplayIndicators();
       screen.renderSduiScreen(currentUi);
       if (strcmp(screenId, "sky-weather") == 0) {
         weather.render(currentUi);
@@ -924,11 +1075,52 @@ void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
+  static SettingsContact settingsContact;
+  static uint32_t settingsContactId = 0;
+  const char* releasedSettingsRow = nullptr;
+  if (hasUi && localPanel == LocalPanel::kNone &&
+      strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+    const TouchPoint sample = touch.lastPoint();
+    const SduiComponent* row = findSettingsButtonAt(currentUi.active(), sample.x, sample.y);
+    const char* rowId = row ? row->id : nullptr;
+    if (touch.contactDown()) {
+      if (settingsContactId != touch.contactId()) {
+        settingsContactId = touch.contactId();
+        settingsContact.begin(rowId);
+      }
+      settingsContact.move(rowId);
+      if (screen.setPressedButton(settingsContact.selected())) screen.renderSduiScreen(currentUi);
+    } else if (hasGesture) {
+      releasedSettingsRow = settingsContact.release(rowId,
+          (gesture == TouchGesture::kTap && generated_ui::kSettingsReleaseTap) ||
+          (gesture == TouchGesture::kLongPress && generated_ui::kSettingsReleaseLongPress) ||
+          (gesture == TouchGesture::kRelease && generated_ui::kSettingsReleaseNeutral));
+    }
+  }
+  if (hasGesture && (gesture == TouchGesture::kSwipeUp ||
+      gesture == TouchGesture::kSwipeLeft || gesture == TouchGesture::kSwipeRight) &&
+      localPanel != LocalPanel::kNone) {
+    wifi.cancelSelection(now);
+    wifiScan.cancel();
+    selectedWifiPassword = String();
+    localPanel = LocalPanel::kNone;
+  }
   if (hasGesture && gesture == TouchGesture::kDrag && hasUi &&
-      localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
-    const SduiComponent* pressed =
-        findButtonAt(currentUi.active(), point.x, point.y);
-    if (pressed != nullptr && screen.setPressedButton(pressed->id)) {
+      localPanel == LocalPanel::kNone && capturedSlider == nullptr &&
+      strcmp(currentUi.active().screenId, "device-control-center") != 0) {
+    const SduiComponent* pressed = findButtonAt(currentUi.active(), point.x, point.y);
+    if (touch.traceEnabled()) {
+      static uint32_t lastHitTraceAt = 0;
+      if (now - lastHitTraceAt >= 250) {
+        Serial.printf("TOUCH_TRACE hit screen=%s x=%u y=%u button=%s\n",
+                      currentUi.active().screenId, point.x, point.y,
+                      pressed == nullptr ? "none" : pressed->id);
+        lastHitTraceAt = now;
+      }
+    }
+    const char* pressedId = pressed == nullptr ? nullptr : pressed->id;
+    if (screen.setPressedButton(pressedId)) {
+      if (touch.traceEnabled()) Serial.printf("TOUCH_TRACE render pressed=%s\n", pressedId == nullptr ? "none" : pressedId);
       screen.renderSduiScreen(currentUi);
     }
   } else if (hasGesture && gesture != TouchGesture::kDrag &&
@@ -951,7 +1143,7 @@ void processInput(uint32_t now) {
     Serial.println("Clock format toggled");
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kBluetoothDevices) {
-    if (point.x <= 100 && point.y <= 92) {
+    if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kBluetooth;
       showLocalConnectivityPanel(now);
     } else if (point.y >= 400) {
@@ -968,19 +1160,25 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kWifiNetworks) {
-    if (point.x <= 100 && point.y <= 92) {
+    if (isConnectivityBack(point)) {
+      wifi.cancelSelection(now);
+      wifiScan.cancel();
       localPanel = LocalPanel::kWifi;
       showLocalConnectivityPanel(now);
     } else if (point.y >= 400) {
       beginWifiScan();
-    } else if (point.y >= 105 && point.y < 400) {
+    } else if (point.x >= 34 && point.x <= 432 && point.y >= 111 && point.y < 396) {
       const uint8_t index = (point.y - 111) / 57;
-      if (index < wifiNetworkCount) {
+      if ((point.y - 111) % 57 < 49 && index < wifiNetworkCount) {
         selectedWifiName = wifiNetworks[index].name;
         selectedWifiPassword = String();
         wifiKeyGroup = -1;
         wifiUppercase = false;
-        if (wifiNetworks[index].secured) {
+        if (selectedWifiName != failedWifiName && wifi.connectSavedNetwork(selectedWifiName.c_str(), now)) {
+          localPanel = LocalPanel::kWifiConnecting;
+          wifiSelectionStartedAt = now;
+          screen.showWifiConnecting(selectedWifiName.c_str(), "Connecting to saved network...");
+        } else if (wifiNetworks[index].secured) {
           localPanel = LocalPanel::kWifiPassword;
           renderWifiPassword();
         } else {
@@ -995,7 +1193,7 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiPassword) {
-    if (point.x <= 88 && point.y <= 76) {
+    if (isConnectivityBack(point)) {
       if (wifiKeyGroup >= 0) {
         wifiKeyGroup = -1;
         renderWifiPassword();
@@ -1003,7 +1201,9 @@ void processInput(uint32_t now) {
         localPanel = LocalPanel::kWifiNetworks;
         renderWifiNetworks();
       }
-    } else if (point.y >= 75 && point.y <= 151 && point.x >= 340) {
+    } else if (point.y >= generated_ui::kWifiPasswordFieldY &&
+               point.y < generated_ui::kWifiPasswordFieldY + generated_ui::kWifiPasswordFieldHeight &&
+               point.x >= 340 && point.x < generated_ui::kWifiPasswordFieldX + generated_ui::kWifiPasswordFieldWidth) {
       if (!selectedWifiPassword.isEmpty()) {
         selectedWifiPassword.remove(selectedWifiPassword.length() - 1);
         renderWifiPassword();
@@ -1046,16 +1246,17 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiConnecting) {
-    if (point.x <= 100 && point.y <= 92) {
-      WiFi.disconnect(false, false);
+    if (isConnectivityBack(point)) {
+      wifi.cancelSelection(now);
       localPanel = LocalPanel::kWifiNetworks;
       renderWifiNetworks("Conexion cancelada");
       Serial.println("On-device Wi-Fi connection cancelled");
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel != LocalPanel::kNone) {
-    if (point.x <= 116 && point.y <= 108) {
+    if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kNone;
+      syncDisplayIndicators();
       screen.renderSduiScreen(currentUi);
       lastIndicatorAt = 0;
       Serial.println("Connectivity details closed");
@@ -1065,6 +1266,7 @@ void processInput(uint32_t now) {
           wifi.reconnectNow(now);
         } else {
           beginWifiScan();
+          return; // Keep the scan list; do not repaint the details panel over it.
         }
       } else if (localPanel == LocalPanel::kCloud && wifi.connected()) {
         cloudConnected = false;
@@ -1081,39 +1283,54 @@ void processInput(uint32_t now) {
                point.x <= 88 && point.y <= 94))) {
     openLocalScreen("open-home");
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
-             ((point.x >= 72 && point.x <= 170 &&
-               point.y >= 120 && point.y <= 218) ||
-              (point.x >= 180 && point.x <= 278 &&
-               point.y >= 120 && point.y <= 218) ||
-              (point.x >= 124 && point.x <= 222 &&
-               point.y >= 224 && point.y <= 322))) {
-    localPanel = point.y >= 224
-        ? LocalPanel::kCloud
-        : (point.x >= 180 ? LocalPanel::kBluetooth : LocalPanel::kWifi);
+             localPanel == LocalPanel::kNone &&
+             strcmp(currentUi.active().screenId, "sky-home") == 0 &&
+             point.y >= 205 && point.y <= 253 &&
+             point.x >= 167 && point.x <= 300) {
+    if (point.x < 193) localPanel = LocalPanel::kBluetooth;
+    else if (point.x < 224) localPanel = LocalPanel::kWifi;
+    else localPanel = LocalPanel::kCloud;
     showLocalConnectivityPanel(now);
-    Serial.println(
-        localPanel == LocalPanel::kWifi
-            ? "Wi-Fi details opened"
-            : (localPanel == LocalPanel::kBluetooth
-                   ? "Bluetooth details opened"
-                   : "Cloud details opened"));
+    Serial.println("Home status indicator opened connectivity details");
+  } else if (hasGesture && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
+             localPanel == LocalPanel::kNone) {
+    const SduiComponent* button = findSettingsButtonAt(currentUi.active(), point.x, point.y);
+    if (releasedSettingsRow && button && strcmp(releasedSettingsRow, button->id) == 0)
+      handleSettingsTap(*button, now);
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
+             (strcmp(currentUi.active().screenId, "device-additional-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-appearance-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-clock-options") == 0)) {
+    const bool appearancePage = strcmp(currentUi.active().screenId, "device-appearance-options") == 0;
+    const bool clockPage = strcmp(currentUi.active().screenId, "device-clock-options") == 0;
     const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);
     if (button != nullptr) {
-      if (strcmp(button->id, "open-settings") == 0) {
-        openLocalScreen("open-settings");
-      } else if (strcmp(button->id, "background-toggle") == 0) {
+      if (strcmp(button->id, "menu-back") == 0) {
+        if (appearancePage || clockPage) buildDeviceDisplayMenu(currentUi.active());
+        else openLocalScreen("open-settings");
+        screen.renderSduiScreen(currentUi);
+      } else if (!appearancePage && strcmp(button->id, "display-row-appearance") == 0) {
+        buildDeviceAppearanceMenu(currentUi.active());
+        screen.renderSduiScreen(currentUi);
+      } else if (!appearancePage && !clockPage && strcmp(button->id, "display-row-clock") == 0) {
+        buildDeviceClockMenu(currentUi.active());
+        screen.renderSduiScreen(currentUi);
+      } else if (!appearancePage && strcmp(button->id, "display-row-background") == 0) {
         screen.cycleBackground();
-        updateAdditionalOptionsLabels();
         screen.renderSduiScreen(currentUi);
-        Serial.println("Background preference toggled");
-      } else if (strcmp(button->id, "language-toggle") == 0) {
-        screen.toggleLanguage();
-        updateAdditionalOptionsLabels();
+      } else if (clockPage && strncmp(button->id, "clock-face-", 11) == 0) {
+        const int requestedFace = atoi(button->id + 11);
+        if (requestedFace >= 0 && requestedFace <= 4) screen.setClockFace(static_cast<uint8_t>(requestedFace));
+        buildDeviceClockMenu(currentUi.active());
         screen.renderSduiScreen(currentUi);
-        Serial.println("Language preference toggled");
+      } else if (appearancePage && strncmp(button->id, "display-accent-", 15) == 0) {
+        static const char* ids[] = {"display-accent-red", "display-accent-orange", "display-accent-yellow", "display-accent-green", "display-accent-blue", "display-accent-indigo", "display-accent-violet"};
+        for (uint8_t index = 0; index < sizeof(ids) / sizeof(ids[0]); ++index) {
+          if (strcmp(button->id, ids[index]) == 0) { screen.setAccentIndex(index); break; }
+        }
+        buildDeviceAppearanceMenu(currentUi.active());
+        screen.renderSduiScreen(currentUi);
       }
     }
   }
@@ -1139,8 +1356,13 @@ void processInput(uint32_t now) {
       const int16_t relativeX = min<int16_t>(
           max<int16_t>(point.x - slider->x, 0),
           slider->width);
-      slider->value = static_cast<uint32_t>(relativeX) * slider->maximum /
-                      slider->width;
+      constexpr uint32_t kBrightnessMinimum = 5;
+      constexpr uint32_t kBrightnessMaximum = 100;
+      const uint32_t midpoint = slider->width / 2;
+      slider->value = relativeX <= midpoint
+          ? kBrightnessMinimum + static_cast<uint32_t>(relativeX) * (50 - kBrightnessMinimum) / midpoint
+          : 50 + static_cast<uint32_t>(relativeX - midpoint) * (kBrightnessMaximum - 50) /
+              (slider->width - midpoint);
     }
     if (strcmp(slider->id, "display-brightness") == 0) {
       screen.setBrightnessPercent(slider->value);
@@ -1181,6 +1403,16 @@ void processInput(uint32_t now) {
         gesture == TouchGesture::kSwipeLeft
             ? "Welcome swiped left"
             : "Welcome swiped right");
+  } else if (hasUi && gesture == TouchGesture::kSwipeUp) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, "sky-home") == 0) {
+        currentUi.activeScreen = index;
+        break;
+      }
+    }
+    screen.renderSduiScreen(currentUi);
+    lastIndicatorAt = 0;
+    Serial.println("SDUI swipe up: sky-home");
   } else if (hasUi &&
              (gesture == TouchGesture::kSwipeLeft ||
               gesture == TouchGesture::kSwipeRight) &&
@@ -1200,12 +1432,26 @@ void processInput(uint32_t now) {
         currentUi.active().screenId,
         currentUi.activeScreen + 1,
         currentUi.screenCount);
-  } else if (gesture == TouchGesture::kTap && hasUi) {
+  } else if (gesture == TouchGesture::kTap && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") != 0 &&
+             strcmp(currentUi.active().screenId, "device-additional-options") != 0 &&
+             strcmp(currentUi.active().screenId, "device-appearance-options") != 0 &&
+             strcmp(currentUi.active().screenId, "device-clock-options") != 0) {
+    // Settings releases were consumed above, including cancelled contacts.
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button =
         findButtonAt(currentUi.active(), point.x, point.y);
     if (button != nullptr) {
-      if (strcmp(button->id, "weather-units") == 0 &&
+      if (strncmp(button->id, "display-accent-", 15) == 0) {
+        static const char* names[] = {"red", "orange", "yellow", "green", "blue", "indigo", "violet"};
+        for (uint8_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
+          if (strstr(button->id, names[index]) != nullptr) { screen.setAccentIndex(index); break; }
+        }
+        screen.renderSduiScreen(currentUi);
+      } else if (strncmp(button->id, "display-background-", 19) == 0 && button->id[19] >= '0' && button->id[19] <= '2') {
+        screen.setBackgroundArt(static_cast<uint8_t>(button->id[19] - '0'));
+        screen.renderSduiScreen(currentUi);
+      } else if (strcmp(button->id, "weather-units") == 0 &&
           strcmp(currentUi.active().screenId, "sky-weather") == 0) {
         weather.toggleUnits(currentUi);
         screen.renderSduiScreen(currentUi);
@@ -1259,6 +1505,23 @@ void processUsbCommands() {
       usbCommand[usbCommandLength] = '\0';
       if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strcmp(usbCommand, "LEOPOLD_DISPLAY_INFO") == 0) {
+        screen.writeDisplayInfo(Serial);
+      } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE ON") == 0) {
+        touch.setTraceEnabled(true);
+        screen.setTouchTraceEnabled(true);
+        Serial.println("LEOPOLD_TOUCH_TRACE_OK on");
+      } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE OFF") == 0) {
+        touch.setTraceEnabled(false);
+        screen.setTouchTraceEnabled(false);
+        Serial.println("LEOPOLD_TOUCH_TRACE_OK off");
+      } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION") == 0) {
+        screen.showCalibration();
+        Serial.printf("LEOPOLD_CALIBRATION_OK %s\n", screen.calibrationMode() ? "on" : "unavailable");
+      } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION_EXIT") == 0) {
+        screen.exitCalibration();
+        if (hasUi) screen.renderSduiScreen(currentUi);
+        Serial.println("LEOPOLD_CALIBRATION_OK off");
       } else if (strncmp(usbCommand, "LEOPOLD_SCREEN ", 15) == 0) {
         localPanel = LocalPanel::kNone;
         const char* requestedScreen = usbCommand + 15;
@@ -1319,6 +1582,8 @@ void processEvents(uint32_t now) {
 
 void processNetwork(uint32_t now) {
   bluetooth.loop();
+  const int16_t scanResult = wifiScan.poll([]() { wifi.prepareForScan(); });
+  // Also drain cancellation after leaving the list, before another scan can start.
   if (localPanel == LocalPanel::kBluetoothDevices) {
     if (bluetoothScanWasRunning && !bluetooth.scanning()) {
       bluetoothScanWasRunning = false;
@@ -1328,22 +1593,27 @@ void processNetwork(uint32_t now) {
     return;
   }
   if (localPanel == LocalPanel::kWifiNetworks) {
-    const int16_t scanResult = WiFi.scanComplete();
-    if (wifiScanRunning && scanResult >= 0) {
-      wifiScanRunning = false;
-      wifiNetworkCount = min<uint8_t>(scanResult, kVisibleWifiNetworks);
-      for (uint8_t index = 0; index < wifiNetworkCount; ++index) {
-        wifiNetworks[index].name = WiFi.SSID(index);
-        wifiNetworks[index].rssi = WiFi.RSSI(index);
-        wifiNetworks[index].secured =
-            WiFi.encryptionType(index) != WIFI_AUTH_OPEN;
+    if (scanResult >= 0) {
+      wifiNetworkCount = 0;
+      // Arduino's scan is RSSI-sorted. Keep the strongest instance of each SSID.
+      for (int16_t result = 0; result < scanResult && wifiNetworkCount < kVisibleWifiNetworks; ++result) {
+        const String name = WiFi.SSID(result);
+        if (name.isEmpty()) continue;
+        bool duplicate = false;
+        for (uint8_t index = 0; index < wifiNetworkCount; ++index) {
+          if (wifiNetworks[index].name == name) duplicate = true;
+        }
+        if (duplicate) continue;
+        wifiNetworks[wifiNetworkCount].name = name;
+        wifiNetworks[wifiNetworkCount].rssi = WiFi.RSSI(result);
+        wifiNetworks[wifiNetworkCount].secured = WiFi.encryptionType(result) != WIFI_AUTH_OPEN;
+        ++wifiNetworkCount;
       }
       WiFi.scanDelete();
       renderWifiNetworks(
           wifiNetworkCount == 0 ? "No encontramos redes" : nullptr);
       Serial.printf("On-device Wi-Fi scan found %u networks\n", wifiNetworkCount);
-    } else if (wifiScanRunning && scanResult == WIFI_SCAN_FAILED) {
-      wifiScanRunning = false;
+    } else if (scanResult == WIFI_SCAN_FAILED) {
       renderWifiNetworks("La busqueda fallo. Intenta otra vez");
     }
     return;
@@ -1352,8 +1622,10 @@ void processNetwork(uint32_t now) {
     return;
   }
   if (localPanel == LocalPanel::kWifiConnecting) {
-    if (WiFi.status() == WL_CONNECTED) {
+    wifi.loop(now); // Confirm success before storing the candidate credentials.
+    if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == selectedWifiName) {
       wifiWasConnected = true;
+      failedWifiName = String();
       cloudConnected = false;
       cloudFailures = 0;
       nextCloudAttemptAt = now;
@@ -1363,6 +1635,8 @@ void processNetwork(uint32_t now) {
       Serial.printf("On-device Wi-Fi connected: %s\n", WiFi.SSID().c_str());
     } else if (now - wifiSelectionStartedAt >= kWifiSelectionTimeoutMs ||
                WiFi.status() == WL_CONNECT_FAILED) {
+      failedWifiName = selectedWifiName;
+      wifi.cancelSelection(now);
       localPanel = LocalPanel::kWifiNetworks;
       renderWifiNetworks("No se pudo conectar. Revisa la contrasena");
       Serial.println("On-device Wi-Fi connection failed");
@@ -1484,6 +1758,9 @@ void refreshIndicators(uint32_t now) {
   }
   char timeText[9] = {};
   telemetry.formattedTime(timeText);
+  screen.drawIndicators(
+      wifiConnected, cloudConnected, bluetooth.enabled(), bluetooth.connected(),
+      telemetry.batteryPercent(), timeText);
   const uint16_t millivolts = telemetry.batteryMillivolts();
   char voltageText[16] = {};
   snprintf(
@@ -1558,6 +1835,9 @@ void setup() {
   Serial.printf(
       "Leopold firmware %s starting\n",
       leopold::config::kFirmwareVersion);
+  Serial.printf("LEOPOLD_FIRMWARE_REVISION commit=%s ui=%lu\n",
+                leopold::config::kSourceCommit,
+                static_cast<unsigned long>(leopold::generated_ui::kUiRevision));
   randomSeed(micros());
 
   pinMode(leopold::board::kBootButton, INPUT_PULLUP);
@@ -1566,6 +1846,12 @@ void setup() {
     while (true) {
       delay(100);
     }
+  }
+  if (!leopold::sky::loadEmbeddedHomeAsset()) {
+    Serial.println("Embedded home asset failed to load");
+  }
+  if (!leopold::sky::loadEmbeddedSettingsAsset()) {
+    Serial.println("Embedded neutral Settings asset failed to load");
   }
   screen.showState(leopold::AppState::kBooting);
 

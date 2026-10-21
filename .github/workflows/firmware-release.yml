@@ -18,84 +18,47 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Install pinned Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: 1.2.2
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install PlatformIO
-        run: python -m pip install --upgrade platformio
+      - name: Install pinned image tooling for generation and regression checks
+        run: python3 -m pip install -r scripts/requirements.txt
+      - name: Generate and validate shared firmware output
+        run: |
+          python3 scripts/check_settings_overlay_generation.py
+          python3 scripts/validate_shared_ui.py
+          python3 scripts/validate_settings_renderer_parity.py
+          python3 scripts/validate_calibration.py
+          python3 scripts/sync_shared_assets.py
+          python3 scripts/verify_shared_outputs.py
+          python3 scripts/generate_firmware_ui.py
+          python3 scripts/validate_firmware_config.py
+          git diff --exit-code -- device frontend/public/firmware-assets frontend/src/shared shared
 
-      - name: Build firmware
-        working-directory: device
-        run: pio run
+      - name: Build with the CI-identical pinned profile
+        env:
+          ARDUINO_CLI_VERSION: 1.2.2
+        run: python3 scripts/build_firmware.py
+      - name: Test flashing and packaging safety
+        run: python3 -m unittest discover -s scripts/tests -v
 
-      - name: Package flash images
+      - name: Package flashable firmware
+        env:
+          ARDUINO_CLI_VERSION: 1.2.2
+        run: python3 scripts/package_firmware.py device/build firmware-release
+
+      - name: Create archive
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           COMMIT_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          build_dir="device/.pio/build/leopold"
-          package_dir="firmware-release"
-          mkdir -p "$package_dir"
-
-          for image in bootloader.bin partitions.bin firmware.bin; do
-            test -f "$build_dir/$image"
-            cp "$build_dir/$image" "$package_dir/$image"
-          done
-
-          if test -f "$build_dir/boot_app0.bin"; then
-            cp "$build_dir/boot_app0.bin" "$package_dir/boot_app0.bin"
-          fi
-
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-
-          package = Path("firmware-release")
-          files = {}
-          offsets = {
-              "bootloader.bin": "0x0000",
-              "partitions.bin": "0x8000",
-              "boot_app0.bin": "0xe000",
-              "firmware.bin": "0x10000",
-          }
-          for path in sorted(package.glob("*.bin")):
-              files[path.name] = {
-                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                  "bytes": path.stat().st_size,
-                  "flash_offset": offsets.get(path.name),
-              }
-
-          manifest = {
-              "product": "Leopold",
-              "board": "esp32-s3-devkitc-1",
-              "platformio_environment": "leopold",
-              "commit": os.environ["COMMIT_SHA"],
-              "release_tag": os.environ["RELEASE_TAG"],
-              "flash_images": files,
-              "flash_command": (
-                  "esptool.py --chip esp32s3 write_flash "
-                  "0x0000 bootloader.bin 0x8000 partitions.bin "
-                  "0x10000 firmware.bin"
-              ),
-          }
-          (package / "manifest.json").write_text(
-              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-          )
-          (package / "SHA256SUMS.txt").write_text(
-              "".join(
-                  f"{item['sha256']}  {name}\n"
-                  for name, item in files.items()
-              ),
-              encoding="utf-8",
-          )
-          PY
-
-          tar -czf "leopold-${RELEASE_TAG}-${COMMIT_SHA:0:12}.tar.gz" -C "$package_dir" .
+        run: tar -czf "leopold-${RELEASE_TAG}-${COMMIT_SHA:0:12}.tar.gz" -C firmware-release .
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -111,9 +74,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            firmware-release/*.bin \
-            firmware-release/manifest.json \
-            firmware-release/SHA256SUMS.txt \
+            firmware-release/* \
             leopold-*.tar.gz \
             --title "Leopold $GITHUB_REF_NAME" \
             --generate-notes

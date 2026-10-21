@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "product": "Leopold",
+  "created": "2026-10-17",
+  "settings_usage": {
+    "neutral": "immutable full-screen base candidate",
+    "pressed_states": "reference sources for selected-row crops only; do not swap the full framebuffer",
+    "pressed_treatment": "cyan outline/glow, cyan icon, cyan chevron, white label",
+    "brightness": "live control; no discrete full-screen reference family"
+  },
+  "settings": [
+    {
+      "state": "neutral",
+      "file": "settings-neutral-466.png",
+      "width": 466,
+      "height": 466,
+      "format": "lossless PNG",
+      "sha256": "391c361fd5dc73548e9bc8912d5e29e72382ac26688ad3b75eb2350daa19c7cd"
+    },
+    {
+      "state": "wifi-pressed",
+      "file": "settings-wifi-pressed-466.png",
+      "width": 466,
+      "height": 466,
+      "format": "lossless PNG",
+      "sha256": "04a475b5e33bfc8754e5e4e1bd5fd7447f94cc9093ed13bbd68f71d62726db1e"
+    },
+    {
+      "state": "bluetooth-pressed",
+      "file": "settings-bluetooth-pressed-466.png",
+      "width": 466,
+      "height": 466,
+      "format": "lossless PNG",
+      "sha256": "3936c14adcdeb6b6ebcb31306d6d139690a45276748bfecfcadfbdaf24372459"
+    },
+    {
+      "state": "display-pressed",
+      "file": "settings-display-pressed-466.png",
+      "width": 466,
+      "height": 466,
+      "format": "lossless PNG",
+      "sha256": "b054c4c91fa8e6df482e6a4877cffc686971fafe63bcdecf995bc3085625525e"
+    },
+    {
+      "state": "sound-pressed",
+      "file": "settings-sound-pressed-466.png",
+      "width": 466,
+      "height": 466,
+      "format": "lossless PNG",
+      "sha256": "68dd0fdfa9070aab28e9a8e5b0a2a1eb3789265f0e3c9a522319613223413f3d"
+    }
+  ],
+  "status": {
+    "left_icon": "Bluetooth connected/disconnected",
+    "simulator_and_esp32_visual_treatment": "same",
+    "usage": "style/reference source for separately masked live status icons and shell; time and battery remain live overlays",
+    "states": [
+      {
+        "state": "connected",
+        "file": "status-bluetooth-connected-660x206.png",
+        "width": 660,
+        "height": 206,
+        "format": "lossless PNG",
+        "sha256": "3c60d44fa55e0259fa8cb3741d6aa18e5160bbaa346adfb34b253720da9da55b"
+      },
+      {
+        "state": "disconnected",
+        "file": "status-bluetooth-disconnected-660x206.png",
+        "width": 660,
+        "height": 206,
+        "format": "lossless PNG",
+        "sha256": "ce77592599a66b567d816cddaede60ce34de97749a7c55d0c5eb074b6e2a37d7"
+      }
+    ]
+  }
+}

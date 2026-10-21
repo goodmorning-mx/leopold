@@ -1,11 +1,11 @@
 # Leopold browser simulator
 
 The simulator is a local test surface for the physical 466 × 466 Leopold UI.
-Its firmware reference is release tag `firmware-v0.8.2`, created from the
-simulator parity commit on `fix/live-device-time-controls`, the source snapshot identified
-for the firmware release. The compiled
-`firmware.bin` is intentionally not expected in GitHub; PlatformIO output is
-local and ignored. The simulator is available at `/simulator` in the Vite app
+Its firmware identity is the exact source/build recorded in the current parity
+handoff. A release label or UI revision alone does not distinguish builds.
+Firmware binaries are produced only by GitHub Actions and downloaded as a
+checksummed package; local build output is not an authoritative artifact. The
+simulator is available at `/simulator` in the Vite app
 and uses safe mock values by default. It does not call Device Cloud, open USB,
 or use device credentials.
 
@@ -36,27 +36,34 @@ deployment.
 ## Firmware renderer mapping
 
 `shared/firmware-ui.json` is the fallback shell definition consumed by the
-browser debug editor and used by PlatformIO's pre-build generator to produce
+browser debug editor and used by the Arduino CLI generator to produce
 `device/include/generated_firmware_ui.h`. The generated file is ignored and
 must not be edited by hand. Runtime-only values such as brightness, clock,
 weather, and Cloud/USB state are injected by their respective adapters.
 
 `shared/rendering.json` is the renderer contract consumed by both adapters. It
 defines status-bar visibility and colors, canonical USB geometry, Spotify
-geometry, and shared asset scaling. PlatformIO generates corresponding C++
+geometry, and shared asset scaling. Arduino CLI generates corresponding C++
 constants; the Vite build imports the synchronized JSON copy. Changes to these
 values must be made in `shared/`, never directly in the simulator or firmware.
 
-The visible device surface is a direct browser port of the firmware display
-paths in `device/src/display_manager.cpp`, implemented in
-`frontend/src/simulator/FirmwareCanvas.tsx`. It uses the same screen IDs,
-466 × 466 coordinates, font-size mapping, special control-center and Spotify
-layouts, status-bar visibility and positions, USB geometry, and binary assets
-generated from `shared/`.
-The browser cannot execute the ESP32/LVGL binary, so the canvas is the
-renderer adapter. Geometry, assets, typography mapping, persistence defaults,
-and touch thresholds are committed under `shared/`; screen definitions must not
-be duplicated in either target.
+The same contract defines shared theme roles, Light/Dark neutral surfaces, and
+the Red, Orange, Yellow, Green, Blue, Indigo, and Violet accent palettes.
+Accent is independent of Light/Dark; Display → Appearance owns the user picker.
+Blue is the default because its bright tone retains Leopold's existing cyan
+selection treatment. New controls must resolve normal, selected, expanded,
+focused, pressed, and disabled states through the shared palette. Review text
+contrast, yellow in Light mode, color accessibility, 466×466 touch targets,
+navigation gestures, and preference restoration on restart. Verify both
+simulator/shared-LVGL behavior and device behavior separately.
+
+Settings acceptance uses `FirmwareLvglCanvas` and the native shared
+`shared/lvgl_renderer.cpp` compiled to WebAssembly. Firmware compiles that same
+renderer with synchronized assets. The legacy `FirmwareCanvas.tsx` remains for
+other browser surfaces; it cannot be the sole acceptance path for firmware
+Settings parity. Compare LVGL theme/DPI/default styles too. Geometry, assets,
+typography, persistence, and touch thresholds belong in `shared/`; screen
+definitions must not be duplicated in either target.
 
 ## SDUI and asset mapping
 
@@ -68,8 +75,8 @@ firmware canvas loads the same RGB565A8 bitmap assets used by the LVGL
 renderer. This keeps JSON portable without replacing the device's asset-backed
 rendering with web placeholders.
 
-The gesture thresholds are intentionally copied from
-`device/src/touch_input.cpp`. The simulator handles firmware-local effects
+Gesture thresholds originate in `shared/interaction.json` and its generated
+device constants. The simulator handles firmware-local effects
 (clock format, settings, and mocked USB results) in browser state and records
 the equivalent event. USB buttons never execute host commands in the browser.
 
@@ -88,16 +95,13 @@ the simulator, or the browser bundle.
 ## Firmware changes
 
 For UI-only SDUI work, validate the browser and backend contracts without
-flashing hardware. If firmware changes are required, build from `device/`:
+flashing hardware. If firmware changes are required, wait for the GitHub
+Actions artifact from the same commit:
 
 ```bash
-pio run
-```
-
-Flashing is a separate, explicitly authorized action:
-
-```bash
-pio run --target upload --upload-port <authorized-port>
+python3 scripts/flash_firmware.py --package <downloaded-package> --port <authorized-port> --backup <new-private-backup.bin> --dry-run
+python3 scripts/flash_firmware.py --package <downloaded-package> --port <authorized-port> --backup <new-private-backup.bin>
+python3 scripts/verify_firmware.py --port <authorized-port> --commit <source-commit> --ui-revision <expected-ui>
 ```
 
 The simulator does not replace a physical-device smoke test. Report firmware

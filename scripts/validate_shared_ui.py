@@ -83,7 +83,8 @@ def validate() -> None:
     if not COLOR_RE.fullmatch(rendering.get("status_bar", {}).get("text_color", "")):
         fail("rendering.json status text color is invalid")
     visible_screens = rendering.get("status_bar", {}).get("visible_screens")
-    if not isinstance(visible_screens, list) or not visible_screens or not all(item in screen_ids for item in visible_screens):
+    runtime_screen_ids = {"device-clock-options", "device-appearance-options"}
+    if not isinstance(visible_screens, list) or not visible_screens or not all(item in screen_ids | runtime_screen_ids for item in visible_screens):
         fail("rendering.json status visible_screens must reference known screens")
     usb = rendering.get("home", {}).get("usb_icon", {})
     if not isinstance(usb.get("segments"), list) or not usb["segments"]:

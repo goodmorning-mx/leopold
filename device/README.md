@@ -19,23 +19,14 @@ anuncia comercialmente como SH8601/CO5300 y necesita la secuencia
 `Arduino_CO5300`. Algunas revisiones pueden requerir `Arduino_SH8601`; confirma
 la revisión física antes de cambiar el controlador en `src/display_manager.cpp`.
 
-## Instalar PlatformIO
+## Build authority and firmware packages
 
-Instala PlatformIO Core o la extensión PlatformIO IDE para VS Code. Para
-verificar la instalación:
-
-```bash
-pio --version
-```
-
-En esta estación de desarrollo también puede usarse:
-
-```bash
-/home/goodmorning/.platformio/penv/bin/pio --version
-```
-
-Las versiones de ArduinoJson, WiFiManager y Arduino_GFX están fijadas en
-`platformio.ini` para obtener builds reproducibles.
+GitHub Actions is the authoritative compiler. The repository-owned Arduino CLI
+profile in `src/sketch.yaml` and `firmware-build.json` pins the ESP32 core,
+board options, and libraries. A local checkout does not need a firmware
+compiler. Download the firmware package from the successful GitHub Actions run
+or tagged GitHub Release; it contains checksums, offsets, and the exact source
+and UI revisions.
 
 ## Configuración segura del dispositivo
 
@@ -66,29 +57,33 @@ El ejemplo incluye el certificado público ISRG Root X1 para validar TLS. No se
 usa `setInsecure()`. Si el API cambia de cadena de confianza, actualiza el
 certificado raíz público después de verificar la nueva cadena.
 
-## Compilar y cargar
+## Flash a downloaded package
 
 ```bash
-cd device
-pio run
-pio run --target upload
-pio device monitor --baud 115200
+python3 scripts/flash_firmware.py --package <downloaded-package> --port /dev/ttyACM0 --dry-run
+python3 scripts/flash_firmware.py --package <downloaded-package> --port /dev/ttyACM0
+python3 scripts/verify_firmware.py --port /dev/ttyACM0 --commit <source-commit>
 ```
 
-Para indicar el puerto manualmente:
+The normal update writes only the bootloader, partition table, and application
+image. Before writing, it reads the installed partition table and refuses to
+continue if it differs from the package. This compatibility check is required
+before claiming that NVS, Wi-Fi credentials, identity, or other data remain
+usable. The dry run validates the artifact and prints the exact command without
+opening the port.
+
+For a read-only full-flash backup, use the packaged helper's backup-only mode:
 
 ```bash
-pio run --target upload --upload-port /dev/ttyACM0
-pio device monitor --port /dev/ttyACM0 --baud 115200
+python3 scripts/flash_firmware.py --backup-only --port /dev/ttyACM0 \
+  --backup /tmp/leopold-full-flash.bin
 ```
 
-Para un reinicio completo durante testing, borra toda la flash antes de volver
-a cargar. Esto elimina Wi‑Fi, NVS y la caché LittleFS:
-
-```bash
-pio run --target erase --upload-port /dev/ttyACM0
-pio run --target upload --upload-port /dev/ttyACM0
-```
+The merged image is not selected by a normal update. It is reserved for an
+explicit factory reset or blank-device provisioning flow, and factory-reset
+mode creates and verifies a fresh 16 MiB backup before writing. No credentials
+are embedded in the helper; flashing, revision verification, and calibration
+capture remain separate explicitly authorized steps.
 
 Para repetir también el onboarding de cuenta, elimina la vinculación exacta del
 dispositivo en el backend de `dev`. Nunca ejecutes esa operación en producción.
@@ -194,6 +189,36 @@ cuatro elementos. Cada evento tiene hasta tres intentos y la cola nunca crece
 sin límite.
 
 ## Diagnóstico por Serial
+
+### Preflight de calibración física
+
+La calibración es un modo diagnóstico explícito; no aparece en la navegación
+normal. Con el dispositivo conectado por USB, entra al patrón compartido y
+espera una iteración del firmware antes de capturar:
+
+```bash
+PORT=/dev/ttyACM0
+printf 'LEOPOLD_CALIBRATION\n' > "$PORT"
+sleep 1
+python3 scripts/capture_device_screenshot.py "$PORT" /tmp/leopold-calibration.ppm
+python3 scripts/ppm_to_png.py /tmp/leopold-calibration.ppm /tmp/leopold-calibration.png
+printf 'LEOPOLD_CALIBRATION_EXIT\n' > "$PORT"
+```
+
+`capture_device_screenshot.py` exports the current 466 × 466 framebuffer as
+RGB565-derived PPM data; `ppm_to_png.py` creates a lossless PNG. The explicit
+commands return the device to its prior UI and do not flash or modify firmware.
+
+### Phase 1 touch diagnostic (requires a newly built, separately authorized firmware flash)
+
+The current running firmware does not support touch tracing. A diagnostic build
+can enable rate-limited USB logs with `LEOPOLD_TOUCH_TRACE ON` and disable them
+with `LEOPOLD_TOUCH_TRACE OFF`. The trace reports controller read results,
+contacts and coordinates, touch down/up classification, Settings hit targets,
+pressed-state changes, and pressed-patch asset resolution. It is disabled by
+default and does not synthesize touch events or alter hit testing. Capture the
+trace while holding one Settings row, then disable it before normal use. Do not
+send these commands to the current firmware and infer a result from silence.
 
 El monitor muestra:
 

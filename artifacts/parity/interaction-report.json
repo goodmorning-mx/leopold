@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "simulator_url": "http://127.0.0.1:5176/simulator",
+  "checkout": "/Users/Personal/Documents/Codex/2026-09-30/i-m-building-a-browser-based-2/work/leopold-source",
+  "tests": {
+    "wifi_panel": true,
+    "bluetooth_panel": true,
+    "display_action": true,
+    "sound_action": true,
+    "brightness_slider": {
+      "passed": true,
+      "observed_event": "display-brightness: 87%"
+    },
+    "swipe_up_home": true,
+    "settings_button_navigation": true
+  },
+  "passed": true,
+  "device_flash": false
+}

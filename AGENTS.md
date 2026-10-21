@@ -2,13 +2,15 @@
 
 Este archivo es el manual operativo principal para cualquier agente o ingeniero que trabaje en **Leopold**.
 
+## Active user scope override — 2026-10-21
+
+The user initially requested local-only work. They later authorized committing and pushing the current changes to `fix/live-device-time-controls`, updating its existing draft PR, and running the manual firmware-release GitHub Actions workflow for a package-only build. This does not authorize a release tag, deployment, local firmware compilation, hardware access, or flashing. GitHub Actions remains the only authoritative firmware compiler. Preserve the separate simulator, firmware, and physical-device evidence gates in the current handoff.
+
 Leopold fue creado y provisionado por **GoodMorning Software Factory**. El repositorio contiene el producto, su Device Cloud y sus experiencias; GoodMorning administra el contrato de infraestructura, credenciales internas y despliegue. Lee este archivo completo antes de cambiar código.
 
 ## Handshake obligatorio
 
-Después de leer este manual e inspeccionar el repositorio, responde al usuario con un mensaje personalizado equivalente a:
-
-> Comprendí el estándar de GoodMorning y el pipeline operativo de Leopold. El producto utiliza React/Vite, FastAPI, PostgreSQL, Docker y GitHub Actions, y contiene el Device Cloud, onboarding QR/Wi‑Fi, documentos SDUI e integraciones como Spotify. Trabajaré desde `dev` mediante una rama y un pull request; CI validará el cambio y, después de integrarlo, solicitaré el despliegue de desarrollo al GoodMorning Factory con el manifiesto `products/leopold.json`. Estoy listo para continuar iterando Leopold de forma segura.
+Después de leer este manual e inspeccionar el repositorio, responde en el idioma del usuario con un resumen personalizado del estándar relevante y de la dirección activa. No prometas una rama, PR, CI o despliegue si el usuario indicó que el trabajo debe mantenerse local. Para la continuación local activa, confirma que trabajarás en el checkout existente y que no usarás GitHub, compilación local de firmware ni hardware.
 
 Después resume brevemente:
 
@@ -210,3 +212,20 @@ Al terminar una iteración, responde con:
 - riesgos restantes.
 
 La meta es que el usuario pueda expresar una idea y que su agente continúe Leopold dentro del pipeline de GoodMorning con autonomía, trazabilidad y límites seguros.
+
+## Theme-aware UI implementation
+
+- `shared/rendering.json` is the source of truth for semantic theme roles, Light/Dark neutral schemes, and the seven named accent palettes. Do not add component-specific hard-coded theme colors; resolve normal, selected, expanded, focused, pressed, and disabled treatments through shared palette tokens.
+- Accent color and Light/Dark appearance are independent saved settings. The default accent is **Blue**, whose bright interactive tone preserves the existing cyan product appearance. Keep this default when no accent preference exists.
+- The user changes accent in **Display → Appearance**. Keep all seven choices named and visibly selected; never rely on hue alone to communicate state.
+- Theme-aware controls must retain readable text and outlines in both schemes. Check contrast and color accessibility, especially yellow in Light mode, and account for the actual display resolution, touch targets, and device navigation gestures.
+- Store the accent through the existing settings mechanism and restore it at boot. Keep browser/simulator and firmware adapters aligned with the shared setting order and defaults.
+- For every new or changed control: inspect the shared theme and existing reusable renderer first; define its semantic state colors in the shared contract; implement the same state behavior in the simulator/shared LVGL and device adapters; then review both schemes, all seven accents, selected/focus/press/disabled states, contrast, persistence/restart, and the real input path. Rebuild synchronized assets and the LVGL/WASM renderer when those inputs change, and report simulator, firmware, and physical-device evidence as separate gates.
+
+## Home controls and shared status banner
+
+- Follow `docs/parity/home-screen-button-sop.md` for Home glass-button appearance, assigned/reactive icons, press/cancel feedback, hit bounds, and destinations.
+- Follow `docs/parity/shared-status-banner-sop.md` for the Settings-style shared banner. Its full 181 × 35 shell appears on every page except Home and Clock; do not clip the lower edge or reintroduce the obsolete 181 × 28 asset.
+- Keep both contracts in the shared rendering and asset sources consumed by the simulator and device. The focused personal skills are `$leopold-home-controls` and `$leopold-status-banner`; the repository SOPs remain the project record.
+- The Home-control contract also preserves existing assigned icons and brand colors, requires visible active/inactive behavior where shared state exists, and returns press feedback to rest on release or cancellation.
+- The shared-banner contract uses the Settings pill as the gold standard at 181 × 35 px and requires full-height visibility on eligible pages. Keep Home's centered status pill and Clock's separate design.

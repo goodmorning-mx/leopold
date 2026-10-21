@@ -12,10 +12,11 @@ static uint16_t framebuffer[kWidth * kHeight];
 static uint16_t drawBuffer[kWidth * kHeight];
 static leopold::SduiScreen screen;
 static char pressedId[leopold::kMaxComponentId + 1];
-static lv_image_dsc_t assets[9];
-static bool assetReady[9];
+static lv_image_dsc_t assets[46];
+static bool assetReady[46];
 static char renderTime[16] = "--:--";
-static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
+static char renderDate[16] = "OCT 26";
+static leopold::SharedRenderState renderState = {};
 
 static void flush(lv_display_t* target, const lv_area_t* area, uint8_t* pixels) {
   const int32_t width = lv_area_get_width(area);
@@ -25,8 +26,24 @@ static void flush(lv_display_t* target, const lv_area_t* area, uint8_t* pixels) 
 }
 
 static int assetIndex(const char* key) {
-  static const char* keys[] = {"home", "flower", "chevron", "open-clock", "open-weather", "open-navigation", "open-whatsapp", "open-spotify", "spotify-large"};
-  for (int index = 0; index < 9; ++index) if (strcmp(keys[index], key) == 0) return index;
+  static const char* keys[] = {
+      "home", "flower", "chevron", "open-clock", "open-weather",
+      "open-navigation", "open-whatsapp", "open-spotify", "spotify-large",
+      "settings-neutral", "settings-pressed-border-mask", "settings-wifi-pressed-icon-mask", "settings-wifi-pressed-chevron-mask",
+      "settings-bluetooth-pressed-icon-mask", "settings-bluetooth-pressed-chevron-mask",
+      "settings-display-pressed-icon-mask", "settings-display-pressed-chevron-mask",
+      "settings-sound-pressed-icon-mask", "settings-sound-pressed-chevron-mask",
+      "settings-status-bluetooth-active",
+      "settings-status-wifi-active", "settings-status-cloud-active", "settings-gears-base", "settings-gears-wallpaper",
+      "background-flower", "background-chevron", "background-mechanical-flower", "home-controls-transparent",
+      "display-icon-background", "display-icon-appearance", "display-icon-clock", "display-icon-units",
+      "display-icon-language", "display-icon-weather-location", "display-icon-display", "settings-status-banner",
+      "background-preview-flower", "background-preview-chevron", "background-preview-mechanical",
+      "clock-background-preview-flower", "clock-background-preview-chevron", "clock-background-preview-mechanical",
+      "clock-face-preview-0", "clock-face-preview-1", "clock-face-preview-2",
+      "settings-gears-rainbow",
+  };
+  for (int index = 0; index < 46; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;
 }
 
@@ -50,7 +67,7 @@ void lvgl_wasm_init() {
 }
 
 void lvgl_wasm_set_asset(int index, const uint8_t* data, uint32_t size, uint16_t width, uint16_t height) {
-  if (index < 0 || index >= 9 || data == nullptr || size == 0) return;
+  if (index < 0 || index >= 46 || data == nullptr || size == 0) return;
   assets[index] = {
       .header = {
           .magic = LV_IMAGE_HEADER_MAGIC,
@@ -73,8 +90,9 @@ void lvgl_wasm_begin(const char* id, uint16_t background) {
   screen.background = background;
 }
 
-void lvgl_wasm_add_text(const char* value, int16_t x, int16_t y, uint8_t size, uint16_t color, uint8_t align) {
+void lvgl_wasm_add_text(const char* id, const char* value, int16_t x, int16_t y, uint8_t size, uint16_t color, uint8_t align) {
   leopold::SduiComponent component; component.type = leopold::ComponentType::kText;
+  strncpy(component.id, id == nullptr ? "" : id, sizeof(component.id) - 1);
   strncpy(component.text, value == nullptr ? "" : value, sizeof(component.text) - 1);
   component.x = x; component.y = y; component.size = size; component.color = color;
   component.align = align == 1 ? leopold::TextAlign::kCenter : align == 2 ? leopold::TextAlign::kRight : leopold::TextAlign::kLeft;
@@ -99,17 +117,27 @@ void lvgl_wasm_add_slider(const char* id, int16_t x, int16_t y, int16_t width, i
 
 void lvgl_wasm_set_pressed(const char* id) { strncpy(pressedId, id == nullptr ? "" : id, sizeof(pressedId) - 1); pressedId[sizeof(pressedId) - 1] = '\0'; }
 
-void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode) {
+void lvgl_wasm_set_state(const char* timeText, const char* dateText, uint8_t battery, uint8_t clockSecond, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode, uint8_t backgroundArt, bool appearanceDark, uint8_t clockBackground, uint8_t clockFace, bool clockShowWeather, uint8_t accentIndex) {
   strncpy(renderTime, timeText == nullptr ? "--:--" : timeText, sizeof(renderTime) - 1);
   renderTime[sizeof(renderTime) - 1] = '\0';
   renderState.timeText = renderTime;
+  strncpy(renderDate, dateText == nullptr ? "" : dateText, sizeof(renderDate) - 1);
+  renderDate[sizeof(renderDate) - 1] = '\0';
+  renderState.dateText = renderDate;
   renderState.batteryPercent = battery;
+  renderState.clockSecond = clockSecond;
   renderState.wifiConnected = wifi;
   renderState.cloudConnected = cloud;
   renderState.bluetoothEnabled = bluetooth;
   renderState.bluetoothConnected = bluetoothConnected;
   renderState.brightnessPercent = brightness;
   renderState.backgroundMode = backgroundMode;
+  renderState.backgroundArt = backgroundArt;
+  renderState.appearanceDark = appearanceDark;
+  renderState.clockBackground = clockBackground;
+  renderState.clockFace = clockFace;
+  renderState.clockShowWeather = clockShowWeather;
+  renderState.accentIndex = accentIndex;
 }
 
 void lvgl_wasm_render() {

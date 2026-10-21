@@ -7,6 +7,7 @@ from app.auth_api import router as auth_router
 from app.device_api import router as device_router
 from app.spotify_api import router as spotify_router
 from app.youtube_api import router as youtube_router
+from app.weather_api import router as weather_router
 
 settings = get_settings()
 
@@ -22,6 +23,7 @@ app.include_router(device_router)
 app.include_router(auth_router)
 app.include_router(spotify_router)
 app.include_router(youtube_router)
+app.include_router(weather_router)
 
 
 @app.middleware("http")

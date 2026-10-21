@@ -1,0 +1,246 @@
+{
+  "captures": {
+    "settings-neutral": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-neutral.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_dynamic_masks": {
+        "compared_pixels": 179650,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-neutral-difference.png",
+      "passed": true
+    },
+    "settings-wifi-pressed": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-wifi-pressed.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_neutral_and_pressed_masks": {
+        "compared_pixels": 161618,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "selected_patch": {
+        "bounds": [
+          72,
+          127,
+          322,
+          56
+        ],
+        "compared_pixels": 18032,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-wifi-pressed-difference.png",
+      "passed": true
+    },
+    "settings-bluetooth-pressed": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-bluetooth-pressed.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_neutral_and_pressed_masks": {
+        "compared_pixels": 161618,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "selected_patch": {
+        "bounds": [
+          72,
+          181,
+          322,
+          56
+        ],
+        "compared_pixels": 18032,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-bluetooth-pressed-difference.png",
+      "passed": true
+    },
+    "settings-display-pressed": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-display-pressed.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_neutral_and_pressed_masks": {
+        "compared_pixels": 161618,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "selected_patch": {
+        "bounds": [
+          72,
+          235,
+          322,
+          56
+        ],
+        "compared_pixels": 18032,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-display-pressed-difference.png",
+      "passed": true
+    },
+    "settings-sound-pressed": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-sound-pressed.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_neutral_and_pressed_masks": {
+        "compared_pixels": 164516,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "selected_patch": {
+        "bounds": [
+          72,
+          289,
+          322,
+          56
+        ],
+        "compared_pixels": 18032,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-sound-pressed-difference.png",
+      "passed": true
+    },
+    "settings-connected": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-connected.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_status_masks": {
+        "compared_pixels": 179650,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "status_shell": {
+        "bounds": [
+          137,
+          39,
+          195,
+          38
+        ],
+        "state": "connected"
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-connected-difference.png",
+      "passed": true
+    },
+    "settings-disconnected": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-disconnected.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_status_masks": {
+        "compared_pixels": 179650,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "status_shell": {
+        "bounds": [
+          137,
+          39,
+          195,
+          38
+        ],
+        "state": "disconnected"
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-disconnected-difference.png",
+      "passed": true
+    },
+    "settings-brightness-5": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-brightness-5.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_brightness_mask": {
+        "compared_pixels": 179650,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "brightness": {
+        "value": 5,
+        "expected_knob_x": 98.0,
+        "geometry_passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-brightness-5-difference.png",
+      "passed": true
+    },
+    "settings-brightness-50": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-brightness-50.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_brightness_mask": {
+        "compared_pixels": 179650,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "brightness": {
+        "value": 50,
+        "expected_knob_x": 234.0,
+        "geometry_passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-brightness-50-difference.png",
+      "passed": true
+    },
+    "settings-brightness-100": {
+      "capture": "artifacts/parity/phase1-settings-2026-10-17/captures/settings-brightness-100.png",
+      "dimensions": [
+        466,
+        466
+      ],
+      "outside_brightness_mask": {
+        "compared_pixels": 179650,
+        "pixels_over_delta": 0,
+        "maximum_color_delta": 0,
+        "failure_bounding_box": null,
+        "passed": true
+      },
+      "brightness": {
+        "value": 100,
+        "expected_knob_x": 370.0,
+        "geometry_passed": true
+      },
+      "difference": "artifacts/parity/phase1-settings-2026-10-17/acceptance/settings-brightness-100-difference.png",
+      "passed": true
+    }
+  },
+  "passed": true
+}

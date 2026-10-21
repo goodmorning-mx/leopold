@@ -12,12 +12,49 @@
     "tap_max_movement": 24,
     "long_press_max_movement": 40,
     "drag_interval_ms": 16,
-    "slider_touch_padding": 16
+    "slider_touch_padding": 16,
+    "settings_row_bounds": [
+      {"id": "settings-wifi", "x": 72, "y": 127, "width": 322, "height": 54},
+      {"id": "settings-bluetooth", "x": 72, "y": 181, "width": 322, "height": 54},
+      {"id": "settings-display", "x": 72, "y": 235, "width": 322, "height": 54},
+      {"id": "settings-sound", "x": 72, "y": 289, "width": 322, "height": 54}
+    ],
+    "settings_pressed_masks": {
+      "settings-wifi": [72, 127, 322, 56],
+      "settings-bluetooth": [72, 181, 322, 56],
+      "settings-display": [72, 235, 322, 56],
+      "settings-sound": [72, 289, 322, 56]
+    }
+  },
+  "local_panels": {"back": {"x": 90, "y": 60, "width": 62, "height": 46}, "wifi_password_field": {"x": 34, "y": 110, "width": 398, "height": 44}},
+  "settings_submenu": {
+    "back": {"x": 48, "y": 87, "width": 48, "height": 46},
+    "list_viewport": {"x": 58, "y": 139, "width": 350, "height": 327},
+    "row_height": 64,
+    "row_gap": 5,
+    "gesture_start_threshold": 16,
+    "gallery": {"x": 68, "width": 310}
   },
   "behaviour": {
     "swipe_up_screen": "sky-home",
     "clock_long_press_action": "toggle-clock-format",
     "brightness_minimum": 5,
-    "brightness_maximum": 100
+    "brightness_maximum": 100,
+    "settings_release": {"gestures": ["tap", "long-press", "release"], "require_original_row": true, "cancel_on_leave": true},
+    "home_button_bounds": [
+      {"id":"open-clock","x":203,"y":56,"width":72,"height":72,"center":[239,92],"move_from_center":[239,102],"radial_delta":10},
+      {"id":"open-navigation","x":116,"y":104,"width":72,"height":72,"center":[152,140],"move_from_center":[158,148],"radial_delta":10},
+      {"id":"open-weather","x":63,"y":192,"width":72,"height":72,"center":[99,228],"move_from_center":[109,228],"radial_delta":10},
+      {"id":"open-usb","x":338,"y":192,"width":72,"height":72,"center":[374,228],"move_from_center":[364,228],"radial_delta":10},
+      {"id":"open-whatsapp","x":111,"y":280,"width":72,"height":72,"center":[147,316],"move_from_center":[155,310],"radial_delta":10},
+      {"id":"open-spotify","x":291,"y":282,"width":72,"height":72,"center":[327,318],"move_from_center":[321,310],"radial_delta":10},
+      {"id":"open-settings","x":200,"y":336,"width":72,"height":72,"center":[236,372],"move_from_center":[236,362],"radial_delta":10}
+    ],
+    "settings_row_actions": {
+      "settings-wifi": "wifi-panel",
+      "settings-bluetooth": "bluetooth-panel",
+      "settings-display": "open-additional-options",
+      "settings-sound": "undefined"
+    }
   }
 }
