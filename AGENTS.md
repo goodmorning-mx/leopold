@@ -210,3 +210,12 @@ Al terminar una iteración, responde con:
 - riesgos restantes.
 
 La meta es que el usuario pueda expresar una idea y que su agente continúe Leopold dentro del pipeline de GoodMorning con autonomía, trazabilidad y límites seguros.
+
+## Theme-aware UI implementation
+
+- `shared/rendering.json` is the source of truth for semantic theme roles, Light/Dark neutral schemes, and the seven named accent palettes. Do not add component-specific hard-coded theme colors; resolve normal, selected, expanded, focused, pressed, and disabled treatments through shared palette tokens.
+- Accent color and Light/Dark appearance are independent saved settings. The default accent is **Blue**, whose bright interactive tone preserves the existing cyan product appearance. Keep this default when no accent preference exists.
+- The user changes accent in **Display → Appearance**. Keep all seven choices named and visibly selected; never rely on hue alone to communicate state.
+- Theme-aware controls must retain readable text and outlines in both schemes. Check contrast and color accessibility, especially yellow in Light mode, and account for the actual display resolution, touch targets, and device navigation gestures.
+- Store the accent through the existing settings mechanism and restore it at boot. Keep browser/simulator and firmware adapters aligned with the shared setting order and defaults.
+- For every new or changed control: inspect the shared theme and existing reusable renderer first; define its semantic state colors in the shared contract; implement the same state behavior in the simulator/shared LVGL and device adapters; then review both schemes, all seven accents, selected/focus/press/disabled states, contrast, persistence/restart, and the real input path. Rebuild synchronized assets and the LVGL/WASM renderer when those inputs change, and report simulator, firmware, and physical-device evidence as separate gates.

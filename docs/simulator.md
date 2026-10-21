@@ -47,6 +47,16 @@ geometry, and shared asset scaling. Arduino CLI generates corresponding C++
 constants; the Vite build imports the synchronized JSON copy. Changes to these
 values must be made in `shared/`, never directly in the simulator or firmware.
 
+The same contract defines shared theme roles, Light/Dark neutral surfaces, and
+the Red, Orange, Yellow, Green, Blue, Indigo, and Violet accent palettes.
+Accent is independent of Light/Dark; Display → Appearance owns the user picker.
+Blue is the default because its bright tone retains Leopold's existing cyan
+selection treatment. New controls must resolve normal, selected, expanded,
+focused, pressed, and disabled states through the shared palette. Review text
+contrast, yellow in Light mode, color accessibility, 466×466 touch targets,
+navigation gestures, and preference restoration on restart. Verify both
+simulator/shared-LVGL behavior and device behavior separately.
+
 Settings acceptance uses `FirmwareLvglCanvas` and the native shared
 `shared/lvgl_renderer.cpp` compiled to WebAssembly. Firmware compiles that same
 renderer with synchronized assets. The legacy `FirmwareCanvas.tsx` remains for

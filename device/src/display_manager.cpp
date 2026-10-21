@@ -228,6 +228,10 @@ bool DisplayManager::begin() {
     backgroundMode_ = displayPreferences.getBool("dark_bg", false) ? 0 : 1;
   }
   spanishLanguage_ = displayPreferences.getBool("spanish", false);
+  backgroundArt_ = min<uint8_t>(displayPreferences.getUChar("background_art", 0), 2);
+  accentIndex_ = min<uint8_t>(displayPreferences.getUChar("accent_color", 4), 6);
+  sharedRenderState_.backgroundArt = backgroundArt_;
+  sharedRenderState_.accentIndex = accentIndex_;
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   display->fillScreen(kBlack);
   lv_init();
@@ -689,6 +693,20 @@ void DisplayManager::cycleBackground() {
 void DisplayManager::toggleLanguage() {
   spanishLanguage_ = !spanishLanguage_;
   displayPreferences.putBool("spanish", spanishLanguage_);
+}
+
+void DisplayManager::setAccentIndex(uint8_t index) {
+  accentIndex_ = min<uint8_t>(index, 6);
+  sharedRenderState_.accentIndex = accentIndex_;
+  displayPreferences.putUChar("accent_color", accentIndex_);
+}
+
+uint8_t DisplayManager::accentIndex() const { return accentIndex_; }
+
+void DisplayManager::setBackgroundArt(uint8_t index) {
+  backgroundArt_ = min<uint8_t>(index, 2);
+  sharedRenderState_.backgroundArt = backgroundArt_;
+  displayPreferences.putUChar("background_art", backgroundArt_);
 }
 
 uint8_t DisplayManager::backgroundMode() const {
@@ -1718,6 +1736,8 @@ void DisplayManager::drawIndicators(
   sharedRenderState_.bluetoothConnected = bluetoothConnected_;
   sharedRenderState_.brightnessPercent = brightnessPercent_;
   sharedRenderState_.backgroundMode = backgroundMode_;
+  sharedRenderState_.backgroundArt = backgroundArt_;
+  sharedRenderState_.accentIndex = accentIndex_;
   // Status UI is rendered by the shared LVGL renderer. Drawing a second
   // direct-to-panel copy here caused a flashing cloud glyph and made screens
   // without a status bar diverge from the simulator.

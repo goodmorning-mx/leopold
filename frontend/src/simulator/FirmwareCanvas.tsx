@@ -303,23 +303,25 @@ function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages,
   const wifi = localPanel === 'wifi';
   const bluetooth = localPanel === 'bluetooth';
   const title = wifi ? 'Wi-Fi' : bluetooth ? 'Bluetooth' : 'GoodMorning Cloud';
-  ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+  if (wifi) drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H);
+  else { ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H); }
   drawBack(ctx);
-  centered(ctx, title, 233, 58, 24);
+  if (wifi) drawSettingsStatusBanner(ctx, images, '8:42', 82, connected, false, false);
+  centered(ctx, title, 233, wifi ? 78 : 58, 24);
   const accent = connected ? '#30D158' : '#0A84FF';
   if (wifi) {
-    rounded(ctx, 60, 104, 346, 64, 24, '#0D1520', '#287AC8', 1.5); rounded(ctx, 73, 114, 44, 44, 22, '#15263A', '#69B9FF', 1.5); drawWifi(ctx, 95, 134, connected);
-    text(ctx, 'Wi-Fi', 132, 119, 18); text(ctx, wifiEnabled ? 'On' : 'Off', 312, 122, 15, '#BBD7F5', 'right');
-    rounded(ctx, 333, 116, 58, 34, 17, wifiEnabled ? '#087BFF' : '#333944'); rounded(ctx, 336 + (wifiEnabled ? 25 : 0), 119, 28, 28, 14, '#F6FAFF');
+    rounded(ctx, 60, 112, 346, 64, 24, '#0D1520', '#287AC8', 1.5); rounded(ctx, 73, 122, 44, 44, 22, '#15263A', '#69B9FF', 1.5); drawWifi(ctx, 95, 142, connected);
+    text(ctx, 'Wi-Fi', 132, 127, 18); text(ctx, wifiEnabled ? 'On' : 'Off', 312, 130, 15, '#BBD7F5', 'right');
+    rounded(ctx, 333, 124, 58, 34, 17, wifiEnabled ? '#087BFF' : '#333944'); rounded(ctx, 336 + (wifiEnabled ? 25 : 0), 127, 28, 28, 14, '#F6FAFF');
     if (connected) {
       rounded(ctx, 60, 181, 346, 58, 21, '#0D1520', '#287AC8', 1.5); rounded(ctx, 73, 189, 42, 42, 21, '#15263A', '#69B9FF', 1.5); drawWifi(ctx, 94, 209, true);
       text(ctx, networkName, 128, 194, 15); text(ctx, 'Connected (mock)', 128, 216, 11, '#A9C9F4'); centered(ctx, '✓', 372, 199, 23, '#00D2FF');
     }
     centered(ctx, 'Available Networks', 233, connected ? 259 : 246, 17, '#BBD7F5');
     centered(ctx, 'Use Change network to scan demo results', 233, connected ? 285 : 272, 12, '#8E9BAE');
-    rounded(ctx, 48, 376, 174, 56, 28, '#087BFF'); centered(ctx, 'Scan networks', 135, 394, 14);
-    rounded(ctx, 244, 376, 174, 56, 28, '#172332', '#338DFF', 1); centered(ctx, 'Change network', 331, 394, 14);
-    centered(ctx, 'Simulator only · network state is mocked', 233, 445, 10, '#8E9BAE');
+    rounded(ctx, 48, 352, 174, 52, 26, '#087BFF'); centered(ctx, 'Scan networks', 135, 370, 14);
+    rounded(ctx, 244, 352, 174, 52, 26, '#172332', '#338DFF', 1); centered(ctx, 'Change network', 331, 370, 14);
+    centered(ctx, 'Simulator only · network state is mocked', 233, 420, 10, '#D5E3FA');
   } else {
     rounded(ctx, 149, 112, 168, 168, 84, '#1C1C1E', accent, 5);
     centered(ctx, bluetooth ? 'ᛒ' : '↥', 233, 158, 36, accent);
@@ -331,12 +333,13 @@ function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages,
 }
 
 function drawNetworkList(ctx: CanvasRenderingContext2D, images: FirmwareImages, bluetooth: boolean, saved: string[]) {
-  ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H); drawBack(ctx);
-  centered(ctx, bluetooth ? 'Bluetooth' : 'Elegir Wi-Fi', 233, 43, 24);
-  centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Demo networks — no real scan', 233, 80, 12, '#8E8E93');
+  drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
+  if (!bluetooth) drawSettingsStatusBanner(ctx, images, '8:42', 82, false, false, false);
+  centered(ctx, bluetooth ? 'Bluetooth' : 'Elegir Wi-Fi', 233, bluetooth ? 43 : 88, 24);
+  centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Demo networks — no real scan', 233, bluetooth ? 80 : 119, 12, '#D5E3FA');
   const names = bluetooth ? ['Nearby device A', 'Nearby device B'] : SIMULATOR_WIFI_NETWORKS.map((network) => network.name);
-  names.forEach((name, index) => { const y = 111 + index * 57; rounded(ctx, 34, y, 398, 49, 17, '#101923', '#27507C', 1.5); rounded(ctx, 43, y + 7, 34, 34, 17, '#172B40', '#65B7FF', 1); centered(ctx, bluetooth ? 'ᛒ' : '⌁', 60, y + 12, 18, '#BBD7F5'); text(ctx, name, 88, y + 14, 16); text(ctx, bluetooth ? 'Nearby' : saved.includes(name) ? 'Saved demo' : SIMULATOR_WIFI_NETWORKS[index]?.requiresPassword ? 'Password' : 'Open demo', 382, y + 17, 12, '#BBD7F5', 'right'); });
-  rounded(ctx, 111, 410, 244, 45, 23, '#2C2C2E'); centered(ctx, bluetooth ? 'Buscar otra vez' : 'Buscar otra vez', 233, 424, 14);
+  names.forEach((name, index) => { const y = (bluetooth ? 111 : 146) + index * 57; rounded(ctx, 34, y, 398, 49, 17, '#101923', '#27507C', 1.5); rounded(ctx, 43, y + 7, 34, 34, 17, '#172B40', '#65B7FF', 1); centered(ctx, bluetooth ? 'ᛒ' : '⌁', 60, y + 12, 18, '#BBD7F5'); text(ctx, name, 88, y + 14, 16); text(ctx, bluetooth ? 'Nearby' : saved.includes(name) ? 'Saved demo' : SIMULATOR_WIFI_NETWORKS[index]?.requiresPassword ? 'Password' : 'Open demo', 382, y + 17, 12, '#BBD7F5', 'right'); });
+  rounded(ctx, 111, 410, 244, 45, 23, '#2C2C2E'); centered(ctx, 'Buscar otra vez', 233, 424, 14);
 }
 
 function drawSpotify(ctx: CanvasRenderingContext2D, images: FirmwareImages, screen: SduiScreen, playing: boolean, backgroundArt: number, darkBackground: boolean) {
@@ -395,7 +398,8 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, images, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName, wifiEnabled);
       else if (localPanel === 'wifi-password') {
         drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
-        centered(ctx, 'Demo Wi-Fi', 233, 55, 24);
+        drawSettingsStatusBanner(ctx, images, timeText || '8:42', batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled);
+        centered(ctx, 'Demo Wi-Fi', 233, 90, 24);
         centered(ctx, demoPendingWifi, 233, 130, 20);
         centered(ctx, 'No real password is needed here.', 233, 200, 16);
         centered(ctx, 'Enter real passwords only on Leopold.', 233, 235, 14, '#A0ACB9');
@@ -413,7 +417,6 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       } else if (localPanel === 'none' && screen.id !== 'device-control-center' && screen.id !== 'sky-home' && rendering.status_bar.visible_screens.includes(screen.id)) {
         drawStatus(ctx, screen.id === 'sky-home', clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       }
-      if (localPanel === 'wifi') drawStatus(ctx, false, clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       if (new URLSearchParams(window.location.search).get('capture') === '1') {
         const dataUrl = canvas.toDataURL('image/png');
         canvas.dataset.framebufferPng = dataUrl;

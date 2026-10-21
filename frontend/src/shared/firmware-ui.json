@@ -335,53 +335,43 @@
       "components": [
         {
           "type": "text",
-          "id": "options-title",
-          "text": "ADDITIONAL OPTIONS",
-          "x": 233,
-          "y": 54,
+          "id": "submenu-title",
+          "text": "DISPLAY",
+          "x": 196,
+          "y": 91,
           "size": 2,
           "color": "#FFFFFF",
-          "align": "center"
+          "align": "left"
         },
         {
           "type": "button",
-          "id": "background-toggle",
-          "label": "BACKGROUND: ORIGINAL",
-          "x": 96,
-          "y": 128,
-          "width": 274,
-          "height": 62,
-          "color": "#3D7FFF"
+          "id": "menu-back",
+          "label": "\u2039",
+          "x": 48,
+          "y": 87,
+          "width": 48,
+          "height": 46,
+          "color": "#FFFFFF"
         },
         {
           "type": "button",
-          "id": "language-toggle",
-          "label": "LANGUAGE",
-          "x": 96,
-          "y": 210,
-          "width": 274,
-          "height": 62,
-          "color": "#30D158"
-        },
-        {
-          "type": "text",
-          "id": "input-voltage-label",
-          "text": "INPUT VOLTAGE  --.-- V",
-          "x": 233,
-          "y": 304,
-          "size": 1,
-          "color": "#FFD60A",
-          "align": "center"
+          "id": "display-row-background",
+          "label": "Background",
+          "x": 58,
+          "y": 139,
+          "width": 350,
+          "height": 54,
+          "color": "#D5E3FA"
         },
         {
           "type": "button",
-          "id": "open-settings",
-          "label": "BACK",
-          "x": 126,
-          "y": 336,
-          "width": 214,
-          "height": 58,
-          "color": "#8E8E93"
+          "id": "display-row-appearance",
+          "label": "Appearance",
+          "x": 58,
+          "y": 201,
+          "width": 350,
+          "height": 54,
+          "color": "#D5E3FA"
         }
       ]
     },
@@ -412,7 +402,7 @@
         {
           "type": "text",
           "id": "weather-humidity-value",
-          "text": "—%",
+          "text": "\u2014%",
           "x": 233,
           "y": 247,
           "size": 2,

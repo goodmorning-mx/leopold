@@ -22,6 +22,7 @@ struct SharedRenderState {
   uint8_t clockBackground = 255;
   uint8_t clockFace = 0;
   bool clockShowWeather = false;
+  uint8_t accentIndex = 4;
 };
 
 void renderSharedLvglScreen(

@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { SduiScreen } from './contract';
 import assetManifest from '../shared/asset-manifest.json';
+import { ACCENT_NAMES, AccentName } from './theme';
 
-type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean; backgroundArt?: number; appearanceDark?: boolean; clockBackground?: number; clockFace?: number; clockShowWeather?: boolean; onFramebufferCapture?: (dataUrl: string) => void };
+type Props = { screen: SduiScreen; pressed: string | null; timeText: string; weatherFahrenheit: boolean; batteryPercent: number; wifiConnected: boolean; cloudConnected: boolean; bluetoothEnabled: boolean; brightness: number; backgroundMode: number; playing: boolean; backgroundArt?: number; appearanceDark?: boolean; accentColor?: AccentName; clockBackground?: number; clockFace?: number; clockShowWeather?: boolean; onFramebufferCapture?: (dataUrl: string) => void };
 type Module = {
   HEAPU8: Uint8Array;
   _lvgl_wasm_init: () => void;
@@ -86,7 +87,7 @@ function paint(canvas: HTMLCanvasElement, module: Module) {
   canvas.getContext('2d')?.putImageData(image, 0, 0);
 }
 
-export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, backgroundArt = 255, appearanceDark = true, clockBackground = 255, clockFace = 0, clockShowWeather = false, onFramebufferCapture }: Props) {
+export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, backgroundArt = 255, appearanceDark = true, accentColor = 'blue', clockBackground = 255, clockFace = 0, clockShowWeather = false, onFramebufferCapture }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -106,12 +107,12 @@ export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherF
       };
       callString(module, 'lvgl_wasm_begin', [effectiveScreen.id, rgb565(effectiveScreen.background)]);
       effectiveScreen.components.forEach((component) => {
-        if (component.type === 'text') callString(module, 'lvgl_wasm_add_text', [component.text, component.x, component.y, component.size, rgb565(component.color), component.align === 'center' ? 1 : component.align === 'right' ? 2 : 0]);
+        if (component.type === 'text') callString(module, 'lvgl_wasm_add_text', [component.id, component.text, component.x, component.y, component.size, rgb565(component.color), component.align === 'center' ? 1 : component.align === 'right' ? 2 : 0]);
         if (component.type === 'button') callString(module, 'lvgl_wasm_add_button', [component.id, component.label, component.icon ?? '', component.x, component.y, component.width, component.height, rgb565(component.color ?? '#FFFFFF')]);
         if (component.type === 'slider') callString(module, 'lvgl_wasm_add_slider', [component.id, component.x, component.y, component.width, component.height, component.value, 100, rgb565(component.color)]);
       });
       callString(module, 'lvgl_wasm_set_pressed', [pressed ?? '']);
-      callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness, backgroundMode, backgroundArt, appearanceDark ? 1 : 0, clockBackground, clockFace, clockShowWeather ? 1 : 0]);
+      callString(module, 'lvgl_wasm_set_state', [timeText, batteryPercent, wifiConnected ? 1 : 0, cloudConnected ? 1 : 0, bluetoothEnabled ? 1 : 0, bluetoothEnabled ? 1 : 0, brightness, backgroundMode, backgroundArt, appearanceDark ? 1 : 0, clockBackground, clockFace, clockShowWeather ? 1 : 0, Math.max(0, ACCENT_NAMES.indexOf(accentColor))]);
       module._lvgl_wasm_render();
       paint(canvas.current, module);
       const dataUrl = canvas.current.toDataURL('image/png');
@@ -119,6 +120,6 @@ export default function FirmwareLvglCanvas({ screen, pressed, timeText, weatherF
       onFramebufferCapture?.(dataUrl);
     });
     return () => { active = false; };
-  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, backgroundArt, appearanceDark, clockBackground, clockFace, clockShowWeather, onFramebufferCapture]);
+  }, [screen, pressed, timeText, weatherFahrenheit, batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled, brightness, backgroundMode, playing, backgroundArt, appearanceDark, accentColor, clockBackground, clockFace, clockShowWeather, onFramebufferCapture]);
   return <canvas ref={canvas} width={466} height={466} className="firmware-canvas" aria-label="LVGL firmware framebuffer" />;
 }

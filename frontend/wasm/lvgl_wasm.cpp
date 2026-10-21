@@ -88,8 +88,9 @@ void lvgl_wasm_begin(const char* id, uint16_t background) {
   screen.background = background;
 }
 
-void lvgl_wasm_add_text(const char* value, int16_t x, int16_t y, uint8_t size, uint16_t color, uint8_t align) {
+void lvgl_wasm_add_text(const char* id, const char* value, int16_t x, int16_t y, uint8_t size, uint16_t color, uint8_t align) {
   leopold::SduiComponent component; component.type = leopold::ComponentType::kText;
+  strncpy(component.id, id == nullptr ? "" : id, sizeof(component.id) - 1);
   strncpy(component.text, value == nullptr ? "" : value, sizeof(component.text) - 1);
   component.x = x; component.y = y; component.size = size; component.color = color;
   component.align = align == 1 ? leopold::TextAlign::kCenter : align == 2 ? leopold::TextAlign::kRight : leopold::TextAlign::kLeft;
@@ -114,7 +115,7 @@ void lvgl_wasm_add_slider(const char* id, int16_t x, int16_t y, int16_t width, i
 
 void lvgl_wasm_set_pressed(const char* id) { strncpy(pressedId, id == nullptr ? "" : id, sizeof(pressedId) - 1); pressedId[sizeof(pressedId) - 1] = '\0'; }
 
-void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode, uint8_t backgroundArt, bool appearanceDark, uint8_t clockBackground, uint8_t clockFace, bool clockShowWeather) {
+void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool cloud, bool bluetooth, bool bluetoothConnected, uint8_t brightness, uint8_t backgroundMode, uint8_t backgroundArt, bool appearanceDark, uint8_t clockBackground, uint8_t clockFace, bool clockShowWeather, uint8_t accentIndex) {
   strncpy(renderTime, timeText == nullptr ? "--:--" : timeText, sizeof(renderTime) - 1);
   renderTime[sizeof(renderTime) - 1] = '\0';
   renderState.timeText = renderTime;
@@ -130,6 +131,7 @@ void lvgl_wasm_set_state(const char* timeText, uint8_t battery, bool wifi, bool 
   renderState.clockBackground = clockBackground;
   renderState.clockFace = clockFace;
   renderState.clockShowWeather = clockShowWeather;
+  renderState.accentIndex = accentIndex;
 }
 
 void lvgl_wasm_render() {

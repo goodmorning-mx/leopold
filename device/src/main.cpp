@@ -551,6 +551,41 @@ void updateAdditionalOptionsLabels() {
   }
 }
 
+void buildDeviceDisplayMenu(SduiScreen& target) {
+  strlcpy(target.screenId, "device-additional-options", sizeof(target.screenId));
+  target.componentCount = 0;
+  memset(target.components, 0, sizeof(target.components));
+  addText(target, "submenu-title", screen.spanishLanguage() ? "PANTALLA" : "DISPLAY", 196, 91, 2, "#FFFFFF", TextAlign::kLeft);
+  addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
+  addButton(target, "display-row-background", screen.spanishLanguage() ? "Fondo" : "Background", 58, 139, 350, 54, "#D5E3FA");
+  addButton(target, "display-row-appearance", screen.spanishLanguage() ? "Apariencia" : "Appearance", 58, 201, 350, 54, "#D5E3FA");
+  target.components[2].icon[0] = '\0';
+  target.components[3].icon[0] = '\0';
+}
+
+void buildDeviceAppearanceMenu(SduiScreen& target) {
+  static const char* names[] = {"Red", "Orange", "Yellow", "Green", "Blue", "Indigo", "Violet"};
+  static const char* colors[] = {"#D92D3A", "#C65313", "#8A6800", "#16834A", "#00739B", "#514CC2", "#9A45BD"};
+  const uint8_t selected = screen.accentIndex();
+  strlcpy(target.screenId, "device-appearance-options", sizeof(target.screenId));
+  target.componentCount = 0;
+  memset(target.components, 0, sizeof(target.components));
+  addText(target, "submenu-title", screen.spanishLanguage() ? "APARIENCIA" : "APPEARANCE", 196, 91, 2, "#FFFFFF", TextAlign::kLeft);
+  addButton(target, "menu-back", "<", 48, 87, 48, 46, "#FFFFFF");
+  addText(target, "display-appearance-hint", screen.spanishLanguage() ? "Color de acento: toque una opcion" : "Accent color: tap a named option", 73, 145, 1, "#F4F7FC", TextAlign::kLeft);
+  for (uint8_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
+    const uint8_t row = index < 4 ? 0 : 1;
+    const uint8_t column = row == 0 ? index : index - 4;
+    const int16_t width = row == 0 ? 78 : 104;
+    const int16_t x = row == 0 ? 64 + column * 82 : 64 + column * 108;
+    char id[32] = {};
+    char label[48] = {};
+    snprintf(id, sizeof(id), "display-accent-%s", index == 0 ? "red" : index == 1 ? "orange" : index == 2 ? "yellow" : index == 3 ? "green" : index == 4 ? "blue" : index == 5 ? "indigo" : "violet");
+    snprintf(label, sizeof(label), "%s%s", selected == index ? "[x] " : "", names[index]);
+    addButton(target, id, label, x, 182 + row * 36, width, 30, colors[index]);
+  }
+}
+
 void syncControlCenterScreen() {
   memset(&preservedSpotify, 0, sizeof(preservedSpotify));
   memset(&preservedSpotifyActions, 0, sizeof(preservedSpotifyActions));
@@ -627,9 +662,20 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
+  const bool wasDisplayMenu = strcmp(previousScreenId, "device-additional-options") == 0;
+  const bool wasAppearanceMenu = strcmp(previousScreenId, "device-appearance-options") == 0;
   syncControlCenterScreen();
 
-  if (previousScreenId[0] != '\0') {
+  if (wasDisplayMenu || wasAppearanceMenu) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, "device-additional-options") == 0) {
+        currentUi.activeScreen = index;
+        buildDeviceDisplayMenu(currentUi.active());
+        if (wasAppearanceMenu) buildDeviceAppearanceMenu(currentUi.active());
+        break;
+      }
+    }
+  } else if (previousScreenId[0] != '\0') {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
       if (strcmp(currentUi.screens[index].screenId, previousScreenId) == 0) {
         currentUi.activeScreen = index;
@@ -915,7 +961,10 @@ bool handleSettingsTap(const SduiComponent& button, uint32_t now) {
     return true;
   }
   if (strcmp(button.id, "settings-display") == 0) {
-    openLocalScreen("open-additional-options");
+    if (openLocalScreen("open-additional-options")) {
+      buildDeviceDisplayMenu(currentUi.active());
+      screen.renderSduiScreen(currentUi);
+    }
     return true;
   }
   if (strcmp(button.id, "settings-sound") == 0) {
@@ -1211,21 +1260,28 @@ void processInput(uint32_t now) {
     if (releasedSettingsRow && button && strcmp(releasedSettingsRow, button->id) == 0)
       handleSettingsTap(*button, now);
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
+             (strcmp(currentUi.active().screenId, "device-additional-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-appearance-options") == 0)) {
+    const bool appearancePage = strcmp(currentUi.active().screenId, "device-appearance-options") == 0;
     const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);
     if (button != nullptr) {
-      if (strcmp(button->id, "open-settings") == 0) {
-        openLocalScreen("open-settings");
-      } else if (strcmp(button->id, "background-toggle") == 0) {
+      if (strcmp(button->id, "menu-back") == 0) {
+        if (appearancePage) buildDeviceDisplayMenu(currentUi.active());
+        else openLocalScreen("open-settings");
+        screen.renderSduiScreen(currentUi);
+      } else if (!appearancePage && strcmp(button->id, "display-row-appearance") == 0) {
+        buildDeviceAppearanceMenu(currentUi.active());
+        screen.renderSduiScreen(currentUi);
+      } else if (!appearancePage && strcmp(button->id, "display-row-background") == 0) {
         screen.cycleBackground();
-        updateAdditionalOptionsLabels();
         screen.renderSduiScreen(currentUi);
-        Serial.println("Background preference toggled");
-      } else if (strcmp(button->id, "language-toggle") == 0) {
-        screen.toggleLanguage();
-        updateAdditionalOptionsLabels();
+      } else if (appearancePage && strncmp(button->id, "display-accent-", 15) == 0) {
+        static const char* ids[] = {"display-accent-red", "display-accent-orange", "display-accent-yellow", "display-accent-green", "display-accent-blue", "display-accent-indigo", "display-accent-violet"};
+        for (uint8_t index = 0; index < sizeof(ids) / sizeof(ids[0]); ++index) {
+          if (strcmp(button->id, ids[index]) == 0) { screen.setAccentIndex(index); break; }
+        }
+        buildDeviceAppearanceMenu(currentUi.active());
         screen.renderSduiScreen(currentUi);
-        Serial.println("Language preference toggled");
       }
     }
   }
@@ -1298,6 +1354,16 @@ void processInput(uint32_t now) {
         gesture == TouchGesture::kSwipeLeft
             ? "Welcome swiped left"
             : "Welcome swiped right");
+  } else if (hasUi && gesture == TouchGesture::kSwipeUp) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, "sky-home") == 0) {
+        currentUi.activeScreen = index;
+        break;
+      }
+    }
+    screen.renderSduiScreen(currentUi);
+    lastIndicatorAt = 0;
+    Serial.println("SDUI swipe up: sky-home");
   } else if (hasUi &&
              (gesture == TouchGesture::kSwipeLeft ||
               gesture == TouchGesture::kSwipeRight) &&
@@ -1318,13 +1384,24 @@ void processInput(uint32_t now) {
         currentUi.activeScreen + 1,
         currentUi.screenCount);
   } else if (gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-control-center") != 0) {
+             strcmp(currentUi.active().screenId, "device-control-center") != 0 &&
+             strcmp(currentUi.active().screenId, "device-additional-options") != 0 &&
+             strcmp(currentUi.active().screenId, "device-appearance-options") != 0) {
     // Settings releases were consumed above, including cancelled contacts.
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
     const SduiComponent* button =
         findButtonAt(currentUi.active(), point.x, point.y);
     if (button != nullptr) {
-      if (strcmp(button->id, "weather-units") == 0 &&
+      if (strncmp(button->id, "display-accent-", 15) == 0) {
+        static const char* names[] = {"red", "orange", "yellow", "green", "blue", "indigo", "violet"};
+        for (uint8_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
+          if (strstr(button->id, names[index]) != nullptr) { screen.setAccentIndex(index); break; }
+        }
+        screen.renderSduiScreen(currentUi);
+      } else if (strncmp(button->id, "display-background-", 19) == 0 && button->id[19] >= '0' && button->id[19] <= '2') {
+        screen.setBackgroundArt(static_cast<uint8_t>(button->id[19] - '0'));
+        screen.renderSduiScreen(currentUi);
+      } else if (strcmp(button->id, "weather-units") == 0 &&
           strcmp(currentUi.active().screenId, "sky-weather") == 0) {
         weather.toggleUnits(currentUi);
         screen.renderSduiScreen(currentUi);

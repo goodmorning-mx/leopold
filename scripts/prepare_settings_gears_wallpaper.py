@@ -5,13 +5,14 @@ from PIL import Image, ImageEnhance, ImageFilter
 from png_to_rgb565a8 import decode
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "shared/references/settings-gears-2026-10-20/source.jpeg"
+SOURCE = ROOT / "shared/references/settings-rainbow-gears-2026-10-21/source.jpeg"
 OUT = ROOT / "shared/assets/settings-gears-wallpaper-466.png"
 BIN = OUT.with_suffix(".bin")
+COMPOSITION = ROOT / "shared/references/settings-rainbow-gears-2026-10-21/composition.json"
 
 def compose():
-    manifest = json.loads((ROOT / "shared/references/settings-glass-gears-2026-10-20/composition.json").read_text())
-    if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != manifest["background_source"]["sha256"]:
+    manifest = json.loads(COMPOSITION.read_text())
+    if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != manifest["source"]["sha256"]:
         raise ValueError("Wallpaper source checksum mismatch")
     image = Image.open(SOURCE).convert("RGB").resize((466, 466), Image.Resampling.LANCZOS)
     image = ImageEnhance.Color(image).enhance(1.25)

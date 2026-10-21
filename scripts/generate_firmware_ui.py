@@ -59,6 +59,7 @@ seek = spotify_rendering["seek"]
 controls = spotify_rendering["controls"]
 actions = spotify_rendering["actions"]
 usb = rendering["home"]["usb_icon"]
+theme_accents = list(rendering["theme"]["accents"].values())
 
 
 lines = [
@@ -160,6 +161,10 @@ lines.extend([
     f"constexpr uint32_t kSettingsIconColor = 0x{settings_center['color'].replace('#', '')};",
     f"constexpr uint32_t kSettingsIconActiveColor = 0x{settings_center['active_color'].replace('#', '')};",
     f"constexpr uint32_t kSettingsIconActiveInnerGlow = 0x{settings_center['active_inner_glow'].replace('#', '')};",
+    f"constexpr uint32_t kThemeAccentBright[] = {{{', '.join('0x' + color['accentBright'].replace('#', '') for color in theme_accents)}}};",
+    f"constexpr uint32_t kThemeAccent[] = {{{', '.join('0x' + color['accent'].replace('#', '') for color in theme_accents)}}};",
+    f"constexpr uint16_t kThemeAccent565[] = {{{', '.join(rgb565(color['accent']) for color in theme_accents)}}};",
+    f"constexpr uint8_t kThemeAccentCount = {len(theme_accents)};",
     f"constexpr int16_t kSettingsChevronXOffset = {settings_chevron['x_offset']};",
     f"constexpr int16_t kSettingsChevronYOffset = {settings_chevron['y_offset']};",
     f"constexpr int16_t kSettingsChevronMidX = {settings_chevron['points'][1][0]};",

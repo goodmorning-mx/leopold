@@ -3,6 +3,8 @@
 #include <cstring>
 #include <cstdio>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #if __has_include("generated_firmware_ui.h")
 #include "generated_firmware_ui.h"
@@ -30,6 +32,9 @@ constexpr float kSettingsIconScale = 1.15f;
 constexpr uint32_t kSettingsIconColor = 0xFFFFFF;
 constexpr uint32_t kSettingsIconActiveColor = 0x00D2FF;
 constexpr uint32_t kSettingsIconActiveInnerGlow = 0x0084C8;
+constexpr uint32_t kThemeAccentBright[] = {0xF04452, 0xF07832, 0xD5A800, 0x22A861, 0x00D2FF, 0x7771F0, 0xC46CE6};
+constexpr uint32_t kThemeAccent[] = {0xD92D3A, 0xC65313, 0x8A6800, 0x16834A, 0x00739B, 0x514CC2, 0x9A45BD};
+constexpr uint8_t kThemeAccentCount = 7;
 constexpr int16_t kSettingsChevronXOffset = 293;
 constexpr int16_t kSettingsChevronYOffset = 19;
 constexpr int16_t kSettingsChevronMidX = 7;
@@ -67,11 +72,73 @@ constexpr int16_t kSettingsBrightnessLabelFontSize = 16;
 namespace leopold {
 namespace {
 
-lv_color_t color565(uint16_t value) {
+uint8_t gAccentIndex = 4;
+bool gDarkAppearance = true;
+
+lv_color_t accentBright() {
+  const uint8_t index = gAccentIndex < generated_ui::kThemeAccentCount ? gAccentIndex : 4;
+  return lv_color_hex(gDarkAppearance ? generated_ui::kThemeAccentBright[index] : generated_ui::kThemeAccent[index]);
+}
+
+bool isThemeAccentBright(uint16_t value) {
+  for (uint8_t index = 0; index < generated_ui::kThemeAccentCount; ++index) {
+    const uint32_t rgb = generated_ui::kThemeAccentBright[index];
+    const uint16_t packed = static_cast<uint16_t>(((rgb >> 19) & 0x1F) << 11 | ((rgb >> 10) & 0x3F) << 5 | ((rgb >> 3) & 0x1F));
+    if (value == packed) return true;
+  }
+  return false;
+}
+
+bool isThemeAccentToken(uint16_t value) {
+  if (isThemeAccentBright(value)) return true;
+  for (uint8_t index = 0; index < generated_ui::kThemeAccentCount; ++index) {
+    const uint32_t rgb = generated_ui::kThemeAccent[index];
+    const uint16_t packed = static_cast<uint16_t>(((rgb >> 19) & 0x1F) << 11 | ((rgb >> 10) & 0x3F) << 5 | ((rgb >> 3) & 0x1F));
+    if (value == packed) return true;
+  }
+  return false;
+}
+
+lv_color_t rawColor565(uint16_t value) {
   const uint8_t red = (value >> 11) & 0x1F;
   const uint8_t green = (value >> 5) & 0x3F;
   const uint8_t blue = value & 0x1F;
   return lv_color_make((red << 3) | (red >> 2), (green << 2) | (green >> 4), (blue << 3) | (blue >> 2));
+}
+
+lv_color_t color565(uint16_t value) {
+  return isThemeAccentBright(value) ? accentBright() : rawColor565(value);
+}
+
+uint16_t selectedAccent565() {
+  const uint8_t index = gAccentIndex < generated_ui::kThemeAccentCount ? gAccentIndex : 4;
+  const uint32_t rgb = gDarkAppearance ? generated_ui::kThemeAccentBright[index] : generated_ui::kThemeAccent[index];
+  return static_cast<uint16_t>(((rgb >> 19) & 0x1F) << 11 | ((rgb >> 10) & 0x3F) << 5 | ((rgb >> 3) & 0x1F));
+}
+
+const lv_image_dsc_t* tintAccentMask(const lv_image_dsc_t* source, uint8_t slot) {
+  if (source == nullptr || source->header.cf != LV_COLOR_FORMAT_RGB565A8 || slot >= 3) return source;
+  struct Cache { lv_image_dsc_t descriptor = {}; uint8_t* bytes = nullptr; uint32_t size = 0; const lv_image_dsc_t* source = nullptr; uint16_t color = 0; };
+  static Cache cache[3];
+  Cache& item = cache[slot];
+  const uint16_t accent = selectedAccent565();
+  if (item.source == source && item.color == accent && item.bytes != nullptr) return &item.descriptor;
+  if (item.size != source->data_size || item.bytes == nullptr) {
+    item.bytes = static_cast<uint8_t*>(realloc(item.bytes, source->data_size));
+    if (item.bytes == nullptr) { item.size = 0; item.source = nullptr; return source; }
+    item.size = source->data_size;
+  }
+  memcpy(item.bytes, source->data, source->data_size);
+  const uint32_t pixels = static_cast<uint32_t>(source->header.w) * source->header.h;
+  for (uint32_t index = 0; index < pixels; ++index) {
+    item.bytes[index * 2] = static_cast<uint8_t>(accent & 0xFF);
+    item.bytes[index * 2 + 1] = static_cast<uint8_t>(accent >> 8);
+  }
+  item.descriptor = *source;
+  item.descriptor.data = item.bytes;
+  item.source = source;
+  item.color = accent;
+  return &item.descriptor;
 }
 
 const lv_font_t* fontForSize(uint8_t size) {
@@ -110,7 +177,7 @@ lv_obj_t* makeButton(lv_obj_t* parent, const SduiComponent& component, const cha
   const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
   lv_obj_t* object = makePanel(parent, component.x, component.y, component.width, component.height, component.height / 2, lv_color_hex(0x0D0F12));
   lv_obj_set_style_border_width(object, 3, 0);
-  lv_obj_set_style_border_color(object, color565(component.color), 0);
+  lv_obj_set_style_border_color(object, pressed ? accentBright() : color565(component.color), 0);
   lv_obj_set_style_shadow_width(object, pressed ? 2 : 6, 0);
   lv_obj_set_style_shadow_opa(object, pressed ? LV_OPA_20 : LV_OPA_40, 0);
   lv_obj_set_style_shadow_color(object, color565(component.color), 0);
@@ -139,11 +206,11 @@ lv_obj_t* makeHomeButton(lv_obj_t* parent, const SduiComponent& component, const
   // still shows through, but make the glass itself readable on both modes.
   lv_obj_set_style_bg_opa(object, pressed ? LV_OPA_90 : greenAccent ? LV_OPA_50 : blueAccent ? LV_OPA_70 : LV_OPA_90, 0);
   lv_obj_set_style_border_width(object, 2, 0);
-  lv_obj_set_style_border_color(object, greenAccent || blueAccent ? accent : white, 0);
+  lv_obj_set_style_border_color(object, pressed ? accentBright() : greenAccent || blueAccent ? accent : white, 0);
   lv_obj_set_style_border_opa(object, greenAccent ? LV_OPA_90 : LV_OPA_80, 0);
   lv_obj_set_style_shadow_width(object, pressed ? 7 : 20, 0);
   lv_obj_set_style_shadow_opa(object, pressed ? LV_OPA_60 : LV_OPA_90, 0);
-  lv_obj_set_style_shadow_color(object, accent, 0);
+  lv_obj_set_style_shadow_color(object, pressed ? accentBright() : accent, 0);
   lv_obj_t* inset = makePanel(
       object,
       6,
@@ -256,19 +323,19 @@ void drawChevron(lv_obj_t* parent, int16_t x, int16_t y, bool active) {
   lv_line_set_points(line, points, 3);
   lv_obj_set_pos(line, x, y);
   lv_obj_set_size(line, 10, 18);
-  lv_obj_set_style_line_color(line, lv_color_hex(active ? generated_ui::kSettingsIconActiveColor : 0xD5E3FA), 0);
+  lv_obj_set_style_line_color(line, active ? accentBright() : lv_color_hex(0xD5E3FA), 0);
   lv_obj_set_style_line_width(line, generated_ui::kSettingsChevronStroke, 0);
   lv_obj_set_style_line_rounded(line, true, 0);
   if (active) {
     lv_obj_set_style_shadow_width(line, 2, 0);
-    lv_obj_set_style_shadow_color(line, lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow), 0);
+    lv_obj_set_style_shadow_color(line, accentBright(), 0);
     lv_obj_set_style_shadow_opa(line, LV_OPA_80, 0);
   }
 }
 
 void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t centerY, bool active) {
   constexpr float pi = 3.14159265358979323846f;
-  const lv_color_t color = lv_color_hex(active ? generated_ui::kSettingsIconActiveColor : generated_ui::kSettingsIconColor);
+  const lv_color_t color = active ? accentBright() : lv_color_hex(generated_ui::kSettingsIconColor);
   const auto line = [parent, color, active](const lv_point_precise_t* points, uint32_t count, int16_t width = 3) {
     lv_obj_t* object = lv_line_create(parent);
     lv_line_set_points(object, points, count);
@@ -328,7 +395,7 @@ void drawSettingsIcon(lv_obj_t* parent, uint8_t index, int16_t centerX, int16_t 
 
 void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index, SharedImageResolver resolveImage) {
   const int16_t y = static_cast<int16_t>(127 + index * 54);
-  const lv_image_dsc_t* borderMask = resolveImage == nullptr ? nullptr : resolveImage("settings-pressed-border-mask");
+  const lv_image_dsc_t* borderMask = resolveImage == nullptr ? nullptr : tintAccentMask(resolveImage("settings-pressed-border-mask"), 0);
   if (borderMask != nullptr) {
     lv_obj_t* border = lv_image_create(root);
     lv_image_set_src(border, borderMask);
@@ -343,8 +410,8 @@ void drawSelectedSettingsRow(lv_obj_t* root, uint8_t index, SharedImageResolver 
   static const char* chevronKeys[] = {
       "settings-wifi-pressed-chevron-mask", "settings-bluetooth-pressed-chevron-mask",
       "settings-display-pressed-chevron-mask", "settings-sound-pressed-chevron-mask"};
-  const lv_image_dsc_t* iconMask = resolveImage == nullptr ? nullptr : resolveImage(iconKeys[index]);
-  const lv_image_dsc_t* chevronMask = resolveImage == nullptr ? nullptr : resolveImage(chevronKeys[index]);
+  const lv_image_dsc_t* iconMask = resolveImage == nullptr ? nullptr : tintAccentMask(resolveImage(iconKeys[index]), 1);
+  const lv_image_dsc_t* chevronMask = resolveImage == nullptr ? nullptr : tintAccentMask(resolveImage(chevronKeys[index]), 2);
   if (iconMask != nullptr && chevronMask != nullptr) {
     lv_obj_t* icon = lv_image_create(root);
     lv_image_set_src(icon, iconMask);
@@ -472,7 +539,7 @@ void drawSettingsWallpaper(lv_obj_t* root, SharedImageResolver resolveImage);
 
 void drawMenuChevron(lv_obj_t* parent, int16_t x, int16_t y, bool expanded) {
   lv_obj_t* chevron = makeLabel(parent, expanded ? LV_SYMBOL_DOWN : LV_SYMBOL_RIGHT, &lv_font_montserrat_16,
-                                lv_color_hex(expanded ? 0x00D2FF : 0xD5E3FA));
+                                expanded ? accentBright() : lv_color_hex(0xD5E3FA));
   lv_obj_set_pos(chevron, x, y - 1);
 }
 
@@ -494,10 +561,10 @@ void drawSubmenuRow(lv_obj_t* viewport, const SduiComponent& component, const ch
   lv_obj_t* row = makePanel(viewport, x, y, component.width, component.height, component.height / 2, lv_color_hex(0x121721));
   lv_obj_set_style_bg_opa(row, LV_OPA_90, 0);
   lv_obj_set_style_border_width(row, expanded || pressed ? 2 : 1, 0);
-  lv_obj_set_style_border_color(row, lv_color_hex(expanded || pressed ? 0x00D2FF : 0x2B3545), 0);
+  lv_obj_set_style_border_color(row, expanded || pressed ? accentBright() : lv_color_hex(0x2B3545), 0);
   if (expanded || pressed) {
     lv_obj_set_style_shadow_width(row, 8, 0);
-    lv_obj_set_style_shadow_color(row, lv_color_hex(0x0084C8), 0);
+    lv_obj_set_style_shadow_color(row, accentBright(), 0);
     lv_obj_set_style_shadow_opa(row, LV_OPA_50, 0);
   }
   const char* iconKey = displayMenuIconKey(component.id);
@@ -517,7 +584,8 @@ void drawSubmenuRow(lv_obj_t* viewport, const SduiComponent& component, const ch
 void drawSubmenuChoice(lv_obj_t* viewport, const SduiComponent& component, const char* pressedComponentId, SharedImageResolver resolveImage) {
   const int16_t x = static_cast<int16_t>(component.x - 58);
   const int16_t y = static_cast<int16_t>(component.y - 139);
-  const bool selected = component.color == 0x069F;
+  const bool accentChoice = strncmp(component.id, "display-accent-", 15) == 0;
+  const bool selected = (strncmp(component.text, "[x] ", 4) == 0) || (!accentChoice && isThemeAccentToken(component.color));
   const bool pressed = pressedComponentId != nullptr && strcmp(pressedComponentId, component.id) == 0;
   const bool backgroundPreview = strncmp(component.icon, "bgprev-", 7) == 0;
   const bool clockBackgroundPreview = strncmp(component.icon, "clkbg-", 6) == 0;
@@ -526,7 +594,7 @@ void drawSubmenuChoice(lv_obj_t* viewport, const SduiComponent& component, const
   lv_obj_t* choice = makePanel(viewport, x, y, component.width, component.height, radius, lv_color_hex(component.id[0] == 'p' && strstr(component.id, "postal") != nullptr ? 0x171A1F : 0x121721));
   lv_obj_set_style_bg_opa(choice, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(choice, selected || pressed ? 2 : 1, 0);
-  lv_obj_set_style_border_color(choice, lv_color_hex(selected || pressed ? 0x00D2FF : 0x2B3545), 0);
+  lv_obj_set_style_border_color(choice, selected || pressed ? accentBright() : lv_color_hex(0x2B3545), 0);
   if (backgroundPreview || clockBackgroundPreview || clockFacePreview) {
     const char* imageKey = nullptr;
     const char* indexText = strrchr(component.icon, '-') + 1;
@@ -554,6 +622,15 @@ void drawSubmenuChoice(lv_obj_t* viewport, const SduiComponent& component, const
     lv_obj_set_style_text_align(caption, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(caption, LV_ALIGN_BOTTOM_MID, 0, 0);
   } else {
+    if (strncmp(component.id, "display-accent-", 15) == 0) {
+      lv_obj_t* swatch = makePanel(choice, 8, (component.height - 12) / 2, 12, 12, 6, rawColor565(component.color));
+      LV_UNUSED(swatch);
+      lv_obj_t* label = makeLabel(choice, component.text, &lv_font_montserrat_12, lv_color_white());
+      lv_obj_set_width(label, component.width - 25);
+      lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+      lv_obj_set_pos(label, 22, (component.height - 16) / 2);
+      return;
+    }
     lv_obj_t* label = makeLabel(choice, component.text, &lv_font_montserrat_14, lv_color_white());
     lv_obj_set_width(label, component.width - 8);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
@@ -617,8 +694,8 @@ void renderSettingsSubmenu(lv_obj_t* root, const SduiScreen& screen, SharedImage
 void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage) {
   // Keep the banner shell and its live text in the neutral base. Each active
   // value paints only its own bounded glyph with the shared active palette.
-  const lv_color_t active = lv_color_hex(generated_ui::kSettingsIconActiveColor);
-  const lv_color_t innerGlow = lv_color_hex(generated_ui::kSettingsIconActiveInnerGlow);
+  const lv_color_t active = accentBright();
+  const lv_color_t innerGlow = accentBright();
   const auto drawStatusAsset = [root, resolveImage](const char* key, int16_t x, int16_t y) {
     const lv_image_dsc_t* image = resolveImage == nullptr ? nullptr : resolveImage(key);
     if (image == nullptr) return false;
@@ -695,23 +772,23 @@ void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state
   lv_obj_set_style_bg_color(slider, color565(kSettingsSliderTrack), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(slider, 2, LV_PART_MAIN);
-  lv_obj_set_style_border_color(slider, lv_color_hex(0x68B9F5), LV_PART_MAIN);
+  lv_obj_set_style_border_color(slider, accentBright(), LV_PART_MAIN);
   lv_obj_set_style_shadow_width(slider, 14, LV_PART_MAIN);
-  lv_obj_set_style_shadow_color(slider, lv_color_hex(0x249FEA), LV_PART_MAIN);
+  lv_obj_set_style_shadow_color(slider, accentBright(), LV_PART_MAIN);
   lv_obj_set_style_shadow_opa(slider, LV_OPA_70, LV_PART_MAIN);
   lv_obj_set_style_radius(slider, kSettingsSliderRadius, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(slider, color565(kSettingsSliderFillStart), LV_PART_INDICATOR);
-  lv_obj_set_style_bg_grad_color(slider, color565(kSettingsSliderFillEnd), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(slider, accentBright(), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_grad_color(slider, accentBright(), LV_PART_INDICATOR);
   lv_obj_set_style_bg_grad_dir(slider, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(slider, color565(kSettingsSliderAccent), LV_PART_KNOB);
+  lv_obj_set_style_bg_color(slider, accentBright(), LV_PART_KNOB);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_radius(slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
   // LVGL's default theme adds DPI-scaled padding to LV_PART_KNOB. The browser
   // renderer disables that theme, so use an explicit 3 px on both targets.
   lv_obj_set_style_pad_all(slider, 3, LV_PART_KNOB);
   lv_obj_set_style_shadow_width(slider, 10, LV_PART_KNOB);
-  lv_obj_set_style_shadow_color(slider, lv_color_hex(0x168CF5), LV_PART_KNOB);
+  lv_obj_set_style_shadow_color(slider, accentBright(), LV_PART_KNOB);
   lv_obj_set_style_shadow_opa(slider, LV_OPA_60, LV_PART_KNOB);
   lv_obj_set_style_width(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
   lv_obj_set_style_height(slider, kSettingsSliderKnobRadius * 2, LV_PART_KNOB);
@@ -785,7 +862,7 @@ void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver
   lv_obj_set_style_arc_width(arc, 11, LV_PART_MAIN);
   lv_obj_set_style_arc_color(arc, lv_color_hex(0x20252A), LV_PART_MAIN);
   lv_obj_set_style_arc_width(arc, 11, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(arc, lv_color_hex(0x0A84FF), LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(arc, accentBright(), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(arc, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_bg_color(arc, lv_color_white(), LV_PART_KNOB);
 
@@ -830,12 +907,14 @@ void renderSpotify(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver
   lv_obj_set_style_radius(bar, 4, LV_PART_MAIN);
   lv_obj_set_style_radius(bar, 4, LV_PART_INDICATOR);
   lv_obj_set_style_bg_color(bar, lv_color_hex(0x343438), LV_PART_MAIN);
-  lv_obj_set_style_bg_color(bar, lv_color_white(), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(bar, accentBright(), LV_PART_INDICATOR);
 }
 
 }  // namespace
 
 void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImageResolver resolveImage, const char* selectedRowId, const SharedRenderState* state) {
+  gAccentIndex = state == nullptr ? 4 : state->accentIndex;
+  gDarkAppearance = state == nullptr || state->appearanceDark;
   lv_obj_clean(root);
   lv_obj_remove_flag(root, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_bg_color(root, state != nullptr && !state->appearanceDark ? lv_color_white() : color565(screen.background), 0);
@@ -847,7 +926,7 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     return;
   }
 
-  if (strcmp(screen.screenId, "device-additional-options") == 0 || strcmp(screen.screenId, "device-clock-options") == 0) {
+  if (strcmp(screen.screenId, "device-additional-options") == 0 || strcmp(screen.screenId, "device-clock-options") == 0 || strcmp(screen.screenId, "device-appearance-options") == 0) {
     renderSettingsSubmenu(root, screen, resolveImage, selectedRowId, state);
     return;
   }

@@ -34,6 +34,9 @@ class DisplayManager {
   uint8_t brightnessPercent() const;
   void cycleBackground();
   void toggleLanguage();
+  void setAccentIndex(uint8_t index);
+  uint8_t accentIndex() const;
+  void setBackgroundArt(uint8_t index);
   uint8_t backgroundMode() const;
   bool spanishLanguage() const;
   const SharedRenderState& sharedRenderState() const;
@@ -124,6 +127,8 @@ class DisplayManager {
   uint8_t localExpression_ = 0;
   uint8_t brightnessPercent_ = 70;
   uint8_t backgroundMode_ = 1;
+  uint8_t backgroundArt_ = 0;
+  uint8_t accentIndex_ = 4;
   bool spanishLanguage_ = false;
   uint32_t lastFaceFrameAt_ = 0;
   bool wifiConnected_ = false;

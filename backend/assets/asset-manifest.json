@@ -81,7 +81,9 @@
       "height": 466,
       "format": "rgb565a8",
       "derived_from": "settings-gears-wallpaper-466.png",
-      "source": "references/settings-glass-gears-2026-10-20/source.jpeg",
+      "source": "references/settings-rainbow-gears-2026-10-21/source.jpeg",
+      "source_sha256": "8df2ebb9916af2042ba54c82755ecaa024612c830138992bf8d79379f7b720f8",
+      "resampling": "full image, Lanczos resampled to 466x466; no crop or color adjustment",
       "state": "settings-submenu-wallpaper"
     },
     "settings-neutral": {

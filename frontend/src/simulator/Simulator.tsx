@@ -9,6 +9,7 @@ import interaction from '../shared/interaction.json';
 import persistence from '../shared/persistence.json';
 import assetManifest from '../shared/asset-manifest.json';
 import referenceManifest from '../shared/reference-manifest.json';
+import { AccentName, DEFAULT_ACCENT, isAccentName } from './theme';
 
 type EventLog = { at: string; kind: string; detail: string; payload?: string };
 const firmwareReference = `local preview · UI ${sampleDocument.revision}`;
@@ -86,8 +87,15 @@ export default function Simulator() {
   const [localPanel, setLocalPanel] = useState(() => query.get('screen') === 'wifi' ? 'wifi' : 'none');
   const [pressed, setPressed] = useState<string | null>(capturePressed);
   const [backgroundMode, setBackgroundMode] = useState(() => stored('background_mode', Number(persistence.settings.background_mode.default)));
-  const [backgroundArt, setBackgroundArt] = useState(() => query.has('art') ? Number(query.get('art')) : stored('background_art', Number(persistence.settings.background_art.default)));
+  const [backgroundArt, setBackgroundArt] = useState(() => {
+    const value = query.has('art') ? Number(query.get('art')) : stored('background_art', Number(persistence.settings.background_art.default));
+    return value >= 0 && value <= 2 ? value : 0;
+  });
   const [appearanceDark, setAppearanceDark] = useState(() => query.has('appearance') ? query.get('appearance') !== 'light' : stored('appearance_dark', Boolean(persistence.settings.appearance_dark.default)));
+  const [accentColor, setAccentColor] = useState<AccentName>(() => {
+    const saved = storedString('accent_color', DEFAULT_ACCENT);
+    return isAccentName(saved) ? saved : DEFAULT_ACCENT;
+  });
   const [spanishLanguage, setSpanishLanguage] = useState(() => query.has('language') ? query.get('language') === 'es' : stored('spanish', Boolean(persistence.settings.spanish_language.default)));
   const [clockFace, setClockFace] = useState(() => query.has('face') ? Number(query.get('face')) : stored('clock_face', Number(persistence.settings.clock_face.default)));
   const [clockBackground, setClockBackground] = useState(() => query.has('clock-background') ? Number(query.get('clock-background')) : stored('clock_background', Number(persistence.settings.clock_background.default)));
@@ -145,6 +153,7 @@ export default function Simulator() {
     scrollOffset: displayScrollOffset,
     backgroundArt,
     appearanceDark,
+    accentColor,
     measurementSystem,
     spanishLanguage,
     country: weatherCountry as '' | 'US' | 'MX',
@@ -203,6 +212,7 @@ export default function Simulator() {
   useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:background_mode`, String(backgroundMode)); }, [backgroundMode, diagnosticState]);
   useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:background_art`, String(backgroundArt)); }, [backgroundArt, diagnosticState]);
   useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:appearance_dark`, String(appearanceDark)); }, [appearanceDark, diagnosticState]);
+  useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:accent_color`, accentColor); }, [accentColor, diagnosticState]);
   useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:spanish`, String(spanishLanguage)); }, [spanishLanguage, diagnosticState]);
   useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:clock_face`, String(clockFace)); }, [clockFace, diagnosticState]);
   useEffect(() => { if (!diagnosticState) window.localStorage.setItem(`${persistence.namespace}:clock_background`, String(clockBackground)); }, [clockBackground, diagnosticState]);
@@ -304,6 +314,7 @@ export default function Simulator() {
       if (/^display-background-[0-2]$/.test(buttonId)) setBackgroundArt(Number(buttonId.slice(-1)));
       else if (buttonId === 'display-appearance-light') setAppearanceDark(false);
       else if (buttonId === 'display-appearance-dark') setAppearanceDark(true);
+      else if (buttonId.startsWith('display-accent-')) setAccentColor(buttonId.slice('display-accent-'.length) as AccentName);
       else if (buttonId === 'display-units-imperial') setMeasurementSystem('imperial');
       else if (buttonId === 'display-units-metric') setMeasurementSystem('metric');
       else if (buttonId === 'display-language-en') setSpanishLanguage(false);
@@ -429,6 +440,12 @@ export default function Simulator() {
     submenuGesture.current = null;
     if (sliderDrag.current) { sliderDrag.current = false; updateSlider(point); return; }
     if (capturedOwner?.moved) {
+      if (gesture === 'swipe-up') {
+        const home = document.screens.findIndex((item) => item.id === interaction.behaviour.swipe_up_screen);
+        setLocalPanel('none'); setScreenIndex(home >= 0 ? home : 0);
+        addEvent('navigation', 'Swipe up returned to Home from settings submenu');
+        return;
+      }
       if (capturedOwner.owner === 'gallery' && Math.abs(point.x - capturedOwner.startX) >= interaction.settings_submenu.gesture_start_threshold) {
         setBackgroundGalleryOffset(point.x < capturedOwner.startX ? 1 : 0);
       }
@@ -436,7 +453,7 @@ export default function Simulator() {
       return;
     }
     const submenuScreen = localPanel === 'none' && (screenId === 'device-additional-options' || screenId === 'device-clock-options');
-    if (submenuScreen && gesture.startsWith('swipe-')) {
+    if (submenuScreen && gesture.startsWith('swipe-') && gesture !== 'swipe-up') {
       addEvent('gesture', `${gesture} cancelled by settings submenu owner`);
       return;
     }
@@ -456,17 +473,17 @@ export default function Simulator() {
       if (back) {
         setLocalPanel(localPanel === 'wifi-networks' ? 'wifi' : localPanel === 'wifi-password' ? 'wifi-networks' : localPanel === 'bluetooth-devices' ? 'bluetooth' : 'none');
         setDemoPendingWifi('');
-      } else if (localPanel === 'wifi' && point.y >= 104 && point.y <= 168) {
+      } else if (localPanel === 'wifi' && point.y >= 112 && point.y <= 176) {
         setWifiEnabled((value) => { const next = !value; if (!next) setWifiConnected(false); return next; });
         addEvent('mock-wifi', `Wi-Fi ${wifiEnabled ? 'disabled' : 'enabled'}; device network not accessed`);
-      } else if (localPanel === 'wifi' && point.y >= 372 && point.y <= 434) {
+      } else if (localPanel === 'wifi' && point.y >= 348 && point.y <= 408) {
         if (point.x >= 245 && point.x <= 419) setLocalPanel('wifi-networks');
         else if (point.x >= 47 && point.x <= 221) {
           setLocalPanel('wifi-networks'); addEvent('mock-wifi', demoSavedWifi.length ? 'Mock scan started; saved demo networks are available' : 'No saved demo network; mock scan started');
         }
-      } else if (localPanel === 'wifi-networks' && point.x >= 34 && point.x <= 432 && point.y >= 111 && point.y < 282) {
-        const row = Math.floor((point.y - 111) / 57);
-        if ((point.y - 111) % 57 < 49) {
+      } else if (localPanel === 'wifi-networks' && point.x >= 34 && point.x <= 432 && point.y >= 146 && point.y < 317) {
+        const row = Math.floor((point.y - 146) / 57);
+        if ((point.y - 146) % 57 < 49) {
           const network = SIMULATOR_WIFI_NETWORKS[row];
           if (!network) return;
           const name = network.name;
@@ -520,7 +537,7 @@ export default function Simulator() {
     <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1><p className="muted">Local working-copy preview using the shared firmware renderer. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/">Exit simulator</a></div></header>
     <div className="simulator-grid">
       <section className="device-column"><div className="device-frame"><div className="device-surface" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={() => { pointer.current = null; submenuGesture.current = null; sliderDrag.current = false; settingsContact.current.cancelled = true; setPressed(null); }}>
-        {(framebufferCaptureMode && localPanel === 'none') || (['device-control-center', 'device-additional-options', 'device-clock-options'].includes(screen.id) && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} backgroundArt={backgroundArt} appearanceDark={appearanceDark} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={appearanceDark} backgroundArt={backgroundArt} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} wifiEnabled={wifiEnabled} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
+    {(framebufferCaptureMode && localPanel === 'none') || (['device-control-center', 'device-additional-options', 'device-clock-options'].includes(screen.id) && localPanel === 'none') ? <FirmwareLvglCanvas screen={screen} pressed={pressed} timeText={settingsTimeText} weatherFahrenheit={weatherFahrenheit} batteryPercent={batteryPercent} wifiConnected={wifiConnected} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} brightness={brightness} backgroundMode={backgroundMode} playing={playing} backgroundArt={backgroundArt} appearanceDark={appearanceDark} accentColor={accentColor} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} onFramebufferCapture={setCaptureUrl} /> : <FirmwareCanvas demoWifiName={demoWifiName} demoPendingWifi={demoPendingWifi} demoSavedWifi={demoSavedWifi} screen={screen} images={images} clock24={clock24} weatherFahrenheit={weatherFahrenheit} brightness={brightness} playing={playing} localPanel={localPanel} pressed={pressed} darkBackground={appearanceDark} backgroundArt={backgroundArt} clockBackground={clockBackground} clockFace={clockFace} clockShowWeather={clockShowWeather} spanishLanguage={spanishLanguage} wifiConnected={wifiConnected} wifiEnabled={wifiEnabled} cloudConnected={cloudConnected} bluetoothEnabled={bluetoothEnabled} batteryPercent={batteryPercent} timeText={timeText} settingsTimeText={settingsTimeText} calibration={calibrationMode} onFramebufferCapture={setCaptureUrl} />}
       </div></div><div className="device-meta"><span>{screen.id}{localPanel !== 'none' ? ` · ${localPanel}` : ''}</span><span>466 × 466 · firmware renderer</span><span>{status}</span></div><p className="gesture-help">Swipe left/right to navigate · swipe up for home · hold the clock for 700 ms · drag sliders</p></section>
         <aside className="simulator-panel"><section className="status-card"><h2>Simulator state</h2><div className="state-grid"><span>Cloud</span><strong>{cloudConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Wi-Fi</span><strong className={wifiConnected ? 'online' : ''}>{wifiConnected ? 'Connected (mock)' : 'Offline (mock)'}</strong><span>Bluetooth</span><strong>{bluetoothEnabled ? 'Connected (mock)' : 'Disconnected (mock)'}</strong><span>Battery</span><strong>{batteryPercent}%</strong><span>Time</span><strong>{clock24 ? '24-hour' : '12-hour'} · {timeText}</strong><span>ETag</span><strong>{etag}</strong><span>Polls</span><strong>{pollCount}</strong><span>USB</span><strong>Companion mocked</strong></div><div className="simulator-controls"><button className="text-button" onClick={() => setWifiConnected((value) => !value)}>Wi-Fi</button><button className="text-button" onClick={() => setBluetoothEnabled((value) => !value)}>Bluetooth</button><button className="text-button" onClick={() => setCloudConnected((value) => !value)}>Cloud</button><button className="text-button" onClick={() => setBatteryPercent((value) => value <= 15 ? 82 : value - 5)}>Battery</button><button className="text-button" onClick={() => { setEvents((current) => [{ at: new Date().toLocaleTimeString(), kind: 'heartbeat', detail: 'Mock heartbeat accepted (202)', payload: JSON.stringify({ firmware_version: '0.8.2', battery_percent: batteryPercent, uptime_seconds: Math.floor(performance.now() / 1000) }) }, ...current].slice(0, 30)); }}>Heartbeat</button></div></section>
         <section className="debug-card"><div className="panel-heading"><div><p className="kicker">Debug panel</p><h2>SDUI JSON</h2></div><button className="button primary compact" onClick={applyJson}>Apply JSON</button></div><textarea value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} aria-label="SDUI JSON editor" />{jsonMessage && <p className="notice" role="status">{jsonMessage}</p>}<p className="muted small-copy">The editor accepts the same schema as the Cloud. Publish through the admin endpoint only after validating the document.</p></section>

@@ -1,5 +1,22 @@
 {
   "schema_version": 1,
+  "theme": {
+    "default_accent": "blue",
+    "schemes": {
+      "dark": {"surface": "#121721", "text": "#F4F7FC", "mutedText": "#A0ACB9", "disabled": "#657184"},
+      "light": {"surface": "#F2F5F9", "text": "#202833", "mutedText": "#566273", "disabled": "#8792A0"}
+    },
+    "roles": ["accent", "accentBright", "accentDim", "onAccent", "surface", "text", "mutedText", "selected", "focusRing"],
+    "accents": {
+      "red": {"label": "Red", "accent": "#D92D3A", "accentBright": "#F04452", "accentDim": "#76212A", "onAccent": "#FFFFFF", "selected": "#D92D3A", "focusRing": "#FF6670"},
+      "orange": {"label": "Orange", "accent": "#C65313", "accentBright": "#F07832", "accentDim": "#71330F", "onAccent": "#FFFFFF", "selected": "#C65313", "focusRing": "#FF985E"},
+      "yellow": {"label": "Yellow", "accent": "#8A6800", "accentBright": "#D5A800", "accentDim": "#594400", "onAccent": "#FFFFFF", "selected": "#8A6800", "focusRing": "#F0C642"},
+      "green": {"label": "Green", "accent": "#16834A", "accentBright": "#22A861", "accentDim": "#125B36", "onAccent": "#FFFFFF", "selected": "#16834A", "focusRing": "#52D58B"},
+      "blue": {"label": "Blue", "accent": "#00739B", "accentBright": "#00D2FF", "accentDim": "#07516C", "onAccent": "#07131B", "selected": "#00739B", "focusRing": "#00D2FF"},
+      "indigo": {"label": "Indigo", "accent": "#514CC2", "accentBright": "#7771F0", "accentDim": "#302D78", "onAccent": "#FFFFFF", "selected": "#514CC2", "focusRing": "#9690FF"},
+      "violet": {"label": "Violet", "accent": "#9A45BD", "accentBright": "#C46CE6", "accentDim": "#5C2A72", "onAccent": "#FFFFFF", "selected": "#9A45BD", "focusRing": "#D89AF0"}
+    }
+  },
   "canvas": {"width": 466, "height": 466},
   "status_bar": {
     "height": 31,

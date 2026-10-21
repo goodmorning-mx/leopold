@@ -1,11 +1,13 @@
 import { SduiButton, SduiScreen, SduiText } from './contract';
 import rendering from '../shared/rendering.json';
+import { ACCENT_NAMES, AccentName, accentForAppearance, accentPalette, neutralRole } from './theme';
 
 export type DisplayPreferences = {
   expanded: string | null;
   scrollOffset: number;
   backgroundArt: number;
   appearanceDark: boolean;
+  accentColor: AccentName;
   measurementSystem: 'imperial' | 'metric';
   spanishLanguage: boolean;
   country: '' | 'US' | 'MX';
@@ -33,18 +35,19 @@ const ROWS = [
   ['weather-location', 'Weather Location', 'Ubicacion del clima'],
 ] as const;
 
-function button(id: string, label: string, x: number, y: number, width: number, height: number, color = '#D5E3FA', icon = ''): SduiButton {
+function button(id: string, label: string, x: number, y: number, width: number, height: number, color: string, icon = ''): SduiButton {
   return { type: 'button', id, label, x, y, width, height, color, ...(icon ? { icon } : {}) };
 }
 
-function title(text: string): SduiText {
-  return { type: 'text', id: 'submenu-title', text, x: 196, y: 91, size: 2, color: '#FFFFFF', align: 'left' };
+function title(text: string, dark: boolean): SduiText {
+  return { type: 'text', id: 'submenu-title', text, x: 196, y: 91, size: 2, color: neutralRole('text', dark), align: 'left' };
 }
 
 function expansionHeight(row: string | null, prefs: DisplayPreferences) {
   if (!row) return 0;
   if (row === 'background') return 145;
-  if (row === 'appearance' || row === 'units' || row === 'language') return 50;
+  if (row === 'appearance') return 120;
+  if (row === 'units' || row === 'language') return 50;
   if (row === 'weather-location') return prefs.country && prefs.keypadOpen ? 234 : 86;
   return 0;
 }
@@ -57,49 +60,58 @@ export function displayMenuMaximumScroll(expanded: string | null, prefs: Display
 export function displayScreen(base: SduiScreen, prefs: DisplayPreferences): SduiScreen {
   const spanish = prefs.spanishLanguage;
   const components: SduiScreen['components'] = [
-    title(spanish ? 'PANTALLA' : 'DISPLAY'),
-    button('menu-back', '‹', MENU_BACK.x, MENU_BACK.y, MENU_BACK.width, MENU_BACK.height, '#FFFFFF'),
+    title(spanish ? 'PANTALLA' : 'DISPLAY', prefs.appearanceDark),
+    button('menu-back', '‹', MENU_BACK.x, MENU_BACK.y, MENU_BACK.width, MENU_BACK.height, neutralRole('text', prefs.appearanceDark)),
   ];
   const maxScroll = displayMenuMaximumScroll(prefs.expanded, prefs);
   const scroll = Math.max(0, Math.min(maxScroll, prefs.scrollOffset));
   let y = MENU_VIEWPORT.y - scroll;
   for (const [id, english, spanishLabel] of ROWS) {
     const label = spanish ? spanishLabel : english;
-    components.push(button(`display-row-${id}`, label, MENU_VIEWPORT.x, y, MENU_VIEWPORT.width, ROW_HEIGHT, id === prefs.expanded ? '#00D2FF' : '#D5E3FA', id === prefs.expanded ? 'expanded' : 'row'));
+    components.push(button(`display-row-${id}`, label, MENU_VIEWPORT.x, y, MENU_VIEWPORT.width, ROW_HEIGHT, id === prefs.expanded ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('text', prefs.appearanceDark), id === prefs.expanded ? 'expanded' : 'row'));
     y += ROW_HEIGHT;
     if (id === prefs.expanded) {
       const controlY = y + 3;
       if (id === 'background') {
         for (let index = 0; index < 3; index += 1) {
-          components.push(button(`display-background-${index}`, ['Flower', 'Chevron', 'Mechanical'][index], 68 + index * 105, controlY + 3, 100, 135, prefs.backgroundArt === index ? '#00D2FF' : '#69778A', `bgprev-${index}`));
+          components.push(button(`display-background-${index}`, ['Flower', 'Chevron', 'Mechanical'][index], 68 + index * 105, controlY + 3, 100, 135, prefs.backgroundArt === index ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), `bgprev-${index}`));
         }
       } else if (id === 'appearance') {
-        components.push(button('display-appearance-light', spanish ? 'Claro' : 'Light', 102, controlY + 4, 116, 38, prefs.appearanceDark ? '#69778A' : '#00D2FF'));
-        components.push(button('display-appearance-dark', spanish ? 'Oscuro' : 'Dark', 246, controlY + 4, 116, 38, prefs.appearanceDark ? '#00D2FF' : '#69778A'));
+        components.push(button('display-appearance-light', spanish ? 'Claro' : 'Light', 102, controlY + 4, 116, 38, prefs.appearanceDark ? neutralRole('disabled', prefs.appearanceDark) : accentForAppearance(prefs.accentColor, prefs.appearanceDark)));
+        components.push(button('display-appearance-dark', spanish ? 'Oscuro' : 'Dark', 246, controlY + 4, 116, 38, prefs.appearanceDark ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)));
+        ACCENT_NAMES.forEach((name, index) => {
+          const palette = accentPalette(name);
+          const row = index < 4 ? 0 : 1;
+          const column = row === 0 ? index : index - 4;
+          const width = row === 0 ? 78 : 104;
+          const x = row === 0 ? 64 + column * 82 : 64 + column * 108;
+          const label = `${prefs.accentColor === name ? '[x] ' : ''}${palette.label}`;
+          components.push(button(`display-accent-${name}`, label, x, controlY + 47 + row * 34, width, 30, palette.accent));
+        });
       } else if (id === 'units') {
-        components.push(button('display-units-imperial', 'Imperial', 102, controlY + 4, 116, 38, prefs.measurementSystem === 'imperial' ? '#00D2FF' : '#69778A'));
-        components.push(button('display-units-metric', 'Metric', 246, controlY + 4, 116, 38, prefs.measurementSystem === 'metric' ? '#00D2FF' : '#69778A'));
+        components.push(button('display-units-imperial', 'Imperial', 102, controlY + 4, 116, 38, prefs.measurementSystem === 'imperial' ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)));
+        components.push(button('display-units-metric', 'Metric', 246, controlY + 4, 116, 38, prefs.measurementSystem === 'metric' ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)));
       } else if (id === 'language') {
-        components.push(button('display-language-en', 'English', 102, controlY + 4, 116, 38, !spanish ? '#00D2FF' : '#69778A'));
-        components.push(button('display-language-es', 'Español', 246, controlY + 4, 116, 38, spanish ? '#00D2FF' : '#69778A'));
+        components.push(button('display-language-en', 'English', 102, controlY + 4, 116, 38, !spanish ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)));
+        components.push(button('display-language-es', 'Español', 246, controlY + 4, 116, 38, spanish ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)));
       } else if (id === 'weather-location') {
         if (!prefs.country) {
-          components.push(button('display-country-US', 'United States', 87, controlY + 4, 140, 38, '#00D2FF'));
-          components.push(button('display-country-MX', 'Mexico', 239, controlY + 4, 140, 38, '#00D2FF'));
+          components.push(button('display-country-US', 'United States', 87, controlY + 4, 140, 38, accentForAppearance(prefs.accentColor, prefs.appearanceDark)));
+          components.push(button('display-country-MX', 'Mexico', 239, controlY + 4, 140, 38, accentForAppearance(prefs.accentColor, prefs.appearanceDark)));
         } else {
           const countryLabel = prefs.country === 'US' ? 'United States' : 'Mexico';
-          components.push(button('display-country', `${countryLabel} (${prefs.country})`, 90, controlY, 286, 34, '#69778A'));
-          components.push(button('display-postal-field', prefs.postalDraft || 'Postal code', 90, controlY + 37, 286, 34, '#00D2FF'));
-          components.push({ type: 'text', id: 'display-postal-status', text: prefs.postalStatus || (prefs.weatherLocation ? `Saved: ${prefs.weatherLocation}` : 'Enter a postal code'), x: 92, y: controlY + 72, size: 1, color: '#A0ACB9', align: 'left' });
+          components.push(button('display-country', `${countryLabel} (${prefs.country})`, 90, controlY, 286, 34, neutralRole('disabled', prefs.appearanceDark)));
+          components.push(button('display-postal-field', prefs.postalDraft || 'Postal code', 90, controlY + 37, 286, 34, accentForAppearance(prefs.accentColor, prefs.appearanceDark)));
+          components.push({ type: 'text', id: 'display-postal-status', text: prefs.postalStatus || (prefs.weatherLocation ? `Saved: ${prefs.weatherLocation}` : 'Enter a postal code'), x: 92, y: controlY + 72, size: 1, color: neutralRole('mutedText', prefs.appearanceDark), align: 'left' });
           if (prefs.keypadOpen) {
             const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','C'];
             keys.forEach((key, index) => {
               const row = Math.floor(index / 3);
               const col = index % 3;
-              components.push(button(`postal-key-${key === 'DEL' ? 'delete' : key === 'C' ? 'clear' : key}`, key, 107 + col * 90, controlY + 94 + row * 26, 78, 22, '#69778A'));
+              components.push(button(`postal-key-${key === 'DEL' ? 'delete' : key === 'C' ? 'clear' : key}`, key, 107 + col * 90, controlY + 94 + row * 26, 78, 22, neutralRole('disabled', prefs.appearanceDark)));
             });
-            components.push(button('display-postal-cancel', 'Cancel', 96, controlY + 201, 118, 28, '#69778A'));
-            components.push(button('display-postal-apply', 'Apply', 238, controlY + 201, 118, 28, '#00D2FF'));
+            components.push(button('display-postal-cancel', 'Cancel', 96, controlY + 201, 118, 28, neutralRole('disabled', prefs.appearanceDark)));
+            components.push(button('display-postal-apply', 'Apply', 238, controlY + 201, 118, 28, accentForAppearance(prefs.accentColor, prefs.appearanceDark)));
           }
         }
       }
@@ -113,22 +125,22 @@ export function displayScreen(base: SduiScreen, prefs: DisplayPreferences): Sdui
 export function clockSettingsScreen(base: SduiScreen, prefs: DisplayPreferences): SduiScreen {
   const spanish = prefs.spanishLanguage;
   const components: SduiScreen['components'] = [
-    title(spanish ? 'RELOJ' : 'CLOCK'),
-    button('menu-back', '‹', MENU_BACK.x, MENU_BACK.y, MENU_BACK.width, MENU_BACK.height, '#FFFFFF'),
-    { type: 'text', id: 'clock-format-label', text: spanish ? 'Formato horario' : 'Time format', x: 73, y: 143, size: 1, color: '#A0ACB9' },
-    button('clock-format-12', '12 hour', 74, 165, 137, 45, prefs.clock24 ? '#69778A' : '#00D2FF'),
-    button('clock-format-24', '24 hour', 231, 165, 137, 45, prefs.clock24 ? '#00D2FF' : '#69778A'),
-    { type: 'text', id: 'clock-face-label', text: spanish ? 'Caratula' : 'Face Selection', x: 73, y: 215, size: 1, color: '#A0ACB9' },
-    button('clock-face-0', 'Classic', 74, 232, 96, 72, prefs.clockFace === 0 ? '#00D2FF' : '#69778A', 'clkface-0'),
-    button('clock-face-1', 'Minimal', 174, 232, 96, 72, prefs.clockFace === 1 ? '#00D2FF' : '#69778A', 'clkface-1'),
-    button('clock-face-2', 'Digital', 274, 232, 96, 72, prefs.clockFace === 2 ? '#00D2FF' : '#69778A', 'clkface-2'),
-    { type: 'text', id: 'clock-background-label', text: spanish ? 'Fondo del reloj' : 'Clock background', x: 73, y: 310, size: 1, color: '#A0ACB9' },
-    button('clock-background-0', 'Flower', 74, 328, 96, 52, prefs.clockBackground === 0 ? '#00D2FF' : '#69778A', 'clkbg-0'),
-    button('clock-background-1', 'Chevron', 174, 328, 96, 52, prefs.clockBackground === 1 ? '#00D2FF' : '#69778A', 'clkbg-1'),
-    button('clock-background-2', 'Mechanical', 274, 328, 96, 52, prefs.clockBackground === 2 ? '#00D2FF' : '#69778A', 'clkbg-2'),
-    { type: 'text', id: 'clock-weather-label', text: spanish ? 'Mostrar clima' : 'Show weather', x: 73, y: 385, size: 1, color: '#A0ACB9' },
-    button('clock-weather-yes', spanish ? 'Si' : 'Yes', 231, 379, 68, 35, prefs.clockShowWeather ? '#00D2FF' : '#69778A'),
-    button('clock-weather-no', spanish ? 'No' : 'No', 307, 379, 68, 35, prefs.clockShowWeather ? '#69778A' : '#00D2FF'),
+    title(spanish ? 'RELOJ' : 'CLOCK', prefs.appearanceDark),
+    button('menu-back', '‹', MENU_BACK.x, MENU_BACK.y, MENU_BACK.width, MENU_BACK.height, neutralRole('text', prefs.appearanceDark)),
+    { type: 'text', id: 'clock-format-label', text: spanish ? 'Formato horario' : 'Time format', x: 73, y: 143, size: 1, color: neutralRole('text', prefs.appearanceDark) },
+    button('clock-format-12', '12 hour', 74, 165, 137, 45, prefs.clock24 ? neutralRole('disabled', prefs.appearanceDark) : accentForAppearance(prefs.accentColor, prefs.appearanceDark)),
+    button('clock-format-24', '24 hour', 231, 165, 137, 45, prefs.clock24 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)),
+    { type: 'text', id: 'clock-face-label', text: spanish ? 'Caratula' : 'Face Selection', x: 73, y: 215, size: 1, color: neutralRole('text', prefs.appearanceDark) },
+    button('clock-face-0', 'Classic', 74, 232, 96, 72, prefs.clockFace === 0 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkface-0'),
+    button('clock-face-1', 'Minimal', 174, 232, 96, 72, prefs.clockFace === 1 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkface-1'),
+    button('clock-face-2', 'Digital', 274, 232, 96, 72, prefs.clockFace === 2 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkface-2'),
+    { type: 'text', id: 'clock-background-label', text: spanish ? 'Fondo del reloj' : 'Clock background', x: 73, y: 310, size: 1, color: neutralRole('text', prefs.appearanceDark) },
+    button('clock-background-0', 'Flower', 74, 328, 96, 52, prefs.clockBackground === 0 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-0'),
+    button('clock-background-1', 'Chevron', 174, 328, 96, 52, prefs.clockBackground === 1 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-1'),
+    button('clock-background-2', 'Mechanical', 274, 328, 96, 52, prefs.clockBackground === 2 ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark), 'clkbg-2'),
+    { type: 'text', id: 'clock-weather-label', text: spanish ? 'Mostrar clima en reloj' : 'Show weather on clock', x: 73, y: 385, size: 1, color: neutralRole('text', prefs.appearanceDark) },
+    button('clock-weather-yes', spanish ? 'Si' : 'Yes', 231, 379, 68, 35, prefs.clockShowWeather ? accentForAppearance(prefs.accentColor, prefs.appearanceDark) : neutralRole('disabled', prefs.appearanceDark)),
+    button('clock-weather-no', spanish ? 'No' : 'No', 307, 379, 68, 35, prefs.clockShowWeather ? neutralRole('disabled', prefs.appearanceDark) : accentForAppearance(prefs.accentColor, prefs.appearanceDark)),
   ];
   return { ...base, id: 'device-clock-options', components };
 }
