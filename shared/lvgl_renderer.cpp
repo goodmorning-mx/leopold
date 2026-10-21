@@ -670,13 +670,6 @@ void renderSettingsSubmenu(lv_obj_t* root, const SduiScreen& screen, SharedImage
   lv_obj_set_style_bg_opa(viewport, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(viewport, 0, 0);
   lv_obj_set_style_pad_all(viewport, 0, 0);
-  const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage("settings-status-banner");
-  if (banner != nullptr) {
-    lv_obj_t* bannerImage = lv_image_create(root);
-    lv_image_set_src(bannerImage, banner);
-    lv_obj_set_pos(bannerImage, 143, 43);
-  }
-  if (state != nullptr) renderSettingsLiveStatus(root, *state, resolveImage);
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (strncmp(component.id, "display-row-", 12) == 0) {
@@ -747,6 +740,16 @@ void renderSettingsLiveStatus(lv_obj_t* root, const SharedRenderState& state, Sh
   lv_obj_set_pos(battery, 291, 52);
 }
 
+void renderSharedStatusBanner(lv_obj_t* root, const SharedRenderState& state, SharedImageResolver resolveImage) {
+  const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage("settings-status-banner");
+  if (banner != nullptr) {
+    lv_obj_t* image = lv_image_create(root);
+    lv_image_set_src(image, banner);
+    lv_obj_set_pos(image, 143, 43);
+  }
+  renderSettingsLiveStatus(root, state, resolveImage);
+}
+
 void renderSettingsLiveBrightness(lv_obj_t* root, const SharedRenderState& state, bool glassBackdrop) {
   using namespace generated_ui;
   // This mask owns only the live slider treatment and label. The immutable
@@ -802,7 +805,7 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
   lv_obj_set_style_bg_color(root, lv_color_black(), 0);
 
   const lv_image_dsc_t* neutral = resolveImage == nullptr ? nullptr : resolveImage("settings-neutral");
-  const lv_image_dsc_t* gears = resolveImage == nullptr ? nullptr : resolveImage("settings-gears-base");
+  const lv_image_dsc_t* gears = resolveImage == nullptr ? nullptr : resolveImage("settings-gears-rainbow");
   if (gears != nullptr) neutral = gears;
   if (neutral == nullptr) {
     lv_obj_t* diagnostic = makeLabel(root, "SETTINGS ASSET ERROR", &lv_font_montserrat_20, lv_color_hex(0xFF453A));
@@ -822,7 +825,6 @@ void renderSettings(lv_obj_t* root, const SduiScreen& screen, SharedImageResolve
     else if (strcmp(selectedRowId, "settings-sound") == 0) selectedIndex = 3;
   }
   if (selectedIndex < 4) drawSelectedSettingsRow(root, selectedIndex, resolveImage);
-  renderSettingsLiveStatus(root, state, resolveImage);
   renderSettingsLiveBrightness(root, state, gears != nullptr);
 }
 
@@ -923,25 +925,27 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
 
   if (state != nullptr && strcmp(screen.screenId, "device-control-center") == 0) {
     renderSettings(root, screen, resolveImage, *state, selectedRowId);
+    renderSharedStatusBanner(root, *state, resolveImage);
     return;
   }
 
   if (strcmp(screen.screenId, "device-additional-options") == 0 || strcmp(screen.screenId, "device-clock-options") == 0 || strcmp(screen.screenId, "device-appearance-options") == 0) {
     renderSettingsSubmenu(root, screen, resolveImage, selectedRowId, state);
+    if (state != nullptr) renderSharedStatusBanner(root, *state, resolveImage);
     return;
   }
 
   if (strcmp(screen.screenId, "spotify-player") == 0) {
     renderSpotify(root, screen, resolveImage, selectedRowId, state);
+    if (state != nullptr) renderSharedStatusBanner(root, *state, resolveImage);
     return;
   }
 
   const bool home = strcmp(screen.screenId, "sky-home") == 0;
   const bool flower = strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "sky-weather") == 0;
   const bool backgroundEnabled = state == nullptr || state->backgroundMode != 0;
-  // The reference home artwork contains the static glass controls. Keep the
-  // SDUI components as live hit targets, but let the shared artwork supply
-  // their pixels whenever the home screen is in its reference presentation.
+  // Keep the SDUI components as live hit targets over the selected Display
+  // background and transparent Home control artwork.
   const bool referenceHome = home;
   if (strcmp(screen.screenId, "device-additional-options") == 0) {
     drawSettingsWallpaper(root, resolveImage);
@@ -960,9 +964,6 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
   if (resolveImage != nullptr && home && customArt) {
     const lv_image_dsc_t* source = resolveImage("home-controls-transparent");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
-  } else if (resolveImage != nullptr && home && referenceHome) {
-    const lv_image_dsc_t* source = resolveImage("home");
-    if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   } else if (resolveImage != nullptr && home && backgroundEnabled) {
     const lv_image_dsc_t* source = resolveImage("chevron");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
@@ -970,19 +971,19 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     const lv_image_dsc_t* source = resolveImage("flower");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 0, 0); }
   }
+  if (resolveImage != nullptr && home) {
+    const lv_image_dsc_t* spotify = resolveImage("open-spotify");
+    if (spotify != nullptr) {
+      lv_obj_t* image = lv_image_create(root);
+      lv_image_set_src(image, spotify);
+      lv_image_set_scale(image, 140);
+      lv_obj_set_pos(image, 285, 276);
+    }
+  }
   if (resolveImage != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
     const lv_image_dsc_t* source = resolveImage("open-weather");
     if (source != nullptr) { lv_obj_t* image = lv_image_create(root); lv_image_set_src(image, source); lv_obj_set_style_image_opa(image, LV_OPA_COVER, 0); lv_obj_set_pos(image, 196, 83); }
   }
-  if (state != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
-    const lv_image_dsc_t* banner = resolveImage == nullptr ? nullptr : resolveImage("settings-status-banner");
-    if (banner != nullptr) {
-      lv_obj_t* bannerImage = lv_image_create(root);
-      lv_image_set_src(bannerImage, banner);
-      lv_obj_set_pos(bannerImage, 143, 43);
-    }
-  }
-
   for (uint8_t index = 0; index < screen.componentCount; ++index) {
     const SduiComponent& component = screen.components[index];
     if (referenceHome) continue;
@@ -1061,10 +1062,10 @@ void renderSharedLvglScreen(lv_obj_t* root, const SduiScreen& screen, SharedImag
     lv_obj_set_style_text_align(weather, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_pos(weather, 0, 276);
   }
-  if (state != nullptr && strcmp(screen.screenId, "sky-weather") == 0) {
-    renderSettingsLiveStatus(root, *state, resolveImage);
-  } else if (state != nullptr && (strcmp(screen.screenId, "sky-home") == 0 || strcmp(screen.screenId, "sky-clock") == 0 || strcmp(screen.screenId, "sky-voltage") == 0 || strcmp(screen.screenId, "device-control-center") == 0)) {
+  if (state != nullptr && home) {
     drawStatus(root, screen, *state);
+  } else if (state != nullptr) {
+    renderSharedStatusBanner(root, *state, resolveImage);
   }
 }
 

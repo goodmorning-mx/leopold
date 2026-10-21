@@ -327,6 +327,7 @@ settings_asset_lines.extend([
 for name, file in (
     ("kSettingsWallpaperAssetData", "settings-gears-wallpaper-466.bin"),
     ("kSettingsGearsAssetData", "settings-glass-gears-v1-466.bin"),
+    ("kSettingsGearsRainbowAssetData", "settings-gears-rainbow-466.bin"),
     ("kSettingsStatusBluetoothActiveData", "settings-glass-status-bluetooth-active-22x22-v1.bin"),
     ("kSettingsStatusWifiActiveData", "settings-glass-status-wifi-active-22x22-v1.bin"),
     ("kSettingsStatusCloudActiveData", "settings-glass-status-cloud-active-24x24-v1.bin"),

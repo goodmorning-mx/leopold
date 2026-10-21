@@ -62,6 +62,7 @@ async function loadAssets(module: Module) {
         'background-preview-flower', 'background-preview-chevron', 'background-preview-mechanical',
         'clock-background-preview-flower', 'clock-background-preview-chevron', 'clock-background-preview-mechanical',
         'clock-face-preview-0', 'clock-face-preview-1', 'clock-face-preview-2',
+        'settings-gears-rainbow',
       ].indexOf(key);
       if (assetIndex < 0) return;
       const bytes = new Uint8Array(await (await fetch(`/firmware-assets/${asset.file}`)).arrayBuffer());

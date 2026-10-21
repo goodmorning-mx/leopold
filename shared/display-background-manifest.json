@@ -77,16 +77,16 @@
         466,
         466
       ],
-      "scaling": "no scaling; exact pure-black RGB pixels made transparent, all other RGBA samples preserved",
+      "scaling": "no scaling; alpha mask retains glass control silhouettes and status pill, with baked Spotify wordmark cleared for dynamic logo overlay",
       "png": "shared/assets/home-controls-outward-10-466-transparent.png",
-      "png_sha256": "b71b2649d0179fdec5de1c5a3b3dd92f0e34ff4dfa487e37784407fd3b40912d",
+      "png_sha256": "fea6c2243a9752e2cf0130acf4fa17aed1e4ac9855685f95130912128a7d72c5",
       "png_dimensions": [
         466,
         466
       ],
       "format": "RGBA PNG",
       "device": "shared/assets/home-controls-outward-10-466-transparent.bin",
-      "device_sha256": "5fee4c5916a565c119eb94bf48742870400b3c163a178cbdb9c725e806b54a95",
+      "device_sha256": "4811ab39d6a5678ddebea74cffd175a370cac8bda7b3baa219911ab775db06a7",
       "device_bytes": 651468,
       "device_format": "RGB565A8"
     }

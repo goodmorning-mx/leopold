@@ -60,8 +60,11 @@ export default function Simulator() {
   const countryOverride = query.get('country');
   const diagnosticState = framebufferCaptureMode || Boolean(referenceState) || ['art', 'appearance', 'language', 'units', 'face', 'clock-background', 'clock-weather', 'format', 'country', 'postal', 'keypad', 'gallery', 'expand', 'scroll'].some((key) => query.has(key));
   const referenceSettingsMode = framebufferCaptureMode && referenceState === 'settings';
-  const submenuReference = ['display', 'display-background', 'display-appearance', 'display-clock', 'display-units', 'display-language', 'display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending', 'clock-settings'].includes(referenceState ?? '');
-  const startSettingsMode = referenceSettingsMode || submenuReference || ['display', 'display-background', 'display-appearance', 'display-clock', 'display-units', 'display-language', 'display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending', 'clock-settings'].includes(injectedState) || ['settings', 'display', 'clock', 'wifi'].includes(query.get('screen') ?? '');
+  // The broad `reference=display` URL is used by the simulator as its default
+  // entry point; keep it on Home. Specific capture/preview states still open
+  // the Settings or Display view they describe.
+  const submenuReference = ['display-background', 'display-appearance', 'display-clock', 'display-units', 'display-language', 'display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending', 'clock-settings'].includes(referenceState ?? '');
+  const startSettingsMode = referenceSettingsMode || submenuReference || ['display-background', 'display-appearance', 'display-clock', 'display-units', 'display-language', 'display-location', 'display-keypad', 'display-invalid', 'display-not-found', 'display-offline', 'display-pending', 'clock-settings'].includes(injectedState) || ['settings', 'display', 'clock', 'wifi'].includes(query.get('screen') ?? '');
   const captureState = framebufferCaptureMode ? query.get('capture-state') : null;
   const capturePressedByState: Record<string, string> = {
     'wifi-pressed': 'settings-wifi',

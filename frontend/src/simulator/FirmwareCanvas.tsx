@@ -177,6 +177,7 @@ function drawHome(ctx: CanvasRenderingContext2D, screen: SduiScreen, images: Fir
     ctx.fillStyle = darkBackground ? '#000000' : '#FFFFFF'; ctx.fillRect(0, 0, W, H);
     drawAsset(ctx, images, ['background-flower', 'background-chevron', 'background-mechanical-flower'][backgroundArt], 0, 0, W, H);
     drawAsset(ctx, images, 'home-controls-transparent', 0, 0, W, H);
+    drawAsset(ctx, images, 'open-spotify', 304, 295, 46, 46);
   } else drawAsset(ctx, images, 'reference-home', 0, 0, W, H);
 }
 
@@ -306,7 +307,6 @@ function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages,
   if (wifi) drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H);
   else { ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H); }
   drawBack(ctx);
-  if (wifi) drawSettingsStatusBanner(ctx, images, '8:42', 82, connected, false, false);
   centered(ctx, title, 233, wifi ? 78 : 58, 24);
   const accent = connected ? '#30D158' : '#0A84FF';
   if (wifi) {
@@ -334,7 +334,6 @@ function drawConnectivity(ctx: CanvasRenderingContext2D, images: FirmwareImages,
 
 function drawNetworkList(ctx: CanvasRenderingContext2D, images: FirmwareImages, bluetooth: boolean, saved: string[]) {
   drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
-  if (!bluetooth) drawSettingsStatusBanner(ctx, images, '8:42', 82, false, false, false);
   centered(ctx, bluetooth ? 'Bluetooth' : 'Elegir Wi-Fi', 233, bluetooth ? 43 : 88, 24);
   centered(ctx, bluetooth ? 'Toca uno para conectar' : 'Demo networks — no real scan', 233, bluetooth ? 80 : 119, 12, '#D5E3FA');
   const names = bluetooth ? ['Nearby device A', 'Nearby device B'] : SIMULATOR_WIFI_NETWORKS.map((network) => network.name);
@@ -398,7 +397,6 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       else if (localPanel === 'wifi' || localPanel === 'cloud' || localPanel === 'bluetooth') drawConnectivity(ctx, images, localPanel, localPanel === 'wifi' ? wifiConnected : localPanel === 'cloud' ? cloudConnected : bluetoothEnabled, demoWifiName, wifiEnabled);
       else if (localPanel === 'wifi-password') {
         drawAsset(ctx, images, 'settings-gears-wallpaper', 0, 0, W, H); drawBack(ctx);
-        drawSettingsStatusBanner(ctx, images, timeText || '8:42', batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled);
         centered(ctx, 'Demo Wi-Fi', 233, 90, 24);
         centered(ctx, demoPendingWifi, 233, 130, 20);
         centered(ctx, 'No real password is needed here.', 233, 200, 16);
@@ -412,10 +410,8 @@ export default function FirmwareCanvas({ demoWifiName, demoPendingWifi, demoSave
       else if (screen.id === 'spotify-player') drawSpotify(ctx, images, screen, playing, backgroundArt, darkBackground);
       else if (screen.id === 'youtube-feed') drawYoutube(ctx, screen);
       else drawGeneric(ctx, screen, images, clock24, weatherFahrenheit, darkBackground, spanishLanguage, pressed, backgroundArt, clockBackground, clockFace, clockShowWeather, playing, timeText, settingsTimeText);
-      if (localPanel === 'none' && screen.id === 'sky-weather') {
+      if (screen.id !== 'sky-home') {
         drawSettingsStatusBanner(ctx, images, timeText || (clock24 ? '20:42' : '8:42'), batteryPercent, wifiConnected, cloudConnected, bluetoothEnabled);
-      } else if (localPanel === 'none' && screen.id !== 'device-control-center' && screen.id !== 'sky-home' && rendering.status_bar.visible_screens.includes(screen.id)) {
-        drawStatus(ctx, screen.id === 'sky-home', clock24, wifiConnected, cloudConnected, bluetoothEnabled, batteryPercent, timeText);
       }
       if (new URLSearchParams(window.location.search).get('capture') === '1') {
         const dataUrl = canvas.toDataURL('image/png');

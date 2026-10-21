@@ -49,6 +49,7 @@ lv_image_dsc_t kSpotifyLargeIcon = {};
 lv_image_dsc_t kSettingsNeutral = {};
 lv_image_dsc_t kSettingsGearsWallpaper = {};
 lv_image_dsc_t kSettingsGears = {};
+lv_image_dsc_t kSettingsGearsRainbow = {};
 lv_image_dsc_t kSettingsStatusBanner = {};
 lv_image_dsc_t kBackgroundPreviewFlower = {};
 lv_image_dsc_t kBackgroundPreviewChevron = {};
@@ -96,6 +97,7 @@ AssetSlot assets[] = {
     {"open-spotify", "icon_spotify.bin", 84, 84, &kSpotifyIcon},
     {"spotify-large", "icon_spotify_large.bin", 97, 100, &kSpotifyLargeIcon},
     {"settings-gears-base", "settings-glass-gears-v1-466.bin", 466, 466, &kSettingsGears},
+    {"settings-gears-rainbow", "settings-gears-rainbow-466.bin", 466, 466, &kSettingsGearsRainbow},
     {"settings-gears-wallpaper", "settings-gears-wallpaper-466.bin", 466, 466, &kSettingsGearsWallpaper},
     {"settings-status-banner", "settings-status-banner-181x28.bin", 181, 28, &kSettingsStatusBanner},
     {"display-icon-background", "display-icon-background.bin", 30, 30, &kDisplayBackgroundIcon},
@@ -204,6 +206,7 @@ bool loadEmbeddedHomeAsset() {
 
 bool loadEmbeddedSettingsAsset() {
   const bool gears = loadCloudAsset("settings-glass-gears-v1-466.bin", kSettingsGearsAssetData, kSettingsGearsAssetDataSize);
+  const bool rainbow = loadCloudAsset("settings-gears-rainbow-466.bin", kSettingsGearsRainbowAssetData, kSettingsGearsRainbowAssetDataSize);
   const bool wallpaper = loadCloudAsset("settings-gears-wallpaper-466.bin", kSettingsWallpaperAssetData, kSettingsWallpaperAssetDataSize);
   const bool neutral = loadCloudAsset("settings-neutral-466.bin", kSettingsAssetData, kSettingsAssetDataSize);
   const bool bluetooth = loadCloudAsset("settings-glass-status-bluetooth-active-22x22-v1.bin", kSettingsStatusBluetoothActiveData, kSettingsStatusBluetoothActiveDataSize);
@@ -219,7 +222,7 @@ bool loadEmbeddedSettingsAsset() {
   pressed = loadCloudAsset("settings-glass-sound-pressed-icon-mask-61x56-v1.bin", kSettingsSoundPressedIconMaskData, kSettingsSoundPressedIconMaskDataSize) && pressed;
   pressed = loadCloudAsset("settings-glass-sound-pressed-chevron-mask-39x56-v1.bin", kSettingsSoundPressedChevronMaskData, kSettingsSoundPressedChevronMaskDataSize) && pressed;
   pressed = loadCloudAsset("settings-glass-pressed-border-mask-322x56-v1.bin", kSettingsPressedBorderMaskData, kSettingsPressedBorderMaskDataSize) && pressed;
-  return gears && wallpaper && neutral && bluetooth && wifi && cloud && pressed;
+  return gears && rainbow && wallpaper && neutral && bluetooth && wifi && cloud && pressed;
 }
 
 bool allAssetsLoaded() {

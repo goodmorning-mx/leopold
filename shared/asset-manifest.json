@@ -377,9 +377,9 @@
       "derived_from": "home-controls-outward-10-466-transparent.png",
       "source": "shared/assets/home-controls-outward-10-466.png",
       "source_sha256": "b71b2649d0179fdec5de1c5a3b3dd92f0e34ff4dfa487e37784407fd3b40912d",
-      "png_sha256": "b71b2649d0179fdec5de1c5a3b3dd92f0e34ff4dfa487e37784407fd3b40912d",
-      "device_sha256": "5fee4c5916a565c119eb94bf48742870400b3c163a178cbdb9c725e806b54a95",
-      "resampling": "no scaling; exact pure-black RGB pixels made transparent, all other RGBA samples preserved"
+      "png_sha256": "fea6c2243a9752e2cf0130acf4fa17aed1e4ac9855685f95130912128a7d72c5",
+      "device_sha256": "4811ab39d6a5678ddebea74cffd175a370cac8bda7b3baa219911ab775db06a7",
+      "resampling": "no scaling; alpha mask retains glass control silhouettes and status pill, with baked Spotify wordmark cleared for dynamic logo overlay"
     },
     "display-icon-background": {
       "file": "display-icon-background.bin",
@@ -609,6 +609,18 @@
       "png_sha256": "58a7bc9cb6ac741e433ff856a5870c0a7228488414ee47257145821a4649cfd9",
       "device_sha256": "c7c3f5c3d7b80e496a827631b62e844d586c2c05dad91b62824ffd35c2889b2f",
       "resampling": "reference crop resized Lanczos to 46x46 with circular alpha mask"
+    },
+    "settings-gears-rainbow": {
+      "file": "settings-gears-rainbow-466.bin",
+      "width": 466,
+      "height": 466,
+      "format": "rgb565a8",
+      "derived_from": "settings-gears-rainbow-466.png",
+      "source": "settings-neutral-466.png composited over settings-gears-wallpaper-466.png",
+      "source_sha256": "db5283ff36db9600172343bfc889a993b6527ecc1dcfaa551761bf1d860a7156",
+      "wallpaper_sha256": "524e88031a2081506200b8afff564f6f711f76818259a1e320284de129c6157f",
+      "device_sha256": "5a01027f98fddb27074fba41811cf4e636d36f641cbcb14bdb94b64000f2684c",
+      "resampling": "466x466; RGB565A8; canvas pixels <= RGB 15 transparent; Settings artwork retained over 58% brightness Rainbow Gears, static brightness caption cleared for live rendering"
     }
   }
 }

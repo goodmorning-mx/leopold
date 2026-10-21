@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from png_to_rgb565a8 import decode
 
@@ -60,14 +60,22 @@ def main() -> None:
         if source.size != (466, 466):
             raise ValueError(f"unexpected Home asset dimensions: {HOME_SOURCE}")
         overlay = source.convert("RGBA")
-    pixels = overlay.load()
-    for y in range(overlay.height):
-        for x in range(overlay.width):
-            red, green, blue, alpha = pixels[x, y]
-            if red <= 2 and green <= 2 and blue <= 2:
-                pixels[x, y] = (red, green, blue, 0)
-            else:
-                pixels[x, y] = (red, green, blue, alpha)
+    # Retain only the seven glass controls and the central status pill. The
+    # previous derivative made black transparent but left the full old gear
+    # wallpaper opaque, hiding the selected Display background on Home.
+    mask = Image.new("L", (466, 466), 0)
+    draw = ImageDraw.Draw(mask)
+    for center_x, center_y in ((240, 94), (151, 139), (99, 231), (373, 231), (147, 318), (327, 318), (236, 372)):
+        draw.ellipse((center_x - 33, center_y - 33, center_x + 33, center_y + 33), fill=255)
+    draw.rounded_rectangle((143, 205, 330, 255), radius=25, fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(1.2))
+    alpha = ImageChops.multiply(overlay.getchannel("A"), mask)
+    overlay.putalpha(alpha)
+    # The source artwork spells out Spotify. Clear just the word; the source
+    # ring remains, and each renderer supplies the Spotify brand glyph.
+    for x in range(302, 353):
+        for y in range(311, 328):
+            overlay.putpixel((x, y), (0, 0, 0, 0))
     overlay_png = OUTPUT / "home-controls-outward-10-466-transparent.png"
     overlay_bin = OUTPUT / "home-controls-outward-10-466-transparent.bin"
     overlay.save(overlay_png, format="PNG", optimize=False)
@@ -78,7 +86,7 @@ def main() -> None:
         "source": "shared/assets/home-controls-outward-10-466.png",
         "source_sha256": sha256(HOME_SOURCE),
         "source_dimensions": [466, 466],
-        "scaling": "no scaling; exact pure-black RGB pixels made transparent, all other RGBA samples preserved",
+        "scaling": "no scaling; alpha mask retains glass control silhouettes and status pill, with baked Spotify wordmark cleared for dynamic logo overlay",
         "png": f"shared/assets/{overlay_png.name}",
         "png_sha256": sha256(overlay_png),
         "png_dimensions": [466, 466],

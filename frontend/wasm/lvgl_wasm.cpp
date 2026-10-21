@@ -12,8 +12,8 @@ static uint16_t framebuffer[kWidth * kHeight];
 static uint16_t drawBuffer[kWidth * kHeight];
 static leopold::SduiScreen screen;
 static char pressedId[leopold::kMaxComponentId + 1];
-static lv_image_dsc_t assets[45];
-static bool assetReady[45];
+static lv_image_dsc_t assets[46];
+static bool assetReady[46];
 static char renderTime[16] = "--:--";
 static leopold::SharedRenderState renderState = {renderTime, 0, false, false, false, false, 0, 1};
 
@@ -40,8 +40,9 @@ static int assetIndex(const char* key) {
       "background-preview-flower", "background-preview-chevron", "background-preview-mechanical",
       "clock-background-preview-flower", "clock-background-preview-chevron", "clock-background-preview-mechanical",
       "clock-face-preview-0", "clock-face-preview-1", "clock-face-preview-2",
+      "settings-gears-rainbow",
   };
-  for (int index = 0; index < 45; ++index) if (strcmp(keys[index], key) == 0) return index;
+  for (int index = 0; index < 46; ++index) if (strcmp(keys[index], key) == 0) return index;
   return -1;
 }
 
@@ -65,7 +66,7 @@ void lvgl_wasm_init() {
 }
 
 void lvgl_wasm_set_asset(int index, const uint8_t* data, uint32_t size, uint16_t width, uint16_t height) {
-  if (index < 0 || index >= 45 || data == nullptr || size == 0) return;
+  if (index < 0 || index >= 46 || data == nullptr || size == 0) return;
   assets[index] = {
       .header = {
           .magic = LV_IMAGE_HEADER_MAGIC,
