@@ -55,14 +55,32 @@ def compose():
             else:
                 banner_pixels[x,y]=(0,0,0,0)
     out.alpha_composite(banner,(BANNER[0],BANNER[1]))
-    # Remove only the baked clock glyphs. Interpolate the pill pixels at the
-    # two edges of the declared live-time mask, matching the browser path.
+    # Remove only the baked clock glyphs. Harmonic inpainting interpolates
+    # from every edge of the declared live-time mask, preserving the pill's
+    # smooth field without creating the rectangular seam from one-axis fill.
     pixels=out.load(); x,y,width,height=LIVE_TIME
-    for row in range(y,y+height):
-        left=pixels[x-1,row]; right=pixels[x+width,row]
-        for col in range(width):
-            ratio=(col+1)/(width+1)
-            pixels[x+col,row]=tuple(round(left[channel]*(1-ratio)+right[channel]*ratio) for channel in range(3))+(255,)
+    for channel in range(3):
+        grid=[[0.0]*(width+2) for _ in range(height+2)]
+        for row in range(height+2):
+            for col in range(width+2):
+                if col in (0,width+1) or row in (0,height+1):
+                    grid[row][col]=pixels[x+col-1,y+row-1][channel]
+        for row in range(1,height+1):
+            vertical=row/(height+1)
+            for col in range(1,width+1):
+                horizontal=col/(width+1)
+                top=grid[0][col]; bottom=grid[height+1][col]
+                left=grid[row][0]; right=grid[row][width+1]
+                grid[row][col]=((1-vertical)*top+vertical*bottom+(1-horizontal)*left+horizontal*right)/2
+        for _ in range(600):
+            for row in range(1,height+1):
+                for col in range(1,width+1):
+                    grid[row][col]=(grid[row][col-1]+grid[row][col+1]+grid[row-1][col]+grid[row+1][col])/4
+        for row in range(height):
+            for col in range(width):
+                rgb=list(pixels[x+col,y+row])
+                rgb[channel]=round(grid[row+1][col+1])
+                pixels[x+col,y+row]=tuple(rgb[:3])+(255,)
     # The separate voltage placeholder is content, not one of the seven moved controls.
     for y in range(139,157):
         for x in range(313,328):

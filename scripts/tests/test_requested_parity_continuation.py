@@ -121,14 +121,31 @@ class RequestedParityContinuationTests(unittest.TestCase):
         # The rounded upper-left corner remains the gears pixels; opaque black
         # from the source matte must not form a background shape.
         self.assertEqual(output.getpixel((bx, by)), wallpaper.getpixel((bx, by)))
-        # The time patch is exactly the approved narrow mask and carries a
-        # continuous pill fill, rather than the former opaque rectangle.
-        for y in range(ty, ty + th):
-            left, right = output.getpixel((tx - 1, y)), output.getpixel((tx + tw, y))
-            for x in range(tw):
-                ratio = (x + 1) / (tw + 1)
-                expected = tuple(round(left[c] * (1 - ratio) + right[c] * ratio) for c in range(3)) + (255,)
-                self.assertEqual(output.getpixel((tx + x, y)), expected)
+        # Reconstruct the clear with an independent harmonic interpolation
+        # over the exact approved live-time bounds. Its four-edge boundary
+        # keeps the pill continuous without painting a rectangular backing.
+        for channel in range(3):
+            grid = [[0.0] * (tw + 2) for _ in range(th + 2)]
+            for y in range(th + 2):
+                for x in range(tw + 2):
+                    if x in (0, tw + 1) or y in (0, th + 1):
+                        grid[y][x] = output.getpixel((tx + x - 1, ty + y - 1))[channel]
+            for y in range(1, th + 1):
+                vertical = y / (th + 1)
+                for x in range(1, tw + 1):
+                    horizontal = x / (tw + 1)
+                    top, bottom = grid[0][x], grid[th + 1][x]
+                    left, right = grid[y][0], grid[y][tw + 1]
+                    grid[y][x] = ((1 - vertical) * top + vertical * bottom + (1 - horizontal) * left + horizontal * right) / 2
+            for _ in range(600):
+                for y in range(1, th + 1):
+                    for x in range(1, tw + 1):
+                        grid[y][x] = (grid[y][x - 1] + grid[y][x + 1] + grid[y - 1][x] + grid[y + 1][x]) / 4
+            for y in range(th):
+                for x in range(tw):
+                    pixel = list(output.getpixel((tx + x, ty + y)))
+                    pixel[channel] = round(grid[y + 1][x + 1])
+                    self.assertEqual(output.getpixel((tx + x, ty + y)), tuple(pixel[:3]) + (255,))
         # Check the complete 68x68 weather artwork, including its sun/cloud,
         # glass bubble, edge glow and transparent black-matte area. Every
         # source pixel must move left exactly ten pixels and composite over

@@ -46,7 +46,7 @@
       ],
       "generated_asset": {
         "file": "assets/home-controls-outward-10-466.png",
-        "sha256": "26eba62a03620c38da3ed5ed77bc561227f71947f87df70ba32ed9ce125b9e22",
+        "sha256": "b71b2649d0179fdec5de1c5a3b3dd92f0e34ff4dfa487e37784407fd3b40912d",
         "width": 466,
         "height": 466,
         "format": "lossless PNG",
@@ -54,7 +54,7 @@
       },
       "device_asset": {
         "file": "assets/home-controls-outward-10-466.bin",
-        "sha256": "4b119c623bcba14aee61751ab2da223091a1c5a0182b4b49ebf028e4c1308a2c",
+        "sha256": "5fee4c5916a565c119eb94bf48742870400b3c163a178cbdb9c725e806b54a95",
         "format": "RGB565A8 derived from generated_asset"
       },
       "dynamic_masks": [
