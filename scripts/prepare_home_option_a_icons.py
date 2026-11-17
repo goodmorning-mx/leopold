@@ -190,7 +190,17 @@ def write_asset(logical_id: str, image: Image.Image, source_path: Path,
                 output_png_name: str | None = None, output_bin_name: str | None = None) -> dict:
     output_png = ROOT / "shared/assets" / (output_png_name or f"{logical_id}.png")
     output_bin = ROOT / "shared/assets" / (output_bin_name or f"{logical_id}.bin")
-    image.save(output_png, optimize=False)
+    # Keep the checked-in encoding when only the PNG compressor would differ.
+    same_pixels = False
+    if output_png.is_file():
+        with Image.open(output_png) as existing:
+            same_pixels = (
+                existing.size == image.size
+                and existing.mode == image.mode
+                and existing.tobytes() == image.tobytes()
+            )
+    if not same_pixels:
+        image.save(output_png, optimize=False)
     decoded_width, decoded_height, payload = decode(output_png)
     if (decoded_width, decoded_height) != image.size:
         raise ValueError(f"Generated asset {logical_id} has unexpected dimensions")
