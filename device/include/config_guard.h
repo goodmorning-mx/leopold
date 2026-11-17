@@ -10,6 +10,19 @@
 
 namespace leopold::config {
 
+#if __has_include(<leopold_build_identity.h>)
+#include <leopold_build_identity.h>
+#endif
+#ifndef LEOPOLD_SOURCE_COMMIT
+#define LEOPOLD_SOURCE_COMMIT "local-uncommitted"
+#endif
+#ifndef LEOPOLD_BUILD_ID
+#define LEOPOLD_BUILD_ID "unidentified"
+#endif
+
+constexpr char kSourceCommit[] = LEOPOLD_SOURCE_COMMIT;
+constexpr char kBuildId[] = LEOPOLD_BUILD_ID;
+
 constexpr bool contains(const char* value, const char* needle) {
   for (size_t start = 0; value[start] != '\0'; ++start) {
     size_t offset = 0;

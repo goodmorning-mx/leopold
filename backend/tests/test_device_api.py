@@ -246,6 +246,11 @@ def test_device_asset_is_authenticated_and_matches_shared_manifest(client) -> No
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/octet-stream")
     assert response.headers["x-leopold-asset-format"] == "rgb565a8"
+    assert response.headers["x-leopold-asset-sha256"] == hashlib.sha256(response.content).hexdigest()
+    assert response.headers["x-leopold-catalog-version"] == "1"
+    assert response.headers["x-leopold-renderer-compatibility"] == "17"
+    assert response.headers["etag"] == f'"sha256-{hashlib.sha256(response.content).hexdigest()}"'
+    assert response.headers["cache-control"] == "private, no-cache"
     assert len(response.content) == 80 * 80 * 3
 
     unauthorized = client.get("/v1/device/assets/icon_clock.bin")
@@ -256,6 +261,33 @@ def test_device_asset_is_authenticated_and_matches_shared_manifest(client) -> No
         headers=device_headers(credentials),
     )
     assert unknown.status_code == 404
+
+
+def test_device_asset_catalog_is_small_and_authenticated(client) -> None:
+    credentials = provision(client)
+    response = client.get("/v1/device/assets", headers=device_headers(credentials))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["catalog_version"] == 1
+    assert body["renderer_compatibility"] == 17
+    assert body["assets"]["open-clock"]["bytes"] == 80 * 80 * 3
+    assert len(body["assets"]["open-clock"]["sha256"]) == 64
+    assert client.get("/v1/device/assets").status_code == 401
+
+
+def test_device_asset_host_rejects_corrupt_catalog_bytes(client, tmp_path) -> None:
+    credentials = provision(client)
+    (tmp_path / "icon_clock.bin").write_bytes(b"corrupt")
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        DATABASE_URL="sqlite+pysqlite:///:memory:",
+        LEOPOLD_ADMIN_PROVISIONING_TOKEN=ADMIN_TOKEN,
+        LEOPOLD_ASSET_CATALOG_DIR=str(tmp_path),
+    )
+    response = client.get(
+        "/v1/device/assets/icon_clock.bin",
+        headers=device_headers(credentials),
+    )
+    assert response.status_code == 503
 
 
 def test_admin_publishes_revision_two_and_device_receives_it(

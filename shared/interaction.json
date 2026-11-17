@@ -1,6 +1,9 @@
 {
   "schema_version": 1,
-  "canvas": {"width": 466, "height": 466},
+  "canvas": {
+    "width": 466,
+    "height": 466
+  },
   "touch": {
     "swipe_up_distance": 104,
     "swipe_horizontal_distance": 96,
@@ -12,12 +15,460 @@
     "tap_max_movement": 24,
     "long_press_max_movement": 40,
     "drag_interval_ms": 16,
-    "slider_touch_padding": 16
+    "slider_touch_padding": 16,
+    "settings_row_bounds": [
+      {
+        "id": "settings-wifi",
+        "x": 72,
+        "y": 127,
+        "width": 322,
+        "height": 54
+      },
+      {
+        "id": "settings-bluetooth",
+        "x": 72,
+        "y": 181,
+        "width": 322,
+        "height": 54
+      },
+      {
+        "id": "settings-display",
+        "x": 72,
+        "y": 235,
+        "width": 322,
+        "height": 54
+      },
+      {
+        "id": "settings-accounts",
+        "x": 72,
+        "y": 289,
+        "width": 322,
+        "height": 54
+      },
+      {
+        "id": "settings-sound",
+        "x": 72,
+        "y": 343,
+        "width": 322,
+        "height": 54
+      }
+    ],
+    "settings_pressed_masks": {
+      "settings-wifi": [
+        72,
+        127,
+        322,
+        56
+      ],
+      "settings-bluetooth": [
+        72,
+        181,
+        322,
+        56
+      ],
+      "settings-display": [
+        72,
+        235,
+        322,
+        56
+      ],
+      "settings-sound": [
+        72,
+        343,
+        322,
+        56
+      ],
+      "settings-accounts": [
+        72,
+        289,
+        322,
+        56
+      ]
+    },
+    "settings_menu": {
+      "viewport": {
+        "x": 72,
+        "y": 127,
+        "width": 322,
+        "height": 216
+      },
+      "row_height": 49,
+      "row_advance": 54,
+      "maximum_scroll": 54,
+      "scroll_step": 54,
+      "gesture_start_threshold": 16,
+      "brightness_control_id": "display-brightness",
+      "brightness_overlap_owner": "settings-list-viewport",
+      "brightness_bounds": [
+        98,
+        358,
+        272,
+        28
+      ],
+      "scroll_owner": "settings-list-viewport",
+      "cancel_row_activation_after_drag": true
+    },
+    "home_status": {
+      "y": 215,
+      "height": 36,
+      "cloud": {
+        "x": 132,
+        "width": 18
+      },
+      "bluetooth": {
+        "x": 150,
+        "width": 14
+      },
+      "wifi": {
+        "x": 164,
+        "width": 18
+      }
+    }
+  },
+  "local_panels": {
+    "back": {
+      "x": 78,
+      "y": 60,
+      "width": 62,
+      "height": 46
+    },
+    "wifi_password_field": {
+      "x": 34,
+      "y": 110,
+      "width": 398,
+      "height": 44
+    },
+    "wifi_actions": {
+      "scan": {
+        "x": 77,
+        "y": 348,
+        "width": 142,
+        "height": 52
+      },
+      "change": {
+        "x": 247,
+        "y": 348,
+        "width": 142,
+        "height": 52
+      },
+      "refresh": {
+        "x": 111,
+        "y": 397,
+        "width": 244,
+        "height": 48
+      }
+    }
+  },
+  "settings_submenu": {
+    "back": {
+      "x": 48,
+      "y": 87,
+      "width": 48,
+      "height": 46
+    },
+    "list_viewport": {
+      "x": 73,
+      "y": 130,
+      "width": 320,
+      "height": 336
+    },
+    "row_height": 49,
+    "row_gap": 5,
+    "gesture_start_threshold": 16,
+    "gallery": {
+      "x": 68,
+      "width": 310
+    }
   },
   "behaviour": {
     "swipe_up_screen": "sky-home",
+    "button_release": {
+      "cancel_on_leave_original_target": true,
+      "activate_only_on_release_inside_original_target": true,
+      "cancel_on_pointer_cancel": true,
+      "cancel_after_consumed_swipe": true
+    },
     "clock_long_press_action": "toggle-clock-format",
     "brightness_minimum": 5,
-    "brightness_maximum": 100
+    "brightness_maximum": 100,
+    "settings_release": {
+      "gestures": [
+        "tap",
+        "long-press",
+        "release"
+      ],
+      "require_original_row": true,
+      "cancel_on_leave": true
+    },
+    "home_button_bounds": [
+      {
+        "id": "open-clock",
+        "x": 197,
+        "y": 52,
+        "width": 72,
+        "height": 72,
+        "center": [
+          233,
+          88
+        ],
+        "move_from_center": [
+          239,
+          102
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          233,
+          88
+        ],
+        "original_center": [
+          239,
+          92
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          233,
+          93
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          -6,
+          1
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          -6.686303421149319,
+          0.9842913617601141
+        ]
+      },
+      {
+        "id": "open-navigation",
+        "x": 113,
+        "y": 100,
+        "width": 72,
+        "height": 72,
+        "center": [
+          149,
+          136
+        ],
+        "move_from_center": [
+          158,
+          148
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          149,
+          136
+        ],
+        "original_center": [
+          152,
+          140
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          152,
+          140
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          0,
+          0
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          0.9243245563027074,
+          -0.7524321695236154
+        ]
+      },
+      {
+        "id": "open-weather",
+        "x": 32,
+        "y": 197,
+        "width": 72,
+        "height": 72,
+        "center": [
+          91,
+          228
+        ],
+        "move_from_center": [
+          109,
+          228
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          68,
+          233
+        ],
+        "original_center": [
+          99,
+          228
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          96,
+          228
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          -3,
+          0
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          -3.012179478777938,
+          0.6043476016621696
+        ],
+        "layout_revision": "2026-10-28 Home banner clearance; prior radial measurements retained as history"
+      },
+      {
+        "id": "open-usb",
+        "x": 362,
+        "y": 197,
+        "width": 72,
+        "height": 72,
+        "center": [
+          375,
+          228
+        ],
+        "move_from_center": [
+          364,
+          228
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          398,
+          233
+        ],
+        "original_center": [
+          374,
+          228
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          370,
+          228
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          -4,
+          0
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          -3.9890859864186154,
+          0.5721025185656003
+        ],
+        "layout_revision": "2026-10-28 Home banner clearance; prior radial measurements retained as history"
+      },
+      {
+        "id": "open-whatsapp",
+        "x": 104,
+        "y": 284,
+        "width": 72,
+        "height": 72,
+        "center": [
+          140,
+          320
+        ],
+        "move_from_center": [
+          155,
+          310
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          140,
+          320
+        ],
+        "original_center": [
+          147,
+          316
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          143,
+          317
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          -4,
+          1
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          -4.325190751830348,
+          -0.5379527193469471
+        ]
+      },
+      {
+        "id": "open-spotify",
+        "x": 290,
+        "y": 284,
+        "width": 72,
+        "height": 72,
+        "center": [
+          326,
+          320
+        ],
+        "move_from_center": [
+          321,
+          310
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          326,
+          320
+        ],
+        "original_center": [
+          327,
+          318
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          323,
+          317
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          -4,
+          -1
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          -6.288650420603176,
+          0.12243088197220686
+        ]
+      },
+      {
+        "id": "open-settings",
+        "x": 197,
+        "y": 342,
+        "width": 72,
+        "height": 72,
+        "center": [
+          233,
+          378
+        ],
+        "move_from_center": [
+          236,
+          362
+        ],
+        "radial_delta": 15,
+        "final_center": [
+          233,
+          378
+        ],
+        "original_center": [
+          236,
+          372
+        ],
+        "normalized_center_after_existing_10px_shift": [
+          233,
+          373
+        ],
+        "remaining_outward_move_px": 5,
+        "symmetry_normalization_offset_px": [
+          -3,
+          1
+        ],
+        "final_position_offset_from_15px_radial_target_px": [
+          -3.3487429162314584,
+          1.0040546020472902
+        ]
+      }
+    ],
+    "settings_row_actions": {
+      "settings-wifi": "wifi-panel",
+      "settings-bluetooth": "bluetooth-panel",
+      "settings-display": "open-additional-options",
+      "settings-sound": "undefined",
+      "settings-accounts": "open-accounts"
+    }
   }
 }

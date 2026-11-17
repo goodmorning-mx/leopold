@@ -1,0 +1,20 @@
+{
+  "id": "settings-main/display",
+  "source": "shared/assets/settings-row-display.png",
+  "source_sha256": "36a6675f5a34335c9824c4314112f7c59a040a756786df7cec66e0ae539b7dcb",
+  "dimensions": [
+    40,
+    40
+  ],
+  "source_color_mode": "RGBA",
+  "material_format": "BHA8 row-major body/highlight/alpha triples",
+  "transform": {
+    "luminance": "round((299*R + 587*G + 114*B) / 1000)",
+    "highlight": "round(max(0, luminance - 160) * 0.65 * 255 / 95)",
+    "body": "max(0, luminance - highlight)",
+    "alpha": "preserved from source PNG",
+    "tint": "existing leopold_settings_icons channel() formula"
+  },
+  "material_bytes": 4800,
+  "material_sha256": "b7b44e7d618583ac0150283c9742f66b2d8fd39ad87f8c34c4ebc7b67b4b14fc"
+}

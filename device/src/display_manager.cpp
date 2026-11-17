@@ -2,6 +2,7 @@
 
 #include <Arduino_GFX_Library.h>
 #include <Preferences.h>
+#include <cmath>
 #include <esp_heap_caps.h>
 #include <lvgl.h>
 #include <qrcode.h>
@@ -11,6 +12,7 @@
 #include "sky_assets.h"
 #include "generated_firmware_ui.h"
 #include "lvgl_renderer.h"
+#include "memory_budget.h"
 
 namespace leopold {
 namespace {
@@ -24,10 +26,7 @@ constexpr uint16_t kBlue = 0x3D7F;
 constexpr uint16_t kGreen = 0x07E0;
 constexpr uint16_t kRed = 0xF800;
 constexpr uint16_t kGray = 0x7BEF;
-constexpr uint16_t kPanel = 0x18C3;
-constexpr uint16_t kDim = 0x4208;
 constexpr uint16_t kYellow = 0xFEC0;
-constexpr uint16_t kSpotify = 0x1DCA;
 
 Arduino_DataBus* bus = new Arduino_ESP32QSPI(
     kDisplayCs,
@@ -50,9 +49,10 @@ Arduino_CO5300* display = new Arduino_CO5300(
     0,
     0);
 Preferences displayPreferences;
+bool displayPreferencesReady = false;
 lv_display_t* lvglDisplay = nullptr;
-lv_obj_t* brightnessSlider = nullptr;
-lv_obj_t* brightnessValue = nullptr;
+uint32_t lvglFlushCallbacks = 0;
+uint64_t lvglFlushPixels = 0;
 uint8_t* lvglDrawBuffer = nullptr;
 EXT_RAM_BSS_ATTR uint16_t* lvglCaptureBuffer = nullptr;
 
@@ -76,6 +76,8 @@ void lvglFlush(
       reinterpret_cast<uint16_t*>(pixels),
       width,
       height);
+  ++lvglFlushCallbacks;
+  lvglFlushPixels += static_cast<uint64_t>(width) * static_cast<uint64_t>(height);
   if (lvglCaptureBuffer != nullptr) {
     for (int32_t row = 0; row < height; ++row) {
       memcpy(
@@ -85,15 +87,6 @@ void lvglFlush(
     }
   }
   lv_display_flush_ready(target);
-}
-
-const lv_font_t* fontForSize(uint8_t size) {
-  switch (size) {
-    case 1: return &lv_font_montserrat_14;
-    case 2: return &lv_font_montserrat_20;
-    case 3: return &lv_font_montserrat_28;
-    default: return &lv_font_montserrat_36;
-  }
 }
 
 lv_color_t lvColor(uint16_t rgb565) {
@@ -113,9 +106,16 @@ lv_obj_t* cleanLvglScreen(uint16_t background = kBlack) {
   lv_obj_set_style_bg_color(root, lvColor(background), 0);
   lv_obj_set_style_bg_opa(root, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(root, 0, 0);
-  brightnessSlider = nullptr;
-  brightnessValue = nullptr;
   return root;
+}
+
+void drawSettingsWallpaper(lv_obj_t* root) {
+  const lv_image_dsc_t* wallpaper = sky::resolveAsset("settings-gears-wallpaper");
+  if (wallpaper == nullptr || wallpaper->data == nullptr) return;
+  lv_obj_t* image = lv_image_create(root);
+  lv_image_set_src(image, wallpaper);
+  lv_obj_set_pos(image, 0, 0);
+  lv_obj_remove_flag(image, LV_OBJ_FLAG_CLICKABLE);
 }
 
 lv_obj_t* createLabel(
@@ -151,53 +151,59 @@ lv_obj_t* createRoundPanel(
   return panel;
 }
 
-lv_obj_t* createImage(
-    lv_obj_t* parent,
-    const lv_image_dsc_t& source,
-    int16_t x,
-    int16_t y,
-    lv_opa_t opacity = LV_OPA_COVER) {
-  lv_obj_t* image = lv_image_create(parent);
-  lv_image_set_src(image, &source);
-  lv_obj_set_pos(image, x, y);
-  lv_obj_set_style_image_opa(image, opacity, 0);
-  lv_obj_remove_flag(image, LV_OBJ_FLAG_CLICKABLE);
-  return image;
-}
-
-const lv_image_dsc_t* skyButtonIcon(const char* id) {
-  return sky::resolveAsset(id);
-}
-
 const lv_image_dsc_t* sharedImageResolver(const char* id) {
   return sky::resolveAsset(id);
 }
 
-void drawWhatsappSymbol(lv_obj_t* parent, lv_color_t color) {
-  lv_obj_t* bubble = createRoundPanel(parent, 17, 17, 38, 34, 14, color);
-  lv_obj_t* tail = createRoundPanel(parent, 20, 43, 10, 8, 3, color);
-  lv_obj_t* cutout = createRoundPanel(
-      parent, 26, 24, 20, 14, 7, lv_color_hex(0x141416));
-  LV_UNUSED(bubble);
-  LV_UNUSED(tail);
-  LV_UNUSED(cutout);
-}
-
-void drawSharedUsbSymbol(lv_obj_t* parent, lv_color_t color) {
-  static lv_point_precise_t points[generated_ui::kUsbIconSegmentCount][2];
-  for (uint8_t index = 0; index < generated_ui::kUsbIconSegmentCount; ++index) {
-    points[index][0].x = generated_ui::kUsbIconSegments[index][0];
-    points[index][0].y = generated_ui::kUsbIconSegments[index][1];
-    points[index][1].x = generated_ui::kUsbIconSegments[index][2];
-    points[index][1].y = generated_ui::kUsbIconSegments[index][3];
+// Explicit sampled arches keep the complete Wi-Fi mark independent of font glyph coverage.
+void drawWifiGlyphOn(lv_obj_t* parent, int16_t centerX, int16_t arcCenterY,
+                     int16_t radius, lv_color_t color, uint8_t slot) {
+  static lv_point_precise_t points[6][3][13] = {};
+  static const int8_t scales[] = {10, 7, 4};
+  if (slot >= 6) slot = 0;
+  for (uint8_t arc = 0; arc < 3; ++arc) {
+    const int16_t arcRadius = static_cast<int16_t>(radius * scales[arc] / 10);
+    for (int index = 0; index <= 12; ++index) {
+      const double degrees = 210.0 + (120.0 * index / 12.0);
+      const double radians = degrees * 3.14159265358979323846 / 180.0;
+      points[slot][arc][index].x = static_cast<int16_t>(
+          centerX + std::cos(radians) * arcRadius);
+      points[slot][arc][index].y = static_cast<int16_t>(
+          arcCenterY + std::sin(radians) * arcRadius);
+    }
     lv_obj_t* line = lv_line_create(parent);
-    lv_line_set_points(line, points[index], 2);
-    lv_obj_set_size(line, generated_ui::kUsbIconWidth, generated_ui::kUsbIconHeight);
-    lv_obj_set_pos(line, 0, 0);
+    lv_line_set_points(line, points[slot][arc], 13);
+    lv_obj_set_size(line, 466, 466);
     lv_obj_set_style_line_color(line, color, 0);
-    lv_obj_set_style_line_width(line, generated_ui::kUsbIconStroke, 0);
+    lv_obj_set_style_line_width(line, 2, 0);
     lv_obj_set_style_line_rounded(line, true, 0);
   }
+  createRoundPanel(parent, centerX - 2, arcCenterY + radius / 2 + 2,
+                   4, 4, 2, color);
+}
+
+void createWifiActionCapsule(lv_obj_t* root, int16_t x, int16_t y,
+                             int16_t width, int16_t height,
+                             const char* label, bool primary) {
+  lv_obj_t* capsule = createRoundPanel(
+      root, x, y, width, height, height / 2,
+      lv_color_hex(primary ? 0x126FD0 : 0x152335));
+  lv_obj_set_style_bg_opa(capsule, primary ? LV_OPA_90 : LV_OPA_80, 0);
+  lv_obj_set_style_border_width(capsule, 1, 0);
+  lv_obj_set_style_border_color(capsule, lv_color_hex(primary ? 0x9BD2FF : 0x72B7F2), 0);
+  lv_obj_t* gleam = lv_line_create(capsule);
+  static lv_point_precise_t gleamPoints[2];
+  gleamPoints[0] = {static_cast<lv_coord_t>(height / 2), 2};
+  gleamPoints[1] = {static_cast<lv_coord_t>(width - height / 2), 2};
+  lv_line_set_points(gleam, gleamPoints, 2);
+  lv_obj_set_size(gleam, width, height);
+  lv_obj_set_style_line_color(gleam, lv_color_white(), 0);
+  lv_obj_set_style_line_opa(gleam, LV_OPA_50, 0);
+  lv_obj_set_style_line_width(gleam, 1, 0);
+  lv_obj_set_style_line_rounded(gleam, true, 0);
+  lv_obj_t* text = createLabel(capsule, label, &lv_font_montserrat_14,
+                               lv_color_hex(0xF5FAFF));
+  lv_obj_center(text);
 }
 
 }  // namespace
@@ -208,17 +214,31 @@ bool DisplayManager::begin() {
   if (!display->begin(80000000)) {
     return false;
   }
-  displayPreferences.begin("display", false);
+  displayPreferencesReady = displayPreferences.begin("display", false);
+  if (!displayPreferencesReady)
+    Serial.println("Display settings unavailable; using in-memory defaults");
   brightnessPercent_ = constrain(
-      displayPreferences.getUChar("brightness", generated_ui::kDefaultBrightness),
+      displayPreferencesReady ? displayPreferences.getUChar("brightness", generated_ui::kDefaultBrightness) : generated_ui::kDefaultBrightness,
       generated_ui::kBrightnessMinimum,
       generated_ui::kBrightnessMaximum);
-  if (displayPreferences.isKey("background_mode")) {
+  if (displayPreferencesReady && displayPreferences.isKey("background_mode")) {
     backgroundMode_ = min<uint8_t>(displayPreferences.getUChar("background_mode", 1), 2);
-  } else {
+  } else if (displayPreferencesReady) {
     backgroundMode_ = displayPreferences.getBool("dark_bg", false) ? 0 : 1;
   }
-  spanishLanguage_ = displayPreferences.getBool("spanish", false);
+  spanishLanguage_ = displayPreferencesReady && displayPreferences.getBool("spanish", false);
+  backgroundArt_ = displayPreferencesReady ? min<uint8_t>(displayPreferences.getUChar("background_art", 3), 3) : 3;
+  clockBackground_ = displayPreferencesReady ? min<uint8_t>(displayPreferences.getUChar("clock_background", 0), 2) : 0;
+  accentIndex_ = displayPreferencesReady ? min<uint8_t>(displayPreferences.getUChar("accent_color", 4), 6) : 4;
+  clockFace_ = displayPreferencesReady ? min<uint8_t>(displayPreferences.getUChar("clock_face", 0), 4) : 0;
+  sharedRenderState_.timeText = timeText_;
+  sharedRenderState_.dateText = dateText_;
+  sharedRenderState_.clockFace = clockFace_;
+  sharedRenderState_.backgroundArt = backgroundArt_;
+  sharedRenderState_.clockBackground = clockBackground_;
+  sharedRenderState_.accentIndex = accentIndex_;
+  sharedRenderState_.appearanceDark = !displayPreferencesReady || displayPreferences.getBool("appearance_dark", true);
+  sharedRenderState_.clockShowWeather = displayPreferencesReady && displayPreferences.getBool("clock_weather", false);
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
   display->fillScreen(kBlack);
   lv_init();
@@ -246,6 +266,11 @@ bool DisplayManager::begin() {
     Serial.println("LVGL draw buffer allocation failed");
     return false;
   }
+  Serial.printf("LEOPOLD_DISPLAY_MEMORY draw=%lu capture=%lu framebuffer_rgb565=%lu\n",
+                static_cast<unsigned long>(kLvglBufferBytes),
+                static_cast<unsigned long>(kScreenWidth * kScreenHeight * sizeof(uint16_t)),
+                static_cast<unsigned long>(kScreenWidth * kScreenHeight * sizeof(uint16_t)));
+  memory_budget::log("display-ready");
   lvglDisplay = lv_display_create(kScreenWidth, kScreenHeight);
   if (lvglDisplay == nullptr) {
     Serial.println("LVGL display creation failed");
@@ -263,13 +288,102 @@ bool DisplayManager::begin() {
 }
 
 void DisplayManager::loop() {
-  if (lvglDisplay != nullptr) {
+  if (lvglDisplay != nullptr && !calibrationMode_) {
     lv_timer_handler();
   }
 }
 
+uint32_t DisplayManager::flushCallbackCount() const {
+  return lvglFlushCallbacks;
+}
+
+uint64_t DisplayManager::flushPixelCount() const {
+  return lvglFlushPixels;
+}
+
+void DisplayManager::showCalibration() {
+  if (lvglCaptureBuffer == nullptr) return;
+  calibrationMode_ = true;
+  const int16_t centerX = generated_ui::kCalibrationWidth / 2;
+  const int16_t centerY = generated_ui::kCalibrationHeight / 2;
+  const auto setPixel = [](int16_t x, int16_t y, uint16_t color) {
+    if (x >= 0 && x < generated_ui::kCalibrationWidth && y >= 0 && y < generated_ui::kCalibrationHeight) {
+      lvglCaptureBuffer[y * generated_ui::kCalibrationWidth + x] = color;
+    }
+  };
+  for (int16_t y = 0; y < generated_ui::kCalibrationHeight; ++y) {
+    for (int16_t x = 0; x < generated_ui::kCalibrationWidth; ++x) setPixel(x, y, generated_ui::kCalibrationBackground);
+  }
+  for (int16_t x = 0; x < generated_ui::kCalibrationWidth; ++x) {
+    for (uint8_t offset = 0; offset < generated_ui::kCalibrationBorderWidth; ++offset) {
+      setPixel(x, offset, generated_ui::kCalibrationBorderColor);
+      setPixel(x, generated_ui::kCalibrationHeight - 1 - offset, generated_ui::kCalibrationBorderColor);
+    }
+  }
+  for (int16_t y = 0; y < generated_ui::kCalibrationHeight; ++y) {
+    for (uint8_t offset = 0; offset < generated_ui::kCalibrationBorderWidth; ++offset) {
+      setPixel(offset, y, generated_ui::kCalibrationBorderColor);
+      setPixel(generated_ui::kCalibrationWidth - 1 - offset, y, generated_ui::kCalibrationBorderColor);
+    }
+  }
+  const uint8_t marker = generated_ui::kCalibrationMarkerSize;
+  for (int16_t y = 0; y < marker; ++y) {
+    for (int16_t x = 0; x < marker; ++x) {
+      setPixel(x, y, generated_ui::kCalibrationMarkerColor);
+      setPixel(generated_ui::kCalibrationWidth - marker + x, y, generated_ui::kCalibrationMarkerColor);
+      setPixel(x, generated_ui::kCalibrationHeight - marker + y, generated_ui::kCalibrationMarkerColor);
+      setPixel(generated_ui::kCalibrationWidth - marker + x, generated_ui::kCalibrationHeight - marker + y, generated_ui::kCalibrationMarkerColor);
+    }
+  }
+  for (int16_t coordinate = generated_ui::kCalibrationGridSpacing; coordinate < generated_ui::kCalibrationWidth; coordinate += generated_ui::kCalibrationGridSpacing) {
+    for (int16_t offset = 0; offset < generated_ui::kCalibrationGridWidth; ++offset) {
+      for (int16_t position = 0; position < generated_ui::kCalibrationHeight; ++position) {
+        setPixel(coordinate + offset, position, generated_ui::kCalibrationGridColor);
+        setPixel(position, coordinate + offset, generated_ui::kCalibrationGridColor);
+      }
+    }
+  }
+  for (int16_t offset = 0; offset < generated_ui::kCalibrationCrosshairWidth; ++offset) {
+    for (int16_t position = 0; position < generated_ui::kCalibrationHeight; ++position) {
+      setPixel(centerX - generated_ui::kCalibrationCrosshairWidth / 2 + offset, position, generated_ui::kCalibrationCrosshairColor);
+      setPixel(position, centerY - generated_ui::kCalibrationCrosshairWidth / 2 + offset, generated_ui::kCalibrationCrosshairColor);
+    }
+  }
+  for (uint8_t index = 0; index < generated_ui::kCalibrationRadiusCount; ++index) {
+    const int16_t radius = generated_ui::kCalibrationRadii[index];
+    for (int16_t y = centerY - radius - 2; y <= centerY + radius + 2; ++y) {
+      for (int16_t x = centerX - radius - 2; x <= centerX + radius + 2; ++x) {
+        const int32_t dx = x - centerX;
+        const int32_t dy = y - centerY;
+        const int32_t distanceSquared = dx * dx + dy * dy;
+        const int32_t radiusSquared = radius * radius;
+        if (abs(distanceSquared - radiusSquared) <= radius * generated_ui::kCalibrationCircleWidth) setPixel(x, y, generated_ui::kCalibrationCircleColor);
+      }
+    }
+  }
+  display->draw16bitRGBBitmap(0, 0, lvglCaptureBuffer, generated_ui::kCalibrationWidth, generated_ui::kCalibrationHeight);
+}
+
+void DisplayManager::exitCalibration() {
+  if (!calibrationMode_) return;
+  calibrationMode_ = false;
+}
+
+bool DisplayManager::calibrationMode() const { return calibrationMode_; }
+
+void DisplayManager::writeDisplayInfo(Stream& output) const {
+  output.printf("LEOPOLD_DISPLAY_INFO panel=%dx%d framebuffer=%ux%u lvgl=%ldx%ld origin=0,0\n",
+                display->width(), display->height(), kScreenWidth, kScreenHeight,
+                static_cast<long>(lvglDisplay == nullptr ? 0 : lv_display_get_horizontal_resolution(lvglDisplay)),
+                static_cast<long>(lvglDisplay == nullptr ? 0 : lv_display_get_vertical_resolution(lvglDisplay)));
+}
+
 bool DisplayManager::writeLvglScreenshot(Stream& output) {
   if (lvglCaptureBuffer == nullptr) return false;
+  // A USB screenshot can arrive in the same loop iteration as a screen change.
+  // Flush pending LVGL invalidation first so the capture represents the
+  // currently selected screen rather than the previous framebuffer contents.
+  if (!calibrationMode_) lv_timer_handler();
   constexpr uint32_t byteCount = kScreenWidth * kScreenHeight * sizeof(uint16_t);
   output.printf("LEOPOLD_SCREENSHOT_BEGIN %u %u RGB565 %lu\n", kScreenWidth, kScreenHeight, static_cast<unsigned long>(byteCount));
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(lvglCaptureBuffer);
@@ -434,156 +548,12 @@ void DisplayManager::showReadyFace() {
   display->drawArc(kScreenWidth / 2, 250, 70, 54, 20, 160, kMorning);
 }
 
-void DisplayManager::drawComponent(const SduiComponent& component) {
-  switch (component.type) {
-    case ComponentType::kText: {
-      int16_t x1 = 0;
-      int16_t y1 = 0;
-      uint16_t width = 0;
-      uint16_t height = 0;
-      display->setTextSize(component.size);
-      display->getTextBounds(
-          component.text,
-          0,
-          component.y,
-          &x1,
-          &y1,
-          &width,
-          &height);
-      int16_t x = component.x;
-      if (component.align == TextAlign::kCenter) {
-        x -= width / 2;
-      } else if (component.align == TextAlign::kRight) {
-        x -= width;
-      }
-      display->setTextColor(component.color);
-      display->setCursor(x, component.y);
-      display->print(component.text);
-      break;
-    }
-    case ComponentType::kIndicator:
-      display->fillCircle(
-          component.x - 8,
-          component.y,
-          6,
-          component.connected ? kGreen : kRed);
-      display->setTextSize(1);
-      display->setTextColor(component.color);
-      display->setCursor(component.x + 6, component.y - 4);
-      display->print(component.text);
-      break;
-    case ComponentType::kButton:
-      display->drawRoundRect(
-          component.x,
-          component.y,
-          component.width,
-          component.height,
-          component.height / 2,
-          component.color);
-      if (component.icon[0] != '\0') {
-        drawControlIcon(
-            component.icon,
-            component.x + component.width / 2,
-            component.y + component.height / 2,
-            component.color);
-      } else {
-        const uint8_t textSize = component.size > 1 ? component.size : 2;
-        int16_t x1 = 0;
-        int16_t y1 = 0;
-        uint16_t textWidth = 0;
-        uint16_t textHeight = 0;
-        display->setTextSize(textSize);
-        display->getTextBounds(
-            component.text,
-            0,
-            0,
-            &x1,
-            &y1,
-            &textWidth,
-            &textHeight);
-        display->setTextColor(component.color);
-        display->setCursor(
-            component.x + (component.width - textWidth) / 2,
-            component.y + (component.height - textHeight) / 2);
-        display->print(component.text);
-      }
-      break;
-    case ComponentType::kProgress: {
-      const uint16_t filled = static_cast<uint32_t>(component.width) *
-                              min(component.value, component.maximum) /
-                              component.maximum;
-      display->drawRoundRect(
-          component.x,
-          component.y,
-          component.width,
-          component.height,
-          component.height / 2,
-          component.color);
-      if (filled > 2) {
-        display->fillRoundRect(
-            component.x + 2,
-            component.y + 2,
-            filled - 2,
-            component.height - 4,
-            max<int16_t>(1, component.height / 2 - 2),
-            component.color);
-      }
-      break;
-    }
-    case ComponentType::kSlider: {
-      const int16_t trackY = component.y + component.height / 2;
-      const int16_t radius = component.height / 2;
-      const int16_t thumbX =
-          component.x +
-          static_cast<uint32_t>(component.width) *
-              min(component.value, component.maximum) /
-              component.maximum;
-      display->fillRoundRect(
-          component.x,
-          trackY - 4,
-          component.width,
-          8,
-          4,
-          kGray);
-      if (thumbX > component.x) {
-        display->fillRoundRect(
-            component.x,
-            trackY - 4,
-            thumbX - component.x,
-            8,
-            4,
-            component.color);
-      }
-      display->fillCircle(thumbX, trackY, radius, component.color);
-      display->drawCircle(thumbX, trackY, radius, kWhite);
-      break;
-    }
-    case ComponentType::kIcon:
-      if (strcmp(component.icon, "spotify") == 0) {
-        drawSpotifyIcon(
-            component.x,
-            component.y,
-            component.width,
-            component.color);
-      } else if (strcmp(component.icon, "bluetooth") == 0) {
-        const int16_t scale = max<int16_t>(2, component.width / 32);
-        const int16_t x = component.x;
-        const int16_t y = component.y;
-        display->drawLine(x, y - 12 * scale, x, y + 12 * scale, component.color);
-        display->drawLine(x, y - 12 * scale, x + 7 * scale, y - 5 * scale, component.color);
-        display->drawLine(x + 7 * scale, y - 5 * scale, x - 6 * scale, y + 7 * scale, component.color);
-        display->drawLine(x - 6 * scale, y - 7 * scale, x + 7 * scale, y + 5 * scale, component.color);
-        display->drawLine(x + 7 * scale, y + 5 * scale, x, y + 12 * scale, component.color);
-      }
-      break;
-  }
-}
-
 void DisplayManager::setBrightnessPercent(uint8_t percent) {
   brightnessPercent_ = constrain(
       percent, generated_ui::kBrightnessMinimum, generated_ui::kBrightnessMaximum);
+  sharedRenderState_.brightnessPercent = brightnessPercent_;
   display->setBrightness(map(brightnessPercent_, 5, 100, 13, 255));
-  displayPreferences.putUChar("brightness", brightnessPercent_);
+  if (displayPreferencesReady) displayPreferences.putUChar("brightness", brightnessPercent_);
 }
 
 uint8_t DisplayManager::brightnessPercent() const {
@@ -592,13 +562,53 @@ uint8_t DisplayManager::brightnessPercent() const {
 
 void DisplayManager::cycleBackground() {
   backgroundMode_ = static_cast<uint8_t>((backgroundMode_ + 1) % 3);
-  displayPreferences.putUChar("background_mode", backgroundMode_);
+  if (displayPreferencesReady) displayPreferences.putUChar("background_mode", backgroundMode_);
 }
 
 void DisplayManager::toggleLanguage() {
   spanishLanguage_ = !spanishLanguage_;
-  displayPreferences.putBool("spanish", spanishLanguage_);
+  if (displayPreferencesReady) displayPreferences.putBool("spanish", spanishLanguage_);
 }
+
+void DisplayManager::setAppearanceDark(bool dark) {
+  sharedRenderState_.appearanceDark = dark;
+  if (displayPreferencesReady) displayPreferences.putBool("appearance_dark", dark);
+}
+
+void DisplayManager::setClockShowWeather(bool enabled) {
+  sharedRenderState_.clockShowWeather = enabled;
+  if (displayPreferencesReady) displayPreferences.putBool("clock_weather", enabled);
+}
+
+void DisplayManager::setAccentIndex(uint8_t index) {
+  accentIndex_ = min<uint8_t>(index, 6);
+  sharedRenderState_.accentIndex = accentIndex_;
+  if (displayPreferencesReady) displayPreferences.putUChar("accent_color", accentIndex_);
+}
+
+uint8_t DisplayManager::accentIndex() const { return accentIndex_; }
+
+void DisplayManager::setBackgroundArt(uint8_t index) {
+  backgroundArt_ = min<uint8_t>(index, 3);
+  sharedRenderState_.backgroundArt = backgroundArt_;
+  if (displayPreferencesReady) displayPreferences.putUChar("background_art", backgroundArt_);
+}
+
+void DisplayManager::setClockBackground(uint8_t index) {
+  clockBackground_ = min<uint8_t>(index, 2);
+  sharedRenderState_.clockBackground = clockBackground_;
+  if (displayPreferencesReady) displayPreferences.putUChar("clock_background", clockBackground_);
+}
+uint8_t DisplayManager::backgroundArt() const { return backgroundArt_; }
+uint8_t DisplayManager::clockBackground() const { return clockBackground_; }
+
+void DisplayManager::setClockFace(uint8_t index) {
+  clockFace_ = min<uint8_t>(index, 4);
+  sharedRenderState_.clockFace = clockFace_;
+  if (displayPreferencesReady) displayPreferences.putUChar("clock_face", clockFace_);
+}
+
+uint8_t DisplayManager::clockFace() const { return clockFace_; }
 
 uint8_t DisplayManager::backgroundMode() const {
   return backgroundMode_;
@@ -608,248 +618,6 @@ bool DisplayManager::spanishLanguage() const {
   return spanishLanguage_;
 }
 
-void DisplayManager::drawControlIcon(
-    const char* icon,
-    int16_t centerX,
-    int16_t centerY,
-    uint16_t color) {
-  if (strcmp(icon, "play") == 0) {
-    display->fillTriangle(
-        centerX - 9,
-        centerY - 18,
-        centerX - 9,
-        centerY + 18,
-        centerX + 19,
-        centerY,
-        color);
-  } else if (strcmp(icon, "pause") == 0) {
-    display->fillRoundRect(centerX - 14, centerY - 18, 10, 36, 3, color);
-    display->fillRoundRect(centerX + 4, centerY - 18, 10, 36, 3, color);
-  } else if (strcmp(icon, "previous") == 0) {
-    display->fillRoundRect(centerX - 17, centerY - 16, 5, 32, 2, color);
-    display->fillTriangle(
-        centerX - 10, centerY, centerX + 15, centerY - 17,
-        centerX + 15, centerY + 17, color);
-  } else if (strcmp(icon, "next") == 0) {
-    display->fillRoundRect(centerX + 12, centerY - 16, 5, 32, 2, color);
-    display->fillTriangle(
-        centerX + 10, centerY, centerX - 15, centerY - 17,
-        centerX - 15, centerY + 17, color);
-  }
-}
-
-void DisplayManager::drawSpotifyIcon(
-    int16_t centerX,
-    int16_t centerY,
-    int16_t size,
-    uint16_t color) {
-  const int16_t radius = size / 2;
-  display->fillCircle(centerX, centerY, radius, color);
-  const int16_t outer = max<int16_t>(8, radius - 9);
-  for (int8_t thickness = 0; thickness < 3; ++thickness) {
-    display->drawArc(
-        centerX,
-        centerY - 5 + thickness,
-        outer,
-        outer - 3,
-        205,
-        335,
-        kBlack);
-    display->drawArc(
-        centerX,
-        centerY + 6 + thickness,
-        outer - 6,
-        outer - 9,
-        205,
-        335,
-        kBlack);
-    display->drawArc(
-        centerX,
-        centerY + 15 + thickness,
-        outer - 12,
-        max<int16_t>(2, outer - 15),
-        205,
-        335,
-        kBlack);
-  }
-}
-
-void DisplayManager::drawSpotifyPlayer(const SduiScreen& screen) {
-  const SduiComponent* track = nullptr;
-  const SduiComponent* artist = nullptr;
-  const SduiComponent* album = nullptr;
-  const SduiComponent* progress = nullptr;
-  const SduiComponent* elapsed = nullptr;
-  const SduiComponent* duration = nullptr;
-  const SduiComponent* toggle = nullptr;
-  for (uint8_t index = 0; index < screen.componentCount; ++index) {
-    const SduiComponent& component = screen.components[index];
-    if (strcmp(component.id, "track") == 0) track = &component;
-    else if (strcmp(component.id, "artist") == 0) artist = &component;
-    else if (strcmp(component.id, "album") == 0) album = &component;
-    else if (strcmp(component.id, "progress") == 0 ||
-             strcmp(component.id, "spotify-seek") == 0) progress = &component;
-    else if (strcmp(component.id, "elapsed") == 0) elapsed = &component;
-    else if (strcmp(component.id, "duration") == 0) duration = &component;
-    else if (strcmp(component.id, "spotify-toggle") == 0) toggle = &component;
-  }
-
-  display->fillScreen(kBlack);
-  display->fillRoundRect(43, 43, 380, 352, 46, kPanel);
-  drawSpotifyIcon(82, 82, 42, kSpotify);
-  display->setTextSize(1);
-  display->setTextColor(kSpotify);
-  display->setCursor(112, 78);
-  display->print("SPOTIFY");
-  display->setTextColor(kGray);
-  display->setCursor(112, 92);
-  display->print("REPRODUCIENDO AHORA");
-
-  if (track != nullptr) centered(track->text, 126, 2, kWhite);
-  if (artist != nullptr) centered(artist->text, 157, 1, 0xBDF7);
-  if (album != nullptr) centered(album->text, 177, 1, kGray);
-
-  constexpr int16_t barX = 77;
-  constexpr int16_t barY = 221;
-  constexpr int16_t barWidth = 312;
-  display->fillRoundRect(barX, barY, barWidth, 6, 3, kDim);
-  uint16_t filled = 0;
-  if (progress != nullptr && progress->maximum > 0) {
-    filled = static_cast<uint32_t>(barWidth) *
-             min(progress->value, progress->maximum) / progress->maximum;
-  }
-  if (filled > 0) {
-    display->fillRoundRect(barX, barY, filled, 6, 3, kWhite);
-    display->fillCircle(barX + filled, barY + 3, 5, kWhite);
-  }
-  display->setTextSize(1);
-  display->setTextColor(kGray);
-  if (elapsed != nullptr) {
-    display->setCursor(barX, 240);
-    display->print(elapsed->text);
-  }
-  if (duration != nullptr) {
-    int16_t x1 = 0;
-    int16_t y1 = 0;
-    uint16_t width = 0;
-    uint16_t height = 0;
-    display->getTextBounds(duration->text, 0, 0, &x1, &y1, &width, &height);
-    display->setCursor(barX + barWidth - width, 240);
-    display->print(duration->text);
-  }
-
-  display->fillCircle(233, 311, 45, kWhite);
-  drawControlIcon(
-      toggle != nullptr && strcmp(toggle->icon, "pause") == 0
-          ? "pause" : "play",
-      233,
-      311,
-      kBlack);
-  display->fillCircle(111, 311, 29, kDim);
-  display->fillCircle(355, 311, 29, kDim);
-  drawControlIcon("previous", 111, 311, kWhite);
-  drawControlIcon("next", 355, 311, kWhite);
-
-  display->setTextSize(1);
-  display->setTextColor(kGray);
-  display->setCursor(88, 359);
-  display->print("ANTERIOR");
-  display->setCursor(331, 359);
-  display->print("SIGUIENTE");
-}
-
-void DisplayManager::buildLvglControlCenter() {
-  lv_obj_t* root = cleanLvglScreen();
-  lv_obj_t* title = createLabel(
-      root,
-      "Centro de control",
-      &lv_font_montserrat_24,
-      lv_color_white());
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 49);
-
-  lv_obj_t* connectivity = createRoundPanel(
-      root, 54, 108, 238, 240, 42, lv_color_hex(0x1C1C1E));
-  struct ConnectivityItem {
-    int16_t x;
-    int16_t y;
-    const char* symbol;
-    const char* label;
-    bool active;
-    uint32_t color;
-  };
-  const ConnectivityItem items[] = {
-      {28, 22, LV_SYMBOL_WIFI, "Wi-Fi", wifiConnected_, 0x0A84FF},
-      {132, 22, LV_SYMBOL_BLUETOOTH, "Bluetooth", bluetoothEnabled_, 0x0A84FF},
-      {80, 126, LV_SYMBOL_UPLOAD, "Nube", cloudConnected_, 0x30D158},
-  };
-  for (const ConnectivityItem& item : items) {
-    lv_obj_t* circle = createRoundPanel(
-        connectivity,
-        item.x,
-        item.y,
-        78,
-        78,
-        LV_RADIUS_CIRCLE,
-        lv_color_hex(item.active ? item.color : 0x3A3A3C));
-    lv_obj_t* symbol = createLabel(
-        circle,
-        item.symbol,
-        &lv_font_montserrat_28,
-        lv_color_white());
-    lv_obj_center(symbol);
-    lv_obj_t* label = createLabel(
-        connectivity,
-        item.label,
-        &lv_font_montserrat_12,
-        item.active ? lv_color_white() : lv_color_hex(0x8E8E93));
-    lv_obj_align_to(label, circle, LV_ALIGN_OUT_BOTTOM_MID, 0, 7);
-  }
-
-  brightnessSlider = lv_slider_create(root);
-  lv_obj_set_pos(brightnessSlider, 326, 116);
-  lv_obj_set_size(brightnessSlider, 78, 232);
-  lv_slider_set_range(brightnessSlider, 5, 100);
-  lv_slider_set_value(brightnessSlider, brightnessPercent_, LV_ANIM_OFF);
-  lv_obj_remove_flag(brightnessSlider, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_radius(brightnessSlider, 39, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(
-      brightnessSlider, lv_color_hex(0x2C2C2E), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(brightnessSlider, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_radius(brightnessSlider, 39, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(
-      brightnessSlider, lv_color_white(), LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(
-      brightnessSlider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(brightnessSlider, LV_OPA_TRANSP, LV_PART_KNOB);
-  lv_obj_set_style_pad_all(brightnessSlider, 0, LV_PART_KNOB);
-
-  lv_obj_t* sun = createLabel(
-      root,
-      LV_SYMBOL_SETTINGS,
-      &lv_font_montserrat_22,
-      lv_color_black());
-  lv_obj_align_to(sun, brightnessSlider, LV_ALIGN_BOTTOM_MID, 0, -22);
-  brightnessValue = createLabel(
-      root,
-      "",
-      &lv_font_montserrat_20,
-      lv_color_white());
-  lv_obj_align_to(brightnessValue, brightnessSlider, LV_ALIGN_OUT_BOTTOM_MID, 0, 16);
-  lv_obj_t* caption = createLabel(
-      root,
-      "BRILLO",
-      &lv_font_montserrat_12,
-      lv_color_hex(0x8E8E93));
-  lv_obj_align_to(caption, brightnessValue, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
-
-  lv_obj_t* options = createRoundPanel(
-      root, 112, 369, 210, 55, 27, lv_color_hex(0x3D7FFF));
-  lv_obj_t* optionsLabel = createLabel(
-      options, "Additional options", &lv_font_montserrat_14, lv_color_white());
-  lv_obj_center(optionsLabel);
-  updateControlCenterBrightness();
-}
-
 void DisplayManager::buildLvglConnectivityDetails(
     bool wifiScreen,
     bool primaryConnected,
@@ -857,8 +625,9 @@ void DisplayManager::buildLvglConnectivityDetails(
     const char* primaryDetail,
     const char* secondaryDetail) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
-      root, 28, 43, 74, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_24, lv_color_white());
   lv_obj_center(backIcon);
@@ -868,19 +637,20 @@ void DisplayManager::buildLvglConnectivityDetails(
       wifiScreen ? "Wi-Fi" : "GoodMorning Cloud",
       &lv_font_montserrat_24,
       lv_color_white());
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 51);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 84);
 
   const uint32_t accent = primaryConnected ? 0x30D158 : 0xFF453A;
   lv_obj_t* status = createRoundPanel(
       root, 149, 119, 168, 168, LV_RADIUS_CIRCLE, lv_color_hex(0x1C1C1E));
   lv_obj_set_style_border_width(status, 5, 0);
   lv_obj_set_style_border_color(status, lv_color_hex(accent), 0);
-  lv_obj_t* symbol = createLabel(
-      status,
-      wifiScreen ? LV_SYMBOL_WIFI : LV_SYMBOL_UPLOAD,
-      &lv_font_montserrat_36,
-      lv_color_hex(accent));
-  lv_obj_align(symbol, LV_ALIGN_CENTER, 0, -20);
+  if (wifiScreen) {
+    drawWifiGlyphOn(status, 84, 87, 25, lv_color_hex(accent), 0);
+  } else {
+    lv_obj_t* symbol = createLabel(
+        status, LV_SYMBOL_UPLOAD, &lv_font_montserrat_36, lv_color_hex(accent));
+    lv_obj_align(symbol, LV_ALIGN_CENTER, 0, -20);
+  }
   lv_obj_t* state = createLabel(
       status,
       primaryConnected ? "Conectado" : "Sin conexion",
@@ -905,24 +675,19 @@ void DisplayManager::buildLvglConnectivityDetails(
   lv_obj_set_style_text_align(secondary, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(secondary, LV_ALIGN_TOP_MID, 0, 333);
 
-  lv_obj_t* retry = createRoundPanel(
-      root, 47, 372, wifiScreen ? 174 : 372, 62, 31, lv_color_hex(0x0A84FF));
-  lv_obj_t* retryLabel = createLabel(
-      retry,
-      "Reintentar",
-      &lv_font_montserrat_16,
-      lv_color_white());
-  lv_obj_center(retryLabel);
   if (wifiScreen) {
-    lv_obj_t* configure = createRoundPanel(
-        root, 245, 372, 174, 62, 31, lv_color_hex(0x2C2C2E));
-    lv_obj_t* configureLabel = createLabel(
-        configure,
-        "Cambiar red",
-        &lv_font_montserrat_16,
-        lv_color_white());
-    lv_obj_center(configureLabel);
+    createWifiActionCapsule(
+        root, generated_ui::kWifiScanX, generated_ui::kWifiScanY,
+        generated_ui::kWifiScanWidth, generated_ui::kWifiScanHeight,
+        "Scan networks", true);
+    createWifiActionCapsule(
+        root, generated_ui::kWifiChangeX, generated_ui::kWifiChangeY,
+        generated_ui::kWifiChangeWidth, generated_ui::kWifiChangeHeight,
+        "Change network", false);
+  } else {
+    createWifiActionCapsule(root, 47, 372, 372, 62, "Retry", true);
   }
+  renderSharedLvglStatusBanner(root, sharedRenderState_, sharedImageResolver);
 }
 
 void DisplayManager::showWifiDetails(
@@ -977,17 +742,18 @@ void DisplayManager::showBluetoothDetails(
     bool connected,
     const char* peripheralName) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
-      root, 28, 43, 74, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_24, lv_color_white());
   lv_obj_center(backIcon);
   lv_obj_t* title = createLabel(
       root, "Bluetooth", &lv_font_montserrat_24, lv_color_white());
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 51);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 84);
   const uint32_t accent = connected ? 0x30D158 : 0x0A84FF;
   lv_obj_t* status = createRoundPanel(
-      root, 149, 112, 168, 168, LV_RADIUS_CIRCLE, lv_color_hex(0x1C1C1E));
+      root, 149, 120, 168, 168, LV_RADIUS_CIRCLE, lv_color_hex(0x1C1C1E));
   lv_obj_set_style_border_width(status, 5, 0);
   lv_obj_set_style_border_color(status, lv_color_hex(accent), 0);
   lv_obj_t* symbol = createLabel(
@@ -1014,6 +780,7 @@ void DisplayManager::showBluetoothDetails(
   lv_obj_t* scanLabel = createLabel(
       scan, "Buscar dispositivos", &lv_font_montserrat_16, lv_color_white());
   lv_obj_center(scanLabel);
+  renderSharedLvglStatusBanner(root, sharedRenderState_, sharedImageResolver);
 }
 
 void DisplayManager::showBluetoothDevices(
@@ -1022,23 +789,24 @@ void DisplayManager::showBluetoothDevices(
     bool scanning,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
-      root, 28, 35, 62, 46, 23, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 23, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
   lv_obj_center(backIcon);
   lv_obj_t* title = createLabel(
       root, "Bluetooth", &lv_font_montserrat_24, lv_color_white());
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 43);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 84);
   lv_obj_t* subtitle = createLabel(
       root,
       scanning ? "Buscando accesorios BLE..."
                : (message != nullptr ? message : "Toca uno para conectar"),
       &lv_font_montserrat_12,
       lv_color_hex(scanning ? 0x0A84FF : 0x8E8E93));
-  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 80);
+  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 110);
   for (uint8_t index = 0; index < count && index < 5; ++index) {
-    const int16_t y = 111 + index * 57;
+    const int16_t y = 131 + index * 57;
     lv_obj_t* row = createRoundPanel(
         root, 34, y, 398, 49, 17, lv_color_hex(0x1C1C1E));
     lv_obj_t* icon = createLabel(
@@ -1063,6 +831,7 @@ void DisplayManager::showBluetoothDevices(
       &lv_font_montserrat_14,
       lv_color_white());
   lv_obj_center(scanLabel);
+  renderSharedLvglStatusBanner(root, sharedRenderState_, sharedImageResolver);
 }
 
 void DisplayManager::showWifiNetworks(
@@ -1073,24 +842,25 @@ void DisplayManager::showWifiNetworks(
     bool scanning,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
-      root, 28, 35, 62, 46, 23, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 23, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_22, lv_color_white());
   lv_obj_center(backIcon);
   lv_obj_t* title = createLabel(
       root, "Elegir Wi-Fi", &lv_font_montserrat_24, lv_color_white());
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 43);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 84);
   lv_obj_t* subtitle = createLabel(
       root,
-      scanning ? "Buscando redes..." :
-          (message != nullptr ? message : "Redes disponibles"),
+      message != nullptr ? message :
+          (scanning ? "Buscando redes..." : "Redes disponibles"),
       &lv_font_montserrat_12,
-      lv_color_hex(scanning ? 0x0A84FF : 0x8E8E93));
-  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 80);
+      lv_color_hex(scanning && message == nullptr ? 0x0A84FF : 0x8E8E93));
+  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 110);
 
   for (uint8_t index = 0; index < count && index < 5; ++index) {
-    const int16_t y = 111 + index * 57;
+    const int16_t y = 131 + index * 57;
     lv_obj_t* row = createRoundPanel(
         root, 34, y, 398, 49, 17, lv_color_hex(0x1C1C1E));
     lv_obj_t* wifi = createLabel(
@@ -1117,6 +887,7 @@ void DisplayManager::showWifiNetworks(
       &lv_font_montserrat_14,
       lv_color_white());
   lv_obj_center(scanLabel);
+  renderSharedLvglStatusBanner(root, sharedRenderState_, sharedImageResolver);
 }
 
 void DisplayManager::showWifiPassword(
@@ -1131,8 +902,9 @@ void DisplayManager::showWifiPassword(
   static const char* upperGroups[] = {
       "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "1234567890"};
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
-      root, 25, 42, 64, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);
@@ -1140,10 +912,10 @@ void DisplayManager::showWifiPassword(
       root, networkName, &lv_font_montserrat_18, lv_color_white());
   lv_obj_set_width(title, 280);
   lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 31);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 84);
 
   lv_obj_t* field = createRoundPanel(
-      root, 34, 83, 398, 61, 18, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kWifiPasswordFieldX, generated_ui::kWifiPasswordFieldY, generated_ui::kWifiPasswordFieldWidth, generated_ui::kWifiPasswordFieldHeight, 18, lv_color_hex(0x1C1C1E));
   char masked[65] = {};
   const uint8_t dots = min<uint8_t>(passwordLength, 32);
   memset(masked, '*', dots);
@@ -1227,14 +999,16 @@ void DisplayManager::showWifiPassword(
       &lv_font_montserrat_12,
       lv_color_hex(0x8E8E93));
   lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -26);
+  renderSharedLvglStatusBanner(root, sharedRenderState_, sharedImageResolver);
 }
 
 void DisplayManager::showWifiConnecting(
     const char* networkName,
     const char* message) {
   lv_obj_t* root = cleanLvglScreen();
+  drawSettingsWallpaper(root);
   lv_obj_t* back = createRoundPanel(
-      root, 25, 42, 64, 48, 24, lv_color_hex(0x1C1C1E));
+      root, generated_ui::kConnectivityBackX, generated_ui::kConnectivityBackY, generated_ui::kConnectivityBackWidth, generated_ui::kConnectivityBackHeight, 24, lv_color_hex(0x1C1C1E));
   lv_obj_t* backIcon = createLabel(
       back, LV_SYMBOL_LEFT, &lv_font_montserrat_20, lv_color_white());
   lv_obj_center(backIcon);
@@ -1256,304 +1030,7 @@ void DisplayManager::showWifiConnecting(
   lv_obj_t* status = createLabel(
       root, message, &lv_font_montserrat_14, lv_color_hex(0x8E8E93));
   lv_obj_align(status, LV_ALIGN_TOP_MID, 0, 361);
-}
-
-void DisplayManager::buildLvglSpotifyPlayer(const SduiScreen& screen) {
-  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
-  return;
-  const SduiComponent* track = nullptr;
-  const SduiComponent* artist = nullptr;
-  const SduiComponent* progress = nullptr;
-  const SduiComponent* toggle = nullptr;
-  const SduiComponent* volume = nullptr;
-  for (uint8_t index = 0; index < screen.componentCount; ++index) {
-    const SduiComponent& component = screen.components[index];
-    if (strcmp(component.id, "track") == 0) track = &component;
-    else if (strcmp(component.id, "artist") == 0) artist = &component;
-    else if (strcmp(component.id, "progress") == 0 ||
-             strcmp(component.id, "spotify-seek") == 0) progress = &component;
-    else if (strcmp(component.id, "spotify-toggle") == 0) toggle = &component;
-    else if (strcmp(component.id, "spotify-volume") == 0) volume = &component;
-  }
-
-  lv_obj_t* root = cleanLvglScreen();
-  // AMOLED-first player: pure black pixels and no decorative background.
-  lv_obj_t* volumeArc = lv_arc_create(root);
-  lv_obj_set_pos(volumeArc, generated_ui::kSpotifyArcX, generated_ui::kSpotifyArcY);
-  lv_obj_set_size(volumeArc, generated_ui::kSpotifyArcSize, generated_ui::kSpotifyArcSize);
-  lv_arc_set_rotation(volumeArc, generated_ui::kSpotifyArcRotation);
-  lv_arc_set_bg_angles(volumeArc, generated_ui::kSpotifyArcBackgroundStart, generated_ui::kSpotifyArcBackgroundEnd);
-  lv_arc_set_range(volumeArc, 0, 100);
-  lv_arc_set_value(volumeArc, volume == nullptr ? 0 : volume->value);
-  lv_obj_remove_flag(volumeArc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_arc_width(volumeArc, generated_ui::kSpotifyArcWidth, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(volumeArc, lvColor(generated_ui::kSpotifyArcBackground), LV_PART_MAIN);
-  lv_obj_set_style_arc_rounded(volumeArc, true, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(volumeArc, generated_ui::kSpotifyArcWidth, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(volumeArc, lvColor(generated_ui::kSpotifyArcActive), LV_PART_INDICATOR);
-  lv_obj_set_style_arc_rounded(volumeArc, true, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(volumeArc, LV_OPA_COVER, LV_PART_KNOB);
-  lv_obj_set_style_bg_color(volumeArc, lv_color_white(), LV_PART_KNOB);
-  lv_obj_set_style_pad_all(volumeArc, 3, LV_PART_KNOB);
-
-  const char* actionSymbols[] = {LV_SYMBOL_LIST, LV_SYMBOL_SHUFFLE, LV_SYMBOL_OK};
-  for (uint8_t index = 0; index < 3; ++index) {
-    lv_obj_t* action = createLabel(
-        root, actionSymbols[index], &lv_font_montserrat_24, lv_color_white());
-    lv_obj_align(action, LV_ALIGN_TOP_LEFT, generated_ui::kSpotifyActionX[index] - 12, generated_ui::kSpotifyActionY[index]);
-  }
-
-  // Until the cover cache has downloaded a new track, this is the intentional
-  // no-background fallback. The SDUI contract already carries album-art URL.
-  lv_obj_t* cover = createImage(root, sky::kSpotifyLargeIcon, generated_ui::kSpotifyCoverX, generated_ui::kSpotifyCoverY);
-  lv_obj_set_size(cover, generated_ui::kSpotifyCoverWidth, generated_ui::kSpotifyCoverHeight);
-  lv_obj_set_style_image_recolor(cover, lv_color_white(), 0);
-  lv_obj_set_style_image_recolor_opa(cover, LV_OPA_COVER, 0);
-
-  lv_obj_t* trackLabel = createLabel(
-      root,
-      track == nullptr ? "Sin reproducción" : track->text,
-      &lv_font_montserrat_22,
-      lv_color_white());
-  lv_obj_set_width(trackLabel, 320);
-  lv_label_set_long_mode(trackLabel, LV_LABEL_LONG_DOT);
-  lv_obj_set_style_text_align(trackLabel, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(trackLabel, LV_ALIGN_TOP_MID, 0, 252);
-  lv_obj_t* artistLabel = createLabel(
-      root,
-      artist == nullptr ? "Abre Spotify" : artist->text,
-      &lv_font_montserrat_14,
-      lv_color_hex(0xD1D1D6));
-  lv_obj_align(artistLabel, LV_ALIGN_TOP_MID, 0, 286);
-
-  struct MediaButton {
-    int16_t x;
-    int16_t size;
-    const char* symbol;
-  };
-  const bool playing = toggle != nullptr && strcmp(toggle->icon, "pause") == 0;
-  const MediaButton buttons[] = {
-      {generated_ui::kSpotifyControlX[0], generated_ui::kSpotifyControlSize[0], LV_SYMBOL_PREV},
-      {generated_ui::kSpotifyControlX[1], generated_ui::kSpotifyControlSize[1], playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY},
-      {generated_ui::kSpotifyControlX[2], generated_ui::kSpotifyControlSize[2], LV_SYMBOL_NEXT},
-  };
-  for (const MediaButton& item : buttons) {
-    lv_obj_t* icon = createLabel(
-        root,
-        item.symbol,
-        item.size > 70 ? &lv_font_montserrat_32 : &lv_font_montserrat_24,
-        lv_color_white());
-    lv_obj_set_pos(icon, item.x + item.size / 2 - 16, generated_ui::kSpotifyControlY[&item - buttons]);
-  }
-
-  lv_obj_t* seekBar = lv_bar_create(root);
-  lv_obj_set_pos(seekBar, generated_ui::kSpotifySeekX, generated_ui::kSpotifySeekY);
-  lv_obj_set_size(seekBar, generated_ui::kSpotifySeekWidth, generated_ui::kSpotifySeekHeight);
-  lv_bar_set_range(seekBar, 0, progress == nullptr ? 100 : progress->maximum);
-  lv_bar_set_value(seekBar, progress == nullptr ? 0 : progress->value, LV_ANIM_OFF);
-  lv_obj_set_style_radius(seekBar, generated_ui::kSpotifySeekRadius, LV_PART_MAIN);
-  lv_obj_set_style_radius(seekBar, generated_ui::kSpotifySeekRadius, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(seekBar, lvColor(generated_ui::kSpotifySeekBackground), LV_PART_MAIN);
-  lv_obj_set_style_bg_color(seekBar, lvColor(generated_ui::kSpotifySeekActive), LV_PART_INDICATOR);
-}
-
-void DisplayManager::buildLvglYoutubeFeed(const SduiScreen& screen) {
-  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
-  return;
-  const SduiComponent* account = nullptr;
-  const SduiComponent* titles[3] = {};
-  const SduiComponent* channels[3] = {};
-  for (uint8_t index = 0; index < screen.componentCount; ++index) {
-    const SduiComponent& component = screen.components[index];
-    if (strcmp(component.id, "youtube-account") == 0) {
-      account = &component;
-    } else if (strncmp(component.id, "youtube-title-", 14) == 0) {
-      const uint8_t slot = component.id[14] - '0';
-      if (slot < 3) titles[slot] = &component;
-    } else if (strncmp(component.id, "youtube-channel-", 16) == 0) {
-      const uint8_t slot = component.id[16] - '0';
-      if (slot < 3) channels[slot] = &component;
-    }
-  }
-
-  lv_obj_t* root = cleanLvglScreen();
-  lv_obj_t* brand = createRoundPanel(
-      root, 172, 42, 122, 54, 18, lv_color_hex(0xFF453A));
-  lv_obj_t* play = createLabel(
-      brand, LV_SYMBOL_PLAY, &lv_font_montserrat_22, lv_color_white());
-  lv_obj_align(play, LV_ALIGN_LEFT_MID, 17, 0);
-  lv_obj_t* youtube = createLabel(
-      brand, "YouTube", &lv_font_montserrat_16, lv_color_white());
-  lv_obj_align(youtube, LV_ALIGN_RIGHT_MID, -13, 0);
-  lv_obj_t* accountLabel = createLabel(
-      root,
-      account == nullptr ? "Tu feed" : account->text,
-      &lv_font_montserrat_14,
-      lv_color_hex(0xA7A7A7));
-  lv_obj_align(accountLabel, LV_ALIGN_TOP_MID, 0, 105);
-
-  for (uint8_t index = 0; index < 3; ++index) {
-    if (titles[index] == nullptr) continue;
-    lv_obj_t* card = createRoundPanel(
-        root,
-        48,
-        139 + index * 76,
-        370,
-        66,
-        23,
-        lv_color_hex(index == 0 ? 0x211617 : 0x1C1C1E));
-    lv_obj_t* dot = createRoundPanel(
-        card, 16, 18, 30, 30, LV_RADIUS_CIRCLE, lv_color_hex(0xFF453A));
-    lv_obj_t* dotPlay = createLabel(
-        dot, LV_SYMBOL_PLAY, &lv_font_montserrat_12, lv_color_white());
-    lv_obj_center(dotPlay);
-    lv_obj_t* title = createLabel(
-        card, titles[index]->text, &lv_font_montserrat_14, lv_color_white());
-    lv_obj_set_width(title, 285);
-    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 58, 11);
-    lv_obj_t* channel = createLabel(
-        card,
-        channels[index] == nullptr ? "YouTube" : channels[index]->text,
-        &lv_font_montserrat_12,
-        lv_color_hex(0x8E8E93));
-    lv_obj_set_width(channel, 285);
-    lv_label_set_long_mode(channel, LV_LABEL_LONG_DOT);
-    lv_obj_align(channel, LV_ALIGN_TOP_LEFT, 58, 36);
-  }
-
-  lv_obj_t* refresh = createRoundPanel(
-      root, 139, 381, 188, 54, 27, lv_color_hex(0xFF453A));
-  lv_obj_t* refreshLabel = createLabel(
-      refresh, "Actualizar", &lv_font_montserrat_16, lv_color_white());
-  lv_obj_center(refreshLabel);
-}
-
-void DisplayManager::buildLvglSduiScreen(const SduiScreen& screen) {
-  renderSharedLvglScreen(lv_screen_active(), screen, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
-  return;
-  lv_obj_t* root = cleanLvglScreen(screen.background);
-  const bool skyHome = strcmp(screen.screenId, "sky-home") == 0;
-  const bool flowerScreen =
-      strcmp(screen.screenId, "sky-clock") == 0 ||
-      strcmp(screen.screenId, "sky-voltage") == 0 ||
-      strcmp(screen.screenId, "sky-weather") == 0;
-  if (skyHome && backgroundMode_ != 0) {
-    createImage(root, sky::kHomeBackground, 0, 0, LV_OPA_COVER);
-    lv_obj_t* shade = createRoundPanel(
-        root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
-    lv_obj_set_style_bg_opa(shade, LV_OPA_30, 0);
-  } else if (flowerScreen && backgroundMode_ != 0) {
-    createImage(root, sky::kFlowerBackground, 0, 0, LV_OPA_COVER);
-    lv_obj_t* shade = createRoundPanel(
-        root, 0, 0, kScreenWidth, kScreenHeight, 0, lv_color_black());
-    lv_obj_set_style_bg_opa(shade, LV_OPA_20, 0);
-    if (strcmp(screen.screenId, "sky-voltage") == 0) {
-      createImage(root, sky::kBoltIcon, 193, 45);
-    } else if (strcmp(screen.screenId, "sky-weather") == 0) {
-      createImage(root, sky::kWeatherIcon, 196, 45);
-    }
-  }
-  for (uint8_t index = 0; index < screen.componentCount; ++index) {
-    const SduiComponent& component = screen.components[index];
-    if (flowerScreen &&
-        (strcmp(component.id, "voltage-symbol") == 0 ||
-         strcmp(component.id, "weather-title") == 0)) {
-      continue;
-    }
-    if (component.type == ComponentType::kText) {
-      lv_obj_t* label = createLabel(
-          root,
-          component.text,
-          fontForSize(component.size),
-          lvColor(component.color));
-      if (strcmp(screen.screenId, "sky-clock") == 0 &&
-          strcmp(component.id, "sky-time") == 0) {
-        lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
-      } else {
-        lv_obj_set_pos(label, component.x, component.y);
-      }
-      if (component.align == TextAlign::kCenter &&
-          !(strcmp(screen.screenId, "sky-clock") == 0 &&
-            strcmp(component.id, "sky-time") == 0)) {
-        lv_obj_set_style_translate_x(label, -lv_obj_get_width(label) / 2, 0);
-      }
-    } else if (component.type == ComponentType::kIndicator) {
-      lv_obj_t* dot = createRoundPanel(
-          root,
-          component.x - 12,
-          component.y - 6,
-          12,
-          12,
-          LV_RADIUS_CIRCLE,
-          component.connected ? lv_color_hex(0x30D158)
-                              : lv_color_hex(0xFF453A));
-      LV_UNUSED(dot);
-      lv_obj_t* label = createLabel(
-          root, component.text, &lv_font_montserrat_14, lvColor(component.color));
-      lv_obj_set_pos(label, component.x + 7, component.y - 8);
-    } else if (component.type == ComponentType::kButton) {
-      const bool spotifyAction =
-          strcmp(screen.screenId, "spotify-actions") == 0;
-      const lv_image_dsc_t* imageSource =
-          skyHome ? skyButtonIcon(component.id) : nullptr;
-      lv_obj_t* button = createRoundPanel(
-          root,
-          component.x,
-          component.y,
-          component.width,
-          component.height,
-          skyHome ? LV_RADIUS_CIRCLE : component.height / 2,
-          spotifyAction
-              ? (strcmp(pressedButtonId_, component.id) == 0
-                     ? lv_color_hex(0xD0D0D0)
-                     : lv_color_white())
-              : (strcmp(pressedButtonId_, component.id) == 0
-                     ? lv_color_hex(0x2C2C30)
-                     : lv_color_hex(0x141416)));
-      if (skyHome) {
-        lv_obj_set_style_bg_opa(button, LV_OPA_80, 0);
-      }
-      lv_obj_set_style_border_width(button, spotifyAction ? 0 : 2, 0);
-      lv_obj_set_style_border_color(button, lvColor(component.color), 0);
-      if (imageSource != nullptr) {
-        lv_obj_t* icon = lv_image_create(button);
-        lv_image_set_src(icon, imageSource);
-        if (strcmp(component.id, "open-spotify") == 0) {
-          lv_image_set_scale(icon, generated_ui::kHomeSpotifyAssetScale);
-        }
-        lv_obj_center(icon);
-        continue;
-      }
-      if (strcmp(component.icon, "usb") == 0) {
-        drawSharedUsbSymbol(button, lvColor(component.color));
-        continue;
-      }
-      if (strcmp(component.icon, "whatsapp") == 0) {
-        drawWhatsappSymbol(button, lvColor(component.color));
-        continue;
-      }
-      const char* text = component.text;
-      if (strcmp(component.icon, "play") == 0) text = LV_SYMBOL_PLAY;
-      else if (strcmp(component.icon, "pause") == 0) text = LV_SYMBOL_PAUSE;
-      else if (strcmp(component.icon, "previous") == 0) text = LV_SYMBOL_PREV;
-      else if (strcmp(component.icon, "next") == 0) text = LV_SYMBOL_NEXT;
-      lv_obj_t* label = createLabel(
-          button,
-          text,
-          spotifyAction ? &lv_font_montserrat_16 : &lv_font_montserrat_24,
-          spotifyAction ? lv_color_black() : lvColor(component.color));
-      lv_obj_center(label);
-    } else if (component.type == ComponentType::kProgress) {
-      lv_obj_t* bar = lv_bar_create(root);
-      lv_obj_set_pos(bar, component.x, component.y);
-      lv_obj_set_size(bar, component.width, component.height);
-      lv_bar_set_range(bar, 0, component.maximum);
-      lv_bar_set_value(bar, component.value, LV_ANIM_OFF);
-      lv_obj_set_style_bg_color(bar, lv_color_hex(0x3A3A3C), LV_PART_MAIN);
-      lv_obj_set_style_bg_color(bar, lvColor(component.color), LV_PART_INDICATOR);
-    }
-  }
+  renderSharedLvglStatusBanner(root, sharedRenderState_, sharedImageResolver);
 }
 
 void DisplayManager::renderSdui(const SduiDocument& document) {
@@ -1563,27 +1040,32 @@ void DisplayManager::renderSdui(const SduiDocument& document) {
 bool DisplayManager::setPressedButton(const char* id) {
   const char* next = id == nullptr ? "" : id;
   if (strcmp(pressedButtonId_, next) == 0) return false;
+  if (touchTraceEnabled_) {
+    Serial.printf("TOUCH_TRACE pressed old=%s new=%s\n", pressedButtonId_, next);
+  }
   strlcpy(pressedButtonId_, next, sizeof(pressedButtonId_));
   return true;
 }
 
 bool DisplayManager::clearPressedButton() {
   if (pressedButtonId_[0] == '\0') return false;
+  if (touchTraceEnabled_) Serial.printf("TOUCH_TRACE pressed old=%s new=none\n", pressedButtonId_);
   pressedButtonId_[0] = '\0';
   return true;
 }
 
+void DisplayManager::setTouchTraceEnabled(bool enabled) {
+  touchTraceEnabled_ = enabled;
+}
+
 void DisplayManager::renderSduiScreen(const SduiDocument& document) {
   const SduiScreen& active = document.active();
-  if (strcmp(active.screenId, "youtube-feed") == 0) {
-    buildLvglYoutubeFeed(active);
-    return;
+  if (touchTraceEnabled_ && strcmp(active.screenId, "device-control-center") == 0 &&
+      pressedButtonId_[0] != '\0') {
+    Serial.printf("TOUCH_TRACE render screen=%s selectedRowId=%s bounded-treatment=shared\n",
+                  active.screenId, pressedButtonId_);
   }
-  if (strcmp(active.screenId, "spotify-player") == 0) {
-    buildLvglSpotifyPlayer(active);
-    return;
-  }
-  buildLvglSduiScreen(active);
+  renderSharedLvglScreen(lv_screen_active(), active, sharedImageResolver, pressedButtonId_, &sharedRenderState_);
 }
 
 void DisplayManager::drawIndicators(
@@ -1601,6 +1083,16 @@ void DisplayManager::drawIndicators(
   strncpy(timeText_, timeText == nullptr ? "--:--" : timeText, sizeof(timeText_) - 1);
   timeText_[sizeof(timeText_) - 1] = '\0';
   sharedRenderState_.timeText = timeText_;
+  time_t now = time(nullptr);
+  struct tm local = {};
+  if (now > 1700000000 && localtime_r(&now, &local) != nullptr) {
+    strftime(dateText_, sizeof(dateText_), "%b %d", &local);
+    sharedRenderState_.clockSecond = static_cast<uint8_t>(local.tm_sec);
+  } else {
+    dateText_[0] = '\0';
+    sharedRenderState_.clockSecond = 0;
+  }
+  sharedRenderState_.dateText = dateText_;
   sharedRenderState_.batteryPercent = batteryPercent_;
   sharedRenderState_.wifiConnected = wifiConnected_;
   sharedRenderState_.cloudConnected = cloudConnected_;
@@ -1608,6 +1100,9 @@ void DisplayManager::drawIndicators(
   sharedRenderState_.bluetoothConnected = bluetoothConnected_;
   sharedRenderState_.brightnessPercent = brightnessPercent_;
   sharedRenderState_.backgroundMode = backgroundMode_;
+  sharedRenderState_.backgroundArt = backgroundArt_;
+  sharedRenderState_.clockBackground = clockBackground_;
+  sharedRenderState_.accentIndex = accentIndex_;
   // Status UI is rendered by the shared LVGL renderer. Drawing a second
   // direct-to-panel copy here caused a flashing cloud glyph and made screens
   // without a status bar diverge from the simulator.
@@ -1673,62 +1168,6 @@ void DisplayManager::drawSunGlyph(int16_t x, int16_t y, uint16_t color) {
         y + sinf(angle) * 17,
         color);
   }
-}
-
-void DisplayManager::drawControlCenter() {
-  display->fillScreen(kBlack);
-  centered("CENTRO DE CONTROL", 52, 2, kWhite);
-
-  // Connectivity module, inspired by the compact grouped control in iOS.
-  display->fillRoundRect(58, 112, 232, 232, 42, kPanel);
-  const bool states[] = {
-      wifiConnected_, bluetoothEnabled_, cloudConnected_};
-  const int16_t centersX[] = {123, 225, 174};
-  const int16_t centersY[] = {174, 174, 276};
-  for (uint8_t index = 0; index < 3; ++index) {
-    const uint16_t activeColor = index == 2 ? kGreen : kBlue;
-    display->fillCircle(
-        centersX[index], centersY[index], 38,
-        states[index] ? activeColor : kDim);
-  }
-  drawWifiGlyph(123, 168, kWhite);
-  drawBluetoothGlyph(225, 174, kWhite);
-  drawCloudGlyph(174, 272, kWhite);
-
-  display->setTextSize(1);
-  display->setTextColor(wifiConnected_ ? kWhite : kGray);
-  display->setCursor(105, 218);
-  display->print("WIFI");
-  display->setTextColor(bluetoothEnabled_ ? kWhite : kGray);
-  display->setCursor(198, 218);
-  display->print(bluetoothConnected_ ? "ENLAZADO" : "BLUETOOTH");
-  display->setTextColor(cloudConnected_ ? kWhite : kGray);
-  display->setCursor(159, 318);
-  display->print("NUBE");
-
-  updateControlCenterBrightness();
-}
-
-void DisplayManager::updateControlCenterBrightness() {
-  if (brightnessSlider != nullptr && brightnessValue != nullptr) {
-    lv_slider_set_value(brightnessSlider, brightnessPercent_, LV_ANIM_OFF);
-    char value[8] = {};
-    snprintf(value, sizeof(value), "%u%%", brightnessPercent_);
-    lv_label_set_text(brightnessValue, value);
-    return;
-  }
-  // The shared LVGL renderer owns the slider when the control-center screen
-  // is active; there is no direct-draw fallback that can diverge from it.
-
-  display->fillRect(318, 360, 96, 52, kBlack);
-  display->setTextSize(2);
-  display->setTextColor(kWhite);
-  display->setCursor(328, 365);
-  display->printf("%u%%", brightnessPercent_);
-  display->setTextSize(1);
-  display->setTextColor(kGray);
-  display->setCursor(336, 391);
-  display->print("BRILLO");
 }
 
 void DisplayManager::drawInternetIcon(

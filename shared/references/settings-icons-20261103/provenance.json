@@ -1,0 +1,70 @@
+{
+  "source": "user-provided attached PNGs",
+  "assets": {
+    "settings-row-bluetooth": {
+      "source_file": "settings-row-bluetooth.png",
+      "source_sha256": "636869baad926c171deaa61d438f1788647cb0f588809807271840a785a49f1b",
+      "source_dimensions": [
+        40,
+        40
+      ],
+      "source_mode": "RGBA",
+      "asset_png": "assets/settings-row-bluetooth.png",
+      "asset_png_sha256": "636869baad926c171deaa61d438f1788647cb0f588809807271840a785a49f1b",
+      "asset_binary": "assets/settings-row-bluetooth.bin",
+      "asset_binary_sha256": "0939555e573804fbacabd1053c393f0248682dc3e56cdcc87a40d40b6e9547e0"
+    },
+    "settings-row-display": {
+      "source_file": "settings-row-display.png",
+      "source_sha256": "36a6675f5a34335c9824c4314112f7c59a040a756786df7cec66e0ae539b7dcb",
+      "source_dimensions": [
+        40,
+        40
+      ],
+      "source_mode": "RGBA",
+      "asset_png": "assets/settings-row-display.png",
+      "asset_png_sha256": "36a6675f5a34335c9824c4314112f7c59a040a756786df7cec66e0ae539b7dcb",
+      "asset_binary": "assets/settings-row-display.bin",
+      "asset_binary_sha256": "83107623e308ffd8dd01d376660d53ee05e298ea37a978ff07a59e1afc153024"
+    },
+    "settings-title-gear": {
+      "source_file": "settings-title-gear.png",
+      "source_sha256": "237e739ac90b31d3157323accf23b348fd795e829984f2454dceb9f6c9708618",
+      "source_dimensions": [
+        40,
+        40
+      ],
+      "source_mode": "RGBA",
+      "asset_png": "assets/settings-title-gear.png",
+      "asset_png_sha256": "237e739ac90b31d3157323accf23b348fd795e829984f2454dceb9f6c9708618",
+      "asset_binary": "assets/settings-title-gear.bin",
+      "asset_binary_sha256": "4e7298854485978497de414603aa47243c6d6d9da38941a145e4aee74dfe60a0"
+    },
+    "settings-row-wifi": {
+      "source_file": "settings-row-wifi.png",
+      "source_sha256": "1104d7624038f7de7f167d49654e76b02eaa217e2c71604ab89c4971ba814391",
+      "source_dimensions": [
+        40,
+        40
+      ],
+      "source_mode": "RGBA",
+      "asset_png": "assets/settings-row-wifi.png",
+      "asset_png_sha256": "1104d7624038f7de7f167d49654e76b02eaa217e2c71604ab89c4971ba814391",
+      "asset_binary": "assets/settings-row-wifi.bin",
+      "asset_binary_sha256": "a8d489c7ce1c438e9b7f1faf75adae2b8d43066b857ae4f33cd72776a3af10ee"
+    },
+    "settings-row-sound": {
+      "source_file": "settings-row-sound.png",
+      "source_sha256": "32b6d63df3658f8283cf2d5b102466d681339d8578d699424c368bc443bbca53",
+      "source_dimensions": [
+        40,
+        40
+      ],
+      "source_mode": "RGBA",
+      "asset_png": "assets/settings-row-sound.png",
+      "asset_png_sha256": "32b6d63df3658f8283cf2d5b102466d681339d8578d699424c368bc443bbca53",
+      "asset_binary": "assets/settings-row-sound.bin",
+      "asset_binary_sha256": "9b8fecfd230af9f30c3c9c8634bf22dfaecf98a9a7537a7bde8e36d63794a831"
+    }
+  }
+}

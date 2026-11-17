@@ -11,6 +11,7 @@ class Telemetry {
   uint8_t batteryPercent();
   void formattedTime(char output[9]) const;
   void toggleTimeFormat();
+  bool twentyFourHour() const { return twentyFourHour_; }
   bool timeSynchronized() const;
 
  private:

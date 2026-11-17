@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "approval": "User supplied Rainbow Gears.jpeg as the rainbow gears background reference on 2026-10-21.",
+  "source": {
+    "file": "shared/references/settings-rainbow-gears-2026-10-21/source.jpeg",
+    "dimensions": [1024, 1024],
+    "sha256": "8df2ebb9916af2042ba54c82755ecaa024612c830138992bf8d79379f7b720f8",
+    "immutable": true
+  },
+  "composition": {
+    "method": "Full square image resampled with Lanczos to 466x466; no crop, color adjustment, blur, or overlay baked into the source asset.",
+    "target": [466, 466]
+  },
+  "output": {
+    "png": "shared/assets/settings-gears-wallpaper-466.png",
+    "device_asset": "shared/assets/settings-gears-wallpaper-466.bin",
+    "runtime_manifest_key": "settings-gears-wallpaper",
+    "format": "rgb565a8"
+  },
+  "consumers": ["Settings submenu", "Wi-Fi settings panels", "Wi-Fi network picker"]
+}

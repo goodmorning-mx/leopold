@@ -1,13 +1,8 @@
 # Leopold browser simulator
 
-The simulator is a local test surface for the physical 466 × 466 Leopold UI.
-Its firmware reference is release tag `firmware-v0.8.2`, created from the
-simulator parity commit on `fix/live-device-time-controls`, the source snapshot identified
-for the firmware release. The compiled
-`firmware.bin` is intentionally not expected in GitHub; PlatformIO output is
-local and ignored. The simulator is available at `/simulator` in the Vite app
-and uses safe mock values by default. It does not call Device Cloud, open USB,
-or use device credentials.
+The simulator is a 466 × 466 preview at `/simulator`. It compiles the same
+LVGL renderer as the ESP32 and uses browser adapters for input, persistence
+and simulated services.
 
 ## Run and validate
 
@@ -102,3 +97,19 @@ pio run --target upload --upload-port <authorized-port>
 
 The simulator does not replace a physical-device smoke test. Report firmware
 build, flash, and device validation separately.
+
+## Rebuild LVGL WASM
+
+The distribution files under `frontend/public/wasm/` are included so Coolify
+can build from the existing `/frontend` Docker context. Rebuild both files
+together after changing the renderer, adapter or generated headers:
+
+```bash
+git submodule update --init --depth 1
+python -m pip install -r scripts/requirements.txt
+python scripts/generate_firmware_ui.py
+EMCC="$(command -v emcc)" python scripts/build_lvgl_wasm.py
+LEOPOLD_REQUIRE_DISPLAY_WASM=1 python -m unittest scripts.tests.test_display_repaint
+```
+
+Use Emscripten 6.0.12 and Node.js 22. The LVGL submodule pins v9.3.0.

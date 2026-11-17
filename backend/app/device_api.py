@@ -377,26 +377,56 @@ def device_onboarding_status(
     )
 
 
+@router.get("/device/assets")
+def get_device_asset_catalog(
+    device: AuthenticatedDevice,
+) -> dict:
+    """Return the small authenticated catalog manifest; payloads stay on demand."""
+    return {
+        "schema_version": ASSET_MANIFEST.get("schema_version", 1),
+        "catalog_version": ASSET_MANIFEST.get("catalog_version", 1),
+        "renderer_compatibility": ASSET_MANIFEST.get("renderer_compatibility", 1),
+        "assets": ASSET_MANIFEST["assets"],
+    }
+
+
 @router.get("/device/assets/{asset_file}")
 def get_device_asset(
     asset_file: str,
     device: AuthenticatedDevice,
+    settings: Config,
 ) -> FileResponse:
     """Stream a canonical shared asset to devices without usable SD storage."""
 
     metadata = ASSET_FILES.get(asset_file)
     if metadata is None or Path(asset_file).name != asset_file:
         raise HTTPException(status_code=404, detail="Asset not found")
-    path = ASSET_DIR / asset_file
+    catalog_root = Path(settings.asset_catalog_dir).expanduser() if settings.asset_catalog_dir else ASSET_DIR
+    catalog_root = catalog_root.resolve()
+    path = (catalog_root / asset_file).resolve()
+    if path.parent != catalog_root or path.name != asset_file:
+        raise HTTPException(status_code=404, detail="Asset not found")
     expected_bytes = int(metadata["width"]) * int(metadata["height"]) * 3
     if not path.is_file() or path.stat().st_size != expected_bytes:
         raise HTTPException(status_code=503, detail="Asset unavailable")
+    hasher = hashlib.sha256()
+    with path.open("rb") as asset_stream:
+        for chunk in iter(lambda: asset_stream.read(64 * 1024), b""):
+            hasher.update(chunk)
+    digest = hasher.hexdigest()
+    expected_digest = metadata.get("sha256") or metadata.get("device_sha256")
+    if expected_digest and not hmac.compare_digest(digest, expected_digest):
+        raise HTTPException(status_code=503, detail="Asset integrity check failed")
     return FileResponse(
         path,
         media_type="application/octet-stream",
         headers={
-            "Cache-Control": "private, max-age=31536000, immutable",
+            "Cache-Control": "private, no-cache",
+            "ETag": f'"sha256-{digest}"',
             "X-Leopold-Asset-Format": metadata["format"],
+            "X-Leopold-Asset-SHA256": digest,
+            "X-Leopold-Catalog-Version": str(ASSET_MANIFEST.get("catalog_version", 1)),
+            "X-Leopold-Renderer-Compatibility": str(ASSET_MANIFEST.get("renderer_compatibility", 1)),
         },
     )
 

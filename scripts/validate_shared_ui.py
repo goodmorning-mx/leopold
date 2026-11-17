@@ -27,8 +27,8 @@ def validate() -> None:
     if document.get("schema_version") != 1:
         fail("firmware-ui.json must use schema_version 1")
     screens = document.get("screens")
-    if not isinstance(screens, list) or not 1 <= len(screens) <= 12:
-        fail("firmware-ui.json screens must contain 1..12 screens")
+    if not isinstance(screens, list) or not 1 <= len(screens) <= 13:
+        fail("firmware-ui.json screens must contain 1..13 screens")
     screen_ids: set[str] = set()
     component_ids: set[tuple[str, str]] = set()
     for screen in screens:
@@ -83,7 +83,8 @@ def validate() -> None:
     if not COLOR_RE.fullmatch(rendering.get("status_bar", {}).get("text_color", "")):
         fail("rendering.json status text color is invalid")
     visible_screens = rendering.get("status_bar", {}).get("visible_screens")
-    if not isinstance(visible_screens, list) or not visible_screens or not all(item in screen_ids for item in visible_screens):
+    runtime_screen_ids = {"device-clock-options", "device-appearance-options"}
+    if not isinstance(visible_screens, list) or not visible_screens or not all(item in screen_ids | runtime_screen_ids for item in visible_screens):
         fail("rendering.json status visible_screens must reference known screens")
     usb = rendering.get("home", {}).get("usb_icon", {})
     if not isinstance(usb.get("segments"), list) or not usb["segments"]:

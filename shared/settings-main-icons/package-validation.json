@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "scope": "Main Settings screen only",
+  "icons": [
+    "gear",
+    "wifi",
+    "bluetooth",
+    "remote",
+    "speaker"
+  ],
+  "size_variants": 10,
+  "exact_rgba_dimensions_and_transparency": "passed",
+  "masks_match_packed_material": "passed",
+  "source_hashes": "passed",
+  "cross_language_cases": 100,
+  "rgba_and_rgb565a8": "C++ matches Python and exported reference images for 5 colors and 2 opacity states",
+  "immutable_material_bytes": 78000,
+  "self_contained": "No dependency on the full icon-library folder",
+  "simulator_integration": "not run",
+  "firmware_build": "not run",
+  "physical_device": "not run",
+  "visual_review": "Settings-only neutral/cyan contact sheet inspected; narrow Remote aspect ratio retained."
+}

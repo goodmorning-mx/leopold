@@ -19,89 +19,15 @@ anuncia comercialmente como SH8601/CO5300 y necesita la secuencia
 `Arduino_CO5300`. Algunas revisiones pueden requerir `Arduino_SH8601`; confirma
 la revisión física antes de cambiar el controlador en `src/display_manager.cpp`.
 
-## Instalar PlatformIO
+## Compilación portátil
 
-Instala PlatformIO Core o la extensión PlatformIO IDE para VS Code. Para
-verificar la instalación:
+Consulta la [guía de compilación](../docs/firmware-build.md) para reproducir
+el build de CI, y la [referencia de hardware](../docs/hardware.md) para el
+perfil de placa y las conexiones.
 
-```bash
-pio --version
-```
-
-En esta estación de desarrollo también puede usarse:
-
-```bash
-/home/goodmorning/.platformio/penv/bin/pio --version
-```
-
-Las versiones de ArduinoJson, WiFiManager y Arduino_GFX están fijadas en
-`platformio.ini` para obtener builds reproducibles.
-
-## Configuración segura del dispositivo
-
-Copia el ejemplo:
-
-```bash
-cd device
-cp include/leopold_config.example.h include/leopold_config.h
-```
-
-Edita únicamente `include/leopold_config.h`:
-
-```cpp
-#define LEOPOLD_API_BASE_URL "https://api.dev.leopold.goodmorning.mx"
-#define LEOPOLD_DEVICE_ID "LPD-A82F91"
-#define LEOPOLD_DEVICE_SECRET "valor-entregado-por-el-backend"
-```
-
-El `device_id` y `device_secret` deben obtenerse mediante el flujo autorizado de
-aprovisionamiento de GoodMorning Device Cloud. El firmware no crea identidades
-ni inventa secretos. Si no tienes acceso a ese flujo, solicita al responsable
-del backend que aprovisione el dispositivo.
-
-`include/leopold_config.h` está ignorado por Git. El build falla si falta o si
-mantiene `CHANGE-ME`. Nunca copies credenciales reales al archivo de ejemplo.
-
-El ejemplo incluye el certificado público ISRG Root X1 para validar TLS. No se
-usa `setInsecure()`. Si el API cambia de cadena de confianza, actualiza el
-certificado raíz público después de verificar la nueva cadena.
-
-## Compilar y cargar
-
-```bash
-cd device
-pio run
-pio run --target upload
-pio device monitor --baud 115200
-```
-
-Para indicar el puerto manualmente:
-
-```bash
-pio run --target upload --upload-port /dev/ttyACM0
-pio device monitor --port /dev/ttyACM0 --baud 115200
-```
-
-Para un reinicio completo durante testing, borra toda la flash antes de volver
-a cargar. Esto elimina Wi‑Fi, NVS y la caché LittleFS:
-
-```bash
-pio run --target erase --upload-port /dev/ttyACM0
-pio run --target upload --upload-port /dev/ttyACM0
-```
-
-Para repetir también el onboarding de cuenta, elimina la vinculación exacta del
-dispositivo en el backend de `dev`. Nunca ejecutes esa operación en producción.
-
-Si Linux niega acceso al puerto, agrega tu usuario al grupo `dialout` y vuelve a
-iniciar sesión, o concede acceso temporal al dispositivo:
-
-```bash
-sudo setfacl -m u:"$USER":rw /dev/ttyACM0
-```
-
-Para entrar manualmente al bootloader: mantén `BOOT`, pulsa `RESET`, suelta
-`RESET` y después suelta `BOOT`.
+Las compilaciones de CI usan una configuración sintética. El alta, la
+configuración y la instalación en un dispositivo físico requieren el flujo
+privado aprobado por el propietario.
 
 ## Configurar Wi‑Fi desde el teléfono
 

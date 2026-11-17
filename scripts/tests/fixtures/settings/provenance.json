@@ -1,0 +1,43 @@
+[
+  {
+    "fixture": "settings-wifi-pressed.png",
+    "source": "artifacts/parity/phase1-settings-banner-row-fix-2026-10-20-final/settings-wifi-pressed.png",
+    "sha256": "f46bb69e3512e405fcc0cbdf8ac098d3bd8d2a126df1dd4f2d3cf4c756b9ce21",
+    "role": "Known-good simulator regression input, not approved design reference or physical proof",
+    "source_head": "fce05f9"
+  },
+  {
+    "fixture": "settings-bluetooth-pressed.png",
+    "source": "artifacts/parity/phase1-settings-banner-row-fix-2026-10-20-final/settings-bluetooth-pressed.png",
+    "sha256": "068cfddb57ee0c71ba2d2982b4fb811b82bbb4091a8fc5bf9916acca9632d177",
+    "role": "Known-good simulator regression input, not approved design reference or physical proof",
+    "source_head": "fce05f9"
+  },
+  {
+    "fixture": "settings-display-pressed.png",
+    "source": "artifacts/parity/phase1-settings-banner-row-fix-2026-10-20-final/settings-display-pressed.png",
+    "sha256": "bdc592d04d848e07c1e701a3fef67a9666a168ceaea26ce9df3135bf8ebc3fe2",
+    "role": "Known-good simulator regression input, not approved design reference or physical proof",
+    "source_head": "fce05f9"
+  },
+  {
+    "fixture": "settings-sound-pressed.png",
+    "source": "artifacts/parity/phase1-settings-banner-row-fix-2026-10-20-final/settings-sound-pressed.png",
+    "sha256": "d59d271be2cb8ba1b8604572da3aed3d127efb347d5059299eabfad2346fcfea",
+    "role": "Known-good simulator regression input, not approved design reference or physical proof",
+    "source_head": "fce05f9"
+  },
+  {
+    "fixture": "settings-connected.png",
+    "source": "artifacts/parity/phase1-settings-banner-row-fix-2026-10-20-final/settings-connected.png",
+    "sha256": "4fab045f8cec7a7974e8cf418abd3efd6620c1c51355744dccc747fcecc5fef8",
+    "role": "Known-good simulator regression input, not approved design reference or physical proof",
+    "source_head": "fce05f9"
+  },
+  {
+    "fixture": "historical-wifi-seam.png",
+    "source": "artifacts/parity/phase1-settings-banner-row-fix-2026-10-18/settings-wifi-pressed.png",
+    "sha256": "bf5c2b0e69972db9ddfb3ce4b89241038af96a15d0af37e11bac576a971c94cd",
+    "role": "Known-bad historical simulator composition; left seam must fail"
+  }
+]

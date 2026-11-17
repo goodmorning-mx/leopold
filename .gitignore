@@ -11,4 +11,6 @@ __pycache__/
 venv/
 .DS_Store
 *.log
-frontend/public/wasm/
+frontend/public/wasm/*
+!frontend/public/wasm/lvgl.js
+!frontend/public/wasm/lvgl.wasm

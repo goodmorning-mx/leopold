@@ -221,43 +221,53 @@ SduiParseResult SduiParser::parse(
     return SduiParseResult::kInvalid;
   }
 
-  memset(&output, 0, sizeof(output));
-  output.revision = parsed["revision"] | 0;
-  output.pollAfterMs = constrain(
-      parsed["poll_after_ms"] | 5000,
-      kMinimumPollMs,
-      kMaximumPollMs);
-  for (JsonObjectConst sourceScreen : screens) {
-    JsonArrayConst components =
-        sourceScreen["components"].as<JsonArrayConst>();
-    if (components.isNull() || components.size() > kMaxSduiComponents) {
-      return SduiParseResult::kInvalid;
+  // Validate the immutable JSON before writing live state. Both passes use the
+  // same traversal, avoiding a second large document on the task stack or heap.
+  for (uint8_t pass = 0; pass < 2; ++pass) {
+    const bool commit = pass == 1;
+    if (commit) {
+      memset(&output, 0, sizeof(output));
+      output.revision = parsed["revision"] | 0;
+      output.pollAfterMs = constrain(
+          parsed["poll_after_ms"] | 5000,
+          kMinimumPollMs,
+          kMaximumPollMs);
     }
-    SduiScreen& target = output.screens[output.screenCount];
-    target.background =
-        rgb565(sourceScreen["background"] | "#000000", 0);
-    if (!copyBounded(target.screenId, sourceScreen["id"] | "") ||
-        !isSafeId(target.screenId)) {
-      return SduiParseResult::kInvalid;
-    }
-    for (JsonObjectConst source : components) {
-      SduiComponent component;
-      const char* type = source["type"] | "";
-      const bool known = strcmp(type, "text") == 0 ||
-                         strcmp(type, "indicator") == 0 ||
-                         strcmp(type, "button") == 0 ||
-                         strcmp(type, "progress") == 0 ||
-                         strcmp(type, "slider") == 0 ||
-                         strcmp(type, "icon") == 0;
-      if (!known) {
-        continue;
-      }
-      if (!parseComponent(source, component)) {
+    for (JsonObjectConst sourceScreen : screens) {
+      JsonArrayConst components =
+          sourceScreen["components"].as<JsonArrayConst>();
+      if (components.isNull() || components.size() > kMaxSduiComponents) {
         return SduiParseResult::kInvalid;
       }
-      target.components[target.componentCount++] = component;
+      char screenId[kMaxComponentId + 1] = {};
+      if (!copyBounded(screenId, sourceScreen["id"] | "") ||
+          !isSafeId(screenId)) {
+        return SduiParseResult::kInvalid;
+      }
+      SduiScreen* target = commit ? &output.screens[output.screenCount] : nullptr;
+      if (commit) {
+        target->background = rgb565(sourceScreen["background"] | "#000000", 0);
+        memcpy(target->screenId, screenId, sizeof(screenId));
+      }
+      for (JsonObjectConst source : components) {
+        SduiComponent component;
+        const char* type = source["type"] | "";
+        const bool known = strcmp(type, "text") == 0 ||
+                           strcmp(type, "indicator") == 0 ||
+                           strcmp(type, "button") == 0 ||
+                           strcmp(type, "progress") == 0 ||
+                           strcmp(type, "slider") == 0 ||
+                           strcmp(type, "icon") == 0;
+        if (!known) {
+          continue;
+        }
+        if (!parseComponent(source, component)) {
+          return SduiParseResult::kInvalid;
+        }
+        if (commit) target->components[target->componentCount++] = component;
+      }
+      if (commit) ++output.screenCount;
     }
-    ++output.screenCount;
   }
   return SduiParseResult::kOk;
 }
@@ -278,8 +288,14 @@ uint16_t SduiParser::rgb565(const char* color, uint16_t fallback) {
 }
 
 bool SduiStore::begin() {
-  const bool littleFsReady = LittleFS.begin(true);
+  // Never auto-format the shared UI/asset partition. An unreadable existing
+  // filesystem must fail closed and preserve its contents for recovery.
+  const bool littleFsReady = LittleFS.begin(false);
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT)
   mountSdCard();
+#else
+  Serial.println("LEOPOLD_STORAGE optional_sd=skipped local_development=1");
+#endif
   return littleFsReady;
 }
 

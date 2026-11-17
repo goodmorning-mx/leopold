@@ -1,72 +1,769 @@
 {
   "schema_version": 1,
-  "canvas": {"width": 466, "height": 466},
+  "theme": {
+    "default_accent": "blue",
+    "schemes": {
+      "dark": {
+        "surface": "#121721",
+        "text": "#F4F7FC",
+        "mutedText": "#A0ACB9",
+        "disabled": "#657184"
+      },
+      "light": {
+        "surface": "#F2F5F9",
+        "text": "#202833",
+        "mutedText": "#566273",
+        "disabled": "#8792A0"
+      }
+    },
+    "roles": [
+      "accent",
+      "accentBright",
+      "accentDim",
+      "onAccent",
+      "surface",
+      "text",
+      "mutedText",
+      "selected",
+      "focusRing"
+    ],
+    "accents": {
+      "red": {
+        "label": "Red",
+        "accent": "#D92D3A",
+        "accentBright": "#F04452",
+        "accentDim": "#76212A",
+        "onAccent": "#FFFFFF",
+        "selected": "#D92D3A",
+        "focusRing": "#FF6670"
+      },
+      "orange": {
+        "label": "Orange",
+        "accent": "#C65313",
+        "accentBright": "#F07832",
+        "accentDim": "#71330F",
+        "onAccent": "#FFFFFF",
+        "selected": "#C65313",
+        "focusRing": "#FF985E"
+      },
+      "yellow": {
+        "label": "Yellow",
+        "accent": "#8A6800",
+        "accentBright": "#D5A800",
+        "accentDim": "#594400",
+        "onAccent": "#FFFFFF",
+        "selected": "#8A6800",
+        "focusRing": "#F0C642"
+      },
+      "green": {
+        "label": "Green",
+        "accent": "#16834A",
+        "accentBright": "#22A861",
+        "accentDim": "#125B36",
+        "onAccent": "#FFFFFF",
+        "selected": "#16834A",
+        "focusRing": "#52D58B"
+      },
+      "blue": {
+        "label": "Blue",
+        "accent": "#00739B",
+        "accentBright": "#00D2FF",
+        "accentDim": "#07516C",
+        "onAccent": "#07131B",
+        "selected": "#00739B",
+        "focusRing": "#00D2FF"
+      },
+      "indigo": {
+        "label": "Indigo",
+        "accent": "#514CC2",
+        "accentBright": "#7771F0",
+        "accentDim": "#302D78",
+        "onAccent": "#FFFFFF",
+        "selected": "#514CC2",
+        "focusRing": "#9690FF"
+      },
+      "violet": {
+        "label": "Violet",
+        "accent": "#9A45BD",
+        "accentBright": "#C46CE6",
+        "accentDim": "#5C2A72",
+        "onAccent": "#FFFFFF",
+        "selected": "#9A45BD",
+        "focusRing": "#D89AF0"
+      }
+    }
+  },
+  "canvas": {
+    "width": 466,
+    "height": 466
+  },
   "status_bar": {
     "height": 31,
     "text_color": "#D2D8E2",
     "home_pill": {
-      "x": 147,
+      "x": 116,
       "y": 205,
-      "width": 192,
-      "height": 48,
-      "fill": "#555C6A",
-      "fill_opa": 92,
-      "border": "#B8C1CE",
-      "border_opa": 50,
+      "width": 234,
+      "height": 56,
+      "fill": "#64768D",
+      "fill_opa": 15,
+      "gradient_color": "#1C2737",
+      "border": "#55AFFF",
+      "border_opa": 82,
       "border_width": 1,
-      "shadow_width": 0,
-      "outline_width": 0
+      "shadow_width": 6,
+      "shadow_opa": 45,
+      "shadow_color": "#168DFF",
+      "border_radius": 28,
+      "inner_rim_color": "#FFFFFF",
+      "inner_rim_opa": 40,
+      "outline_width": 0,
+      "reflection_x": 14,
+      "reflection_y": 4,
+      "reflection_inset": 28,
+      "reflection_height": 18,
+      "reflection_opa": 20,
+      "divider_color": "#E4F2FF",
+      "divider_opa": 45,
+      "divider_y": 220,
+      "divider_height": 26
     },
-    "home_time_font": 20,
-    "visible_screens": ["sky-home", "sky-clock", "sky-voltage", "sky-weather", "device-control-center"],
-    "time": {"x": 218, "y": 218, "size": 2},
-    "battery": {"x": 303, "y": 220, "size": 1},
-    "bluetooth": {"x": 174, "y": 228},
-    "wifi": {"x": 199, "y": 228},
-    "cloud": {"x": 282, "y": 228, "icon": "paired-circles"}
+    "home_time_font": 24,
+    "visible_screens": [
+      "sky-voltage",
+      "sky-whatsapp",
+      "computer-controls",
+      "device-control-center",
+      "device-accounts",
+      "device-additional-options",
+      "device-clock-options",
+      "device-appearance-options",
+      "sky-weather",
+      "sky-navigation",
+      "spotify-player",
+      "spotify-actions",
+      "youtube-feed"
+    ],
+    "shared_banner": {
+      "x": 143,
+      "y": 43,
+      "width": 180,
+      "height": 35,
+      "layout": "icon-group-time-battery",
+      "surface_fill": "#555C6A",
+      "surface_fill_opa": 15,
+      "surface_border": "#00D2FF",
+      "surface_border_role": "appearance-accent",
+      "surface_border_opa": 82,
+      "surface_border_width": 1,
+      "surface_radius": 17,
+      "shadow_width": 6,
+      "shadow_opa": 45,
+      "shadow_color": "#168DFF",
+      "inner_rim_color": "#FFFFFF",
+      "inner_rim_opa": 40,
+      "reflection_x": 14,
+      "reflection_y": 4,
+      "reflection_inset": 28,
+      "reflection_height": 18,
+      "reflection_opa": 20,
+      "divider_color": "#D9E8F7",
+      "divider_opa": 48,
+      "divider_x": [
+        203,
+        263
+      ],
+      "divider_y": 50,
+      "divider_height": 20,
+      "erase_inset_x": 4,
+      "erase_y": 8,
+      "erase_height": 19,
+      "connectivity_group": {
+        "x": 150,
+        "y": 53,
+        "cloud_width": 14,
+        "bluetooth_offset": 18,
+        "bluetooth_width": 10,
+        "wifi_offset": 32,
+        "wifi_width": 14,
+        "icon_height": 14,
+        "gap": 4
+      },
+      "bluetooth": {
+        "x": 168,
+        "y": 54,
+        "width": 10,
+        "height": 14
+      },
+      "wifi": {
+        "x": 182,
+        "y": 54,
+        "width": 14,
+        "height": 14
+      },
+      "cloud": {
+        "x": 150,
+        "y": 54,
+        "width": 14,
+        "height": 14
+      },
+      "time": {
+        "x": 203,
+        "y": 53,
+        "width": 60,
+        "font_size": 12,
+        "color": "#F4F7FC"
+      },
+      "battery": {
+        "icon_x": 271,
+        "icon_y": 56,
+        "icon_width": 14,
+        "icon_height": 8,
+        "gap": 3,
+        "x": 288,
+        "y": 53,
+        "width": 30,
+        "font_size": 11,
+        "color": "#DFE8F4"
+      }
+    },
+    "home_layout": {
+      "cloud_x": 132,
+      "bluetooth_x": 150,
+      "wifi_x": 164,
+      "icon_y": 225,
+      "time_x": 194,
+      "time_y": 220,
+      "time_width": 78,
+      "time_font_size": 20,
+      "battery_icon_x": 282,
+      "battery_icon_y": 226,
+      "battery_icon_width": 20,
+      "battery_icon_height": 12,
+      "battery_x": 304,
+      "battery_y": 223,
+      "battery_width": 36,
+      "battery_font_size": 12,
+      "divider_x": [
+        194,
+        272
+      ],
+      "battery_color_high": "#34C759",
+      "battery_color_mid": "#FFD60A",
+      "battery_color_low": "#FF453A"
+    },
+    "battery_thresholds": {
+      "green_above": 20,
+      "yellow_from": 11,
+      "red_at_or_below": 10,
+      "green": "#34C759",
+      "yellow": "#FFD60A",
+      "red": "#FF453A"
+    },
+    "time": {
+      "x": 218,
+      "y": 218,
+      "size": 2,
+      "period_y": 230
+    },
+    "battery": {
+      "x": 303,
+      "y": 220,
+      "size": 1
+    },
+    "bluetooth": {
+      "x": 174,
+      "y": 228
+    },
+    "wifi": {
+      "x": 199,
+      "y": 228
+    },
+    "cloud": {
+      "x": 282,
+      "y": 228,
+      "icon": "paired-circles"
+    }
+  },
+  "settings": {
+    "status_pill": {
+      "x": 137,
+      "y": 39,
+      "width": 195,
+      "height": 34,
+      "radius": 17
+    },
+    "status_cloud": {
+      "x": 277,
+      "y": 48,
+      "large_center": [
+        7,
+        9
+      ],
+      "large_radius": 7,
+      "small_center": [
+        14,
+        11
+      ],
+      "small_radius": 6,
+      "dot_center": [
+        14,
+        2
+      ],
+      "dot_radius": 2,
+      "glow_blur": 4
+    },
+    "title": {
+      "gear_x": 166,
+      "gear_y": 102,
+      "gear_diameter": 40,
+      "text_x": 196,
+      "text_y": 92,
+      "font_size": 25
+    },
+    "icon_bubble": {
+      "x_offset": 2,
+      "y_offset": -1,
+      "diameter": 50,
+      "radius": 25,
+      "fill_opacity": 100,
+      "gradient_inner": "#D9DDE3",
+      "gradient_outer": "#AEB4BC",
+      "active_gradient_inner": "#C7E5FF",
+      "active_gradient_outer": "#0B5B9B",
+      "glow": "#E7F0FF",
+      "glow_blur": 18
+    },
+    "icon_center": {
+      "x_offset": 27,
+      "y_offset": 24.5,
+      "scale": 1.15,
+      "stroke": 2.8,
+      "color": "#FFFFFF",
+      "active_color": "#00D2FF",
+      "active_inner_glow": "#0084C8"
+    },
+    "selected_overlay": {
+      "border_opacity": 58
+    },
+    "glass_row": {
+      "dark_fill": "#2C2F35",
+      "dark_gradient": "#393C43",
+      "light_fill": "#FFFFFF",
+      "light_gradient": "#F1F3F6",
+      "fill_opacity": 92,
+      "dark_shadow": "#15171A",
+      "light_shadow": "#BFC5CD",
+      "border_opacity": 76,
+      "border_width": 1,
+      "rest_shadow_width": 3,
+      "rest_shadow_opacity": 18,
+      "active_shadow_width": 10,
+      "active_shadow_opacity": 62,
+      "inner_rim_opacity": 38,
+      "reflection_inset": 26,
+      "reflection_height": 10,
+      "reflection_opacity": 14,
+      "bubble_diameter": 50
+    },
+    "chevron": {
+      "x_offset": 293,
+      "y_offset": 19,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      "stroke": 3,
+      "color": "#D5E3FA",
+      "glow": "#D5E3FA",
+      "glow_blur": 2
+    },
+    "rows": [
+      {
+        "id": "settings-wifi",
+        "x": 73,
+        "y": 130,
+        "width": 320,
+        "height": 49,
+        "active": true,
+        "label": "WiFi",
+        "icon": "wifi"
+      },
+      {
+        "id": "settings-bluetooth",
+        "x": 73,
+        "y": 184,
+        "width": 320,
+        "height": 49,
+        "active": false,
+        "label": "Bluetooth",
+        "icon": "bluetooth"
+      },
+      {
+        "id": "settings-display",
+        "x": 73,
+        "y": 238,
+        "width": 320,
+        "height": 49,
+        "active": false,
+        "label": "Display",
+        "icon": "display"
+      },
+      {
+        "id": "settings-accounts",
+        "x": 73,
+        "y": 292,
+        "width": 320,
+        "height": 49,
+        "active": false,
+        "label": "Accounts",
+        "icon": ""
+      },
+      {
+        "id": "settings-sound",
+        "x": 73,
+        "y": 346,
+        "width": 320,
+        "height": 49,
+        "active": false,
+        "label": "Sound & Vibration",
+        "icon": "sound"
+      }
+    ],
+    "slider": {
+      "x": 98,
+      "y": 358,
+      "width": 272,
+      "height": 28,
+      "radius": 14,
+      "knob_radius": 17,
+      "track": "#113B63",
+      "fill": "#BBD7F5",
+      "fill_start": "#C0E0FA",
+      "fill_end": "#177FD4",
+      "accent": "#33ACFB",
+      "track_opacity": 58,
+      "knob_fill": "#DCE8F4",
+      "knob_gradient": "#6F849C",
+      "knob_border_width": 2,
+      "knob_shadow_width": 10,
+      "knob_shadow_opacity": 62
+    },
+    "brightness_label": {
+      "x": 233,
+      "y": 400,
+      "font_size": 16
+    }
+  },
+  "display_submenu": {
+    "back": {
+      "x": 48,
+      "y": 87,
+      "width": 48,
+      "height": 46
+    },
+    "title": {
+      "x": 196,
+      "y": 92,
+      "font_size": 25
+    },
+    "viewport": {
+      "x": 73,
+      "y": 130,
+      "width": 320,
+      "height": 336
+    },
+    "row_height": 49,
+    "row_gap": 5,
+    "icon_bubble_diameter": 48,
+    "row_fill": "#121721",
+    "row_border": "#2B3545",
+    "active": "#00D2FF",
+    "secondary": "#A0ACB9"
+  },
+  "clock_settings": {
+    "viewport": {
+      "x": 72,
+      "y": 124,
+      "width": 322,
+      "height": 290
+    },
+    "row_height": 48,
+    "row_gap": 8,
+    "row_fill": "#121721",
+    "row_border": "#2B3545",
+    "active": "#00D2FF"
   },
   "home": {
     "glass_button": {
-      "fill": "#BFC9D8",
-      "fill_opa": 90,
-      "border": "#F3F6FA",
-      "border_opa": 80,
+      "fill": "#E7F4FF",
+      "fill_opa": 15,
+      "rest_tint_percent": 15,
+      "pressed_tint_percent": 38,
+      "pressed_scale_percent": 120,
+      "rest_diameter": 64,
+      "border": "#55AFFF",
+      "border_opa": 92,
       "border_width": 2,
-      "shadow_width": 20,
-      "shadow_opa": 90,
-      "inset_opa": 60
+      "rest_shadow_width": 8,
+      "rest_shadow_opa": 62,
+      "shadow_color": "#168DFF",
+      "shadow_width": 0,
+      "shadow_opa": 0,
+      "inset_opa": 20,
+      "light_fill": "#BBD8E6",
+      "light_fill_opa": 7,
+      "light_border": "#728C9C",
+      "light_border_opa": 30,
+      "light_inset": "#FFFFFF",
+      "light_inset_opa": 18,
+      "light_neutral_icon": "#26364A",
+      "pressed_shadow_width": 8,
+      "pressed_shadow_opa": 50,
+      "reflection_color": "#F3FAFF",
+      "reflection_width": 2,
+      "reflection_opa": 82,
+      "icon_minimum_visible_diameter": 32,
+      "inner_highlight_opa": 78,
+      "icon_visible_diameter": 32
     },
-    "spotify_asset_scale": 180,
+    "x_icon": {
+      "width": 64,
+      "height": 64,
+      "stroke": 4,
+      "segments": [
+        [
+          20,
+          20,
+          44,
+          44
+        ],
+        [
+          44,
+          20,
+          20,
+          44
+        ]
+      ]
+    },
+    "button_ring": {
+      "center_x": 233,
+      "center_y": 233,
+      "radius": 165,
+      "touch_diameter": 72,
+      "bubble_diameter": 64,
+      "angles_degrees": {
+        "open-clock": -90,
+        "voltage-placeholder-home": -45,
+        "open-usb": 0,
+        "open-spotify": 45,
+        "open-settings": 90,
+        "open-whatsapp": 135,
+        "open-weather": 180,
+        "open-navigation": 225
+      }
+    },
+    "icon_scales": {
+      "open-clock": 110,
+      "open-weather": 115,
+      "open-navigation": 110,
+      "open-whatsapp": 85,
+      "open-spotify": 70
+    },
+    "symbol_glint_opacity": 28,
+    "symbol_glint_width": 1,
+    "spotify_asset_scale": 70,
     "spotify_asset_width": 59,
     "spotify_asset_height": 59,
     "usb_icon": {
       "width": 72,
       "height": 72,
-      "stroke": 3,
+      "stroke": 2,
       "segments": [
-        [36, 52, 36, 20],
-        [36, 20, 27, 28],
-        [36, 20, 45, 28],
-        [36, 35, 22, 35],
-        [22, 35, 22, 28],
-        [36, 44, 50, 44],
-        [50, 44, 50, 37]
+        [
+          36,
+          49,
+          36,
+          23
+        ],
+        [
+          36,
+          23,
+          29,
+          30
+        ],
+        [
+          36,
+          23,
+          43,
+          30
+        ],
+        [
+          36,
+          35,
+          25,
+          35
+        ],
+        [
+          25,
+          35,
+          25,
+          30
+        ],
+        [
+          36,
+          42,
+          47,
+          42
+        ],
+        [
+          47,
+          42,
+          47,
+          38
+        ]
+      ]
+    }
+  },
+  "weather": {
+    "icon_bubble": {
+      "x": 197,
+      "y": 86,
+      "size": 72
+    },
+    "city": {
+      "x": 58,
+      "y": 160,
+      "width": 350,
+      "font_size": 16
+    },
+    "conditions": {
+      "x": 58,
+      "y": 188,
+      "width": 350,
+      "height": 50,
+      "humidity_width": 92,
+      "temperature_width": 166,
+      "rain_width": 92,
+      "label_font_size": 11,
+      "humidity_font_size": 16,
+      "temperature_font_size": 25,
+      "rain_font_size": 16
+    },
+    "forecast": {
+      "x": 58,
+      "y": 250,
+      "width": 350,
+      "height": 102,
+      "days": 5
+    },
+    "duration_buttons": {
+      "y": 350,
+      "size": 68,
+      "centers_x": [
+        124,
+        233,
+        342
+      ],
+      "labels": [
+        "1 day",
+        "3 days",
+        "5 days"
       ]
     }
   },
   "spotify": {
-    "arc": {"x": 42, "y": 42, "size": 382, "rotation": 135, "background_start": 0, "background_end": 270, "width": 11, "background": "#20252A", "active": "#0A84FF"},
+    "arc": {
+      "x": 42,
+      "y": 84,
+      "size": 382,
+      "rotation": 135,
+      "background_start": 0,
+      "background_end": 270,
+      "width": 11,
+      "background": "#20252A",
+      "active": "#0A84FF",
+      "active_role": "appearance-accent",
+      "track_opacity": 62,
+      "knob_diameter": 30,
+      "knob_fill": "#DCE8F4",
+      "knob_gradient": "#6F849C",
+      "knob_border_width": 2,
+      "knob_shadow_width": 10,
+      "knob_shadow_opacity": 62
+    },
     "actions": [
-      {"x": 132, "y": 94, "symbol": "list"},
-      {"x": 233, "y": 94, "symbol": "shuffle"},
-      {"x": 334, "y": 94, "symbol": "ok"}
+      {
+        "x": 132,
+        "y": 94,
+        "symbol": "list"
+      },
+      {
+        "x": 233,
+        "y": 94,
+        "symbol": "shuffle"
+      },
+      {
+        "x": 334,
+        "y": 94,
+        "symbol": "ok"
+      }
     ],
-    "cover": {"x": 184, "y": 137, "width": 97, "height": 100},
+    "cover": {
+      "x": 184,
+      "y": 137,
+      "width": 97,
+      "height": 100
+    },
     "controls": [
-      {"x": 83, "size": 70, "symbol": "previous", "y": 326, "font_size": 24},
-      {"x": 191, "size": 84, "symbol": "toggle", "y": 326, "font_size": 32},
-      {"x": 313, "size": 70, "symbol": "next", "y": 326, "font_size": 24}
+      {
+        "x": 83,
+        "size": 70,
+        "symbol": "previous",
+        "y": 326,
+        "font_size": 24
+      },
+      {
+        "x": 191,
+        "size": 84,
+        "symbol": "toggle",
+        "y": 326,
+        "font_size": 32
+      },
+      {
+        "x": 313,
+        "size": 70,
+        "symbol": "next",
+        "y": 326,
+        "font_size": 24
+      }
     ],
-    "seek": {"x": 83, "y": 392, "width": 300, "height": 8, "radius": 4, "background": "#343438", "active": "#FFFFFF"}
+    "seek": {
+      "x": 83,
+      "y": 412,
+      "width": 300,
+      "height": 8,
+      "radius": 4,
+      "background": "#343438",
+      "active": "#FFFFFF",
+      "active_role": "appearance-accent",
+      "track_opacity": 62,
+      "knob_diameter": 34,
+      "knob_fill": "#DCE8F4",
+      "knob_gradient": "#6F849C",
+      "knob_border_width": 2,
+      "knob_shadow_width": 8,
+      "knob_shadow_opacity": 62
+    }
   }
 }
