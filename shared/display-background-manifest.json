@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "purpose": "Canonical transparent background source-to-runtime identity",
+  "derivative_size": [
+    466,
+    466
+  ],
+  "records": [
+    {
+      "key": "background-flower",
+      "source": "shared/references/transparent-backgrounds/01-blue-red-flower-transparent-1254.png",
+      "source_sha256": "a16e3ea387ba65686964dffb9d5d7751eb32b55990746835161aa2d8cbcce1ed",
+      "source_dimensions": [
+        1254,
+        1254
+      ],
+      "scaling": "Pillow Lanczos, full canvas, no crop, RGBA preserved",
+      "png": "shared/assets/background-flower-466.png",
+      "png_sha256": "2c979c1f8188f4bef3ebaa288d1ef9045825f728ef3a4bc97c8449834ed20d47",
+      "png_dimensions": [
+        466,
+        466
+      ],
+      "format": "RGBA PNG",
+      "device": "shared/assets/background-flower-466.bin",
+      "device_sha256": "656f193cba3ca18102783303d876a7d1b90c43c9790ca88591e3158a71a3920e",
+      "device_bytes": 651468,
+      "device_format": "RGB565A8",
+      "bytes": 651468,
+      "sha256": "656f193cba3ca18102783303d876a7d1b90c43c9790ca88591e3158a71a3920e",
+      "logical_id": "background-flower",
+      "delivery_class": "optional"
+    },
+    {
+      "key": "background-chevron",
+      "source": "shared/references/transparent-backgrounds/02-chevron-transparent-1254.png",
+      "source_sha256": "82d266cc430e2ba0b2461ff361a7217cb32a8a2883c8294849365c85916f9100",
+      "source_dimensions": [
+        1254,
+        1254
+      ],
+      "scaling": "Pillow Lanczos, full canvas, no crop, RGBA preserved",
+      "png": "shared/assets/background-chevron-466.png",
+      "png_sha256": "b29259c888be306cc90dd2e06ccd0b327ea6318051a2c9dc0fc0c52d85e32783",
+      "png_dimensions": [
+        466,
+        466
+      ],
+      "format": "RGBA PNG",
+      "device": "shared/assets/background-chevron-466.bin",
+      "device_sha256": "b19cabfa96a61339e7e5907ab20363832b62095b4e6bf04f6910b2085da1ae2e",
+      "device_bytes": 651468,
+      "device_format": "RGB565A8",
+      "bytes": 651468,
+      "sha256": "b19cabfa96a61339e7e5907ab20363832b62095b4e6bf04f6910b2085da1ae2e",
+      "logical_id": "background-chevron",
+      "delivery_class": "optional"
+    },
+    {
+      "key": "background-mechanical-flower",
+      "source": "shared/references/transparent-backgrounds/03-mechanical-flower-transparent-1254.png",
+      "source_sha256": "2fd075a6b699a1c03621b71446cfd01bdd3f0d6b46f6d7f48cdd25ffab39bd50",
+      "source_dimensions": [
+        1254,
+        1254
+      ],
+      "scaling": "Pillow Lanczos, full canvas, no crop, RGBA preserved",
+      "png": "shared/assets/background-mechanical-flower-466.png",
+      "png_sha256": "ed8762a69da870e0addec401ec34802c8f2361e45f1b55a4a41d5a2a1c451054",
+      "png_dimensions": [
+        466,
+        466
+      ],
+      "format": "RGBA PNG",
+      "device": "shared/assets/background-mechanical-flower-466.bin",
+      "device_sha256": "ae3d0ca851d74031c6bedc0e5503cd25ec686e620962d8ea6e33b1f300f19e76",
+      "device_bytes": 651468,
+      "device_format": "RGB565A8",
+      "bytes": 651468,
+      "sha256": "ae3d0ca851d74031c6bedc0e5503cd25ec686e620962d8ea6e33b1f300f19e76",
+      "logical_id": "background-mechanical-flower",
+      "delivery_class": "optional"
+    },
+    {
+      "key": "background-black-white-circle",
+      "source": "shared/references/transparent-backgrounds/black-white-circle-466.png",
+      "source_sha256": "fae8633989a3edea17fe546a8351f5da5d8f7554d507783972053687a5937cb3",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "scaling": "no scaling; source RGBA pixels preserved",
+      "png": "shared/assets/background-black-white-circle-466.png",
+      "png_sha256": "2956504660f613cfa7c55caafba0fd2a97db4248f2f9edb6e1a2af5f2c18f941",
+      "png_dimensions": [
+        466,
+        466
+      ],
+      "format": "RGBA PNG",
+      "device": "shared/assets/background-black-white-circle-466.bin",
+      "device_sha256": "66fb14825933248d29bf8d07f3c8ea2e03877360cf2261b7e32ac400ef8433c5",
+      "device_bytes": 651468,
+      "device_format": "RGB565A8",
+      "bytes": 651468,
+      "sha256": "66fb14825933248d29bf8d07f3c8ea2e03877360cf2261b7e32ac400ef8433c5",
+      "logical_id": "background-black-white-circle",
+      "delivery_class": "optional"
+    },
+    {
+      "key": "home-controls-transparent",
+      "source": "shared/assets/home-controls-outward-10-466.png",
+      "source_sha256": "902db48926e52cd76b17a7b072ff38728fb21066dbeadcc6434140e87aebc049",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "scaling": "no scaling; alpha mask retains glass control silhouettes and status pill, with baked Spotify wordmark cleared for dynamic logo overlay",
+      "png": "shared/assets/home-controls-outward-10-466-transparent.png",
+      "png_sha256": "094779da6845151366e54480d8cbc3f9e49cd56aae93ea732886d0e8154ff68e",
+      "png_dimensions": [
+        466,
+        466
+      ],
+      "format": "RGBA PNG",
+      "device": "shared/assets/home-controls-outward-10-466-transparent.bin",
+      "device_sha256": "ffde86df9465764107c7602ef7a01ec12796829dcf03c43d04f668b3640ef7e9",
+      "device_bytes": 651468,
+      "device_format": "RGB565A8",
+      "bytes": 651468,
+      "sha256": "ffde86df9465764107c7602ef7a01ec12796829dcf03c43d04f668b3640ef7e9",
+      "logical_id": "home-controls-transparent",
+      "delivery_class": "essential"
+    }
+  ]
+}

@@ -83,3 +83,11 @@ Do not copy every variable from `.env.example` into both Coolify applications. U
 - Local Compose only: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, plus local placeholder defaults.
 
 No real secrets, credentials, tokens, production identifiers, Coolify UUIDs, or generated hostnames belong in Git.
+
+The signed firmware release API requires a configured public verification key
+and writable, persistent artifact storage. The V3 adoption draft retains
+existing runtime variables. Signing configuration and storage provisioning are
+separate from adoption. The backend adds OTA tables in Alembic revision
+`202610210001`. Revert the Factory catalog commit to withdraw an unapplied
+manifest. After apply, review the previous application deployment and verify
+the external backup before choosing an infrastructure or database rollback.

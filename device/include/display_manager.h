@@ -13,6 +13,8 @@ class DisplayManager {
  public:
   bool begin();
   void loop();
+  uint32_t flushCallbackCount() const;
+  uint64_t flushPixelCount() const;
   void showState(
       AppState state,
       const char* detail = nullptr,
@@ -29,14 +31,24 @@ class DisplayManager {
   void renderSduiScreen(const SduiDocument& document);
   bool setPressedButton(const char* id);
   bool clearPressedButton();
+  void setTouchTraceEnabled(bool enabled);
   void setBrightnessPercent(uint8_t percent);
   uint8_t brightnessPercent() const;
   void cycleBackground();
   void toggleLanguage();
+  void setAppearanceDark(bool dark);
+  void setClockShowWeather(bool enabled);
+  void setAccentIndex(uint8_t index);
+  uint8_t accentIndex() const;
+  void setBackgroundArt(uint8_t index);
+  void setClockBackground(uint8_t index);
+  uint8_t backgroundArt() const;
+  uint8_t clockBackground() const;
+  void setClockFace(uint8_t index);
+  uint8_t clockFace() const;
   uint8_t backgroundMode() const;
   bool spanishLanguage() const;
   const SharedRenderState& sharedRenderState() const;
-  void updateControlCenterBrightness();
   void showWifiDetails(
       bool connected,
       bool portalActive,
@@ -79,22 +91,15 @@ class DisplayManager {
       const char* timeText);
   void showLocalFace(uint32_t now, bool force = false);
   void cycleLocalExpression();
+  void showCalibration();
+  void exitCalibration();
+  bool calibrationMode() const;
   bool writeLvglScreenshot(Stream& output);
+  void writeDisplayInfo(Stream& output) const;
 
  private:
   void centered(const char* text, int16_t y, uint8_t size, uint16_t color);
-  void drawComponent(const SduiComponent& component);
   void drawEye(int16_t x, int16_t y, int8_t pupilX, int8_t pupilY);
-  void drawControlIcon(
-      const char* icon,
-      int16_t centerX,
-      int16_t centerY,
-      uint16_t color);
-  void drawSpotifyIcon(
-      int16_t centerX,
-      int16_t centerY,
-      int16_t size,
-      uint16_t color);
   void drawInternetIcon(int16_t x, int16_t y, bool connected);
   void drawWifiIcon(int16_t x, int16_t y, bool connected);
   void drawCloudIcon(int16_t x, int16_t y, bool connected);
@@ -103,32 +108,33 @@ class DisplayManager {
   void drawCloudGlyph(int16_t x, int16_t y, uint16_t color);
   void drawBluetoothGlyph(int16_t x, int16_t y, uint16_t color);
   void drawSunGlyph(int16_t x, int16_t y, uint16_t color);
-  void drawControlCenter();
-  void drawSpotifyPlayer(const SduiScreen& screen);
-  void buildLvglControlCenter();
   void buildLvglConnectivityDetails(
       bool wifiScreen,
       bool primaryConnected,
       bool secondaryState,
       const char* primaryDetail,
       const char* secondaryDetail);
-  void buildLvglSpotifyPlayer(const SduiScreen& screen);
-  void buildLvglYoutubeFeed(const SduiScreen& screen);
-  void buildLvglSduiScreen(const SduiScreen& screen);
 
   uint8_t localExpression_ = 0;
   uint8_t brightnessPercent_ = 70;
   uint8_t backgroundMode_ = 1;
+  uint8_t backgroundArt_ = 3;
+  uint8_t clockBackground_ = 0;
+  uint8_t accentIndex_ = 4;
+  uint8_t clockFace_ = 0;
   bool spanishLanguage_ = false;
   uint32_t lastFaceFrameAt_ = 0;
   bool wifiConnected_ = false;
   bool cloudConnected_ = false;
   bool bluetoothEnabled_ = false;
   bool bluetoothConnected_ = false;
+  bool calibrationMode_ = false;
   uint8_t batteryPercent_ = 0;
   char timeText_[16] = "--:--";
-  SharedRenderState sharedRenderState_ = {timeText_, 0, false, false, false, false, 0, 1};
+  char dateText_[16] = "";
+  SharedRenderState sharedRenderState_{};
   char pressedButtonId_[kMaxComponentId + 1] = {};
+  bool touchTraceEnabled_ = false;
 };
 
 }  // namespace leopold

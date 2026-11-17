@@ -1,6 +1,9 @@
 #pragma once
 
 #define LEOPOLD_API_BASE_URL "https://api.dev.leopold.goodmorning.mx"
+// Build-time trusted asset origin, independent of API origin. Keep the same
+// origin until a dedicated authenticated host and CA are provisioned.
+#define LEOPOLD_ASSET_ORIGIN LEOPOLD_API_BASE_URL
 #define LEOPOLD_DEVICE_ID "LPD-CHANGE-ME"
 #define LEOPOLD_DEVICE_SECRET "CHANGE-ME"
 
@@ -38,3 +41,7 @@
   "mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d\n"       \
   "emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=\n"       \
   "-----END CERTIFICATE-----\n"
+
+#ifndef LEOPOLD_ASSET_TLS_ROOT_CA
+#define LEOPOLD_ASSET_TLS_ROOT_CA LEOPOLD_TLS_ROOT_CA
+#endif

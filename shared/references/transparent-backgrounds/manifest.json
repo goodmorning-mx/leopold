@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-20",
+  "purpose": "current user-supplied transparent artwork sources, not a runtime manifest",
+  "images": [
+    {
+      "path": "01-blue-red-flower-transparent-1254.png",
+      "file": "01-blue-red-flower-transparent-1254.png",
+      "source_attachment": "/var/folders/w7/s5xzwh556_z633slxbft5h1w0000gp/T/codex-clipboard-ff06ceb1-a7c4-417b-99b0-8604c9a5312b.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "sha256": "a16e3ea387ba65686964dffb9d5d7751eb32b55990746835161aa2d8cbcce1ed",
+      "bytes": 1664142,
+      "alpha": {
+        "range": [
+          0,
+          255
+        ],
+        "fully_transparent_pixels": 789449,
+        "partially_transparent_pixels": 782708,
+        "fully_opaque_pixels": 359
+      },
+      "status": "user-supplied current approved source; transparency verified",
+      "runtime_466_derivative": "pending canonical pipeline; preserve alpha and full source canvas; no auto crop",
+      "runtime_registration": "pending",
+      "ui_legibility": "pending actual screen checks in both appearance modes"
+    },
+    {
+      "path": "02-chevron-transparent-1254.png",
+      "file": "02-chevron-transparent-1254.png",
+      "source_attachment": "/var/folders/w7/s5xzwh556_z633slxbft5h1w0000gp/T/codex-clipboard-05c67721-87db-478f-89b7-65bc13e865d6.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "sha256": "82d266cc430e2ba0b2461ff361a7217cb32a8a2883c8294849365c85916f9100",
+      "bytes": 613150,
+      "alpha": {
+        "range": [
+          0,
+          255
+        ],
+        "fully_transparent_pixels": 1267097,
+        "partially_transparent_pixels": 304625,
+        "fully_opaque_pixels": 794
+      },
+      "status": "user-supplied current approved source; transparency verified",
+      "runtime_466_derivative": "pending canonical pipeline; preserve alpha and full source canvas; no auto crop",
+      "runtime_registration": "pending",
+      "ui_legibility": "pending actual screen checks in both appearance modes"
+    },
+    {
+      "path": "03-mechanical-flower-transparent-1254.png",
+      "file": "03-mechanical-flower-transparent-1254.png",
+      "source_attachment": "/var/folders/w7/s5xzwh556_z633slxbft5h1w0000gp/T/codex-clipboard-d6f779f6-5fbf-4ac6-bd58-eb5e6a5e5ead.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "sha256": "2fd075a6b699a1c03621b71446cfd01bdd3f0d6b46f6d7f48cdd25ffab39bd50",
+      "bytes": 2309245,
+      "alpha": {
+        "range": [
+          0,
+          255
+        ],
+        "fully_transparent_pixels": 596917,
+        "partially_transparent_pixels": 975547,
+        "fully_opaque_pixels": 52
+      },
+      "status": "user-supplied current approved source; transparency verified",
+      "runtime_466_derivative": "pending canonical pipeline; preserve alpha and full source canvas; no auto crop",
+      "runtime_registration": "pending",
+      "ui_legibility": "pending actual screen checks in both appearance modes"
+    }
+  ],
+  "appearance_bases": {
+    "Light": "#FFFFFF",
+    "Dark": "#000000"
+  },
+  "supersedes": "outputs/references/default-backgrounds (historical flattened 466 PNGs)",
+  "scope": [
+    "Home",
+    "Weather",
+    "USB",
+    "Navigation",
+    "Spotify when no song is playing"
+  ],
+  "excluded": [
+    "Clock",
+    "Main Settings and submenus"
+  ]
+}

@@ -67,6 +67,37 @@ class Device(Base):
     claim_tokens: Mapped[list["DeviceClaimToken"]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
+    firmware_assignment: Mapped["FirmwareAssignment | None"] = relationship(back_populates="device", uselist=False)
+
+
+class FirmwareRelease(Base):
+    __tablename__ = "firmware_releases"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    manifest: Mapped[dict] = mapped_column(JSON, nullable=False)
+    signature: Mapped[str] = mapped_column(String(128), nullable=False)
+    artifact_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class FirmwareAssignment(Base):
+    __tablename__ = "firmware_assignments"
+    device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True)
+    release_id: Mapped[str | None] = mapped_column(ForeignKey("firmware_releases.id"), nullable=True)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    device: Mapped[Device] = relationship(back_populates="firmware_assignment")
+
+
+class FirmwareInstallation(Base):
+    __tablename__ = "firmware_installations"
+    __table_args__ = (UniqueConstraint("device_id", "event_id", name="uq_firmware_installation_event"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    release_id: Mapped[str] = mapped_column(ForeignKey("firmware_releases.id"), index=True)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    detail: Mapped[str | None] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class DeviceUIDocument(Base):

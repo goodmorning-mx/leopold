@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "purpose": "Source identity and diagnostic adaptation map for submenu implementation review",
+  "comparison_profile": null,
+  "profile_status": "unapproved; no match or device-readiness claim is permitted",
+  "states": [
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Default.png",
+      "source_sha256": "4edb07a49f96e67b852b5c19774672c9d185abe3551e94e3118c850b4ab354a5",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Default-466-diagnostic.png",
+      "derivative_sha256": "27f2a3e02fca4613fb3a3db85155005b8a9e6e44887ca2ab8aedfe68e3432072",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Default",
+      "route": "reference=display",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    },
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Background_Expanded.png",
+      "source_sha256": "9122ed908fe7512076a6cb949819e8d035e370dfc5242f15accaa398c49c5eae",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Background_Expanded-466-diagnostic.png",
+      "derivative_sha256": "3b66cd927ba9e15977fdb8118f55f36a9be21c7dc0c6e0e1e2339ff9401779f6",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Background_Expanded",
+      "route": "reference=display-background",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    },
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Appearance_Expanded.png",
+      "source_sha256": "2065ea8dd654b2d22b3fbcd6e9eb78f00a90465a53d36cb2eb62cc409fb6c531",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Appearance_Expanded-466-diagnostic.png",
+      "derivative_sha256": "d4e33f5d43ec8efea82673c154b8c5e692a58d0ef1d7e9d90702729dc1a198bf",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Appearance_Expanded",
+      "route": "reference=display-appearance",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    },
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Weather_Location_Expanded.png",
+      "source_sha256": "27c1931b3ac50d67856ce4ecf22d26dd2ff3eae03751ab61f243e18e7d6a0953",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Weather_Location_Expanded-466-diagnostic.png",
+      "derivative_sha256": "5fa570f691826ebc55f9c80320ed9d4c1ae26db4a44b03676be7580b5b3b867b",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Weather_Location_Expanded",
+      "route": "reference=display-location",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    },
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Clock_Submenu-466-diagnostic.png",
+      "derivative_sha256": "4d934a7f78179b7e8bf95c44bd75b5eee19692e301261f1200008bdc5de44336",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Clock_Submenu",
+      "route": "reference=clock-settings",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    },
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Units_Expanded.png",
+      "source_sha256": "a578a3e70aa05079936f5ba11ede96f2e55d74f81878e0fcfff39404d9688caf",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Units_Expanded-466-diagnostic.png",
+      "derivative_sha256": "88acef3a26b8b709dcf7dfdd9ca63a1a4be263ed4a2bd7b96d931034a8626d84",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Units_Expanded",
+      "route": "reference=display-units",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    },
+    {
+      "source": "shared/references/display-submenus/Sub Menu/Display_Language_Expanded.png",
+      "source_sha256": "d0dbd8c284e9ab7fbd1a1f5f41d264958eb33f9286208513962a02731697049d",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Display_Language_Expanded-466-diagnostic.png",
+      "derivative_sha256": "66a91f8825e7b288e5b9570e2af9248fdadd3eec79a8e7731359d9ce59927547",
+      "derivative_dimensions": [
+        466,
+        466
+      ],
+      "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+      "name": "Display_Language_Expanded",
+      "route": "reference=display-language",
+      "acceptance": "diagnostic-only; no approved comparison profile"
+    }
+  ],
+  "wifi_reference": {
+    "source": "shared/references/Leopold_WiFi_Reference.png",
+    "source_sha256": "f7832e3a9868027f9cf0f0cbce9caddbfa6bd7fc1fdf0f8fbd27ea1287c1c6d2",
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "derivative": "shared/references/display-submenus/adapted-466-diagnostic/Leopold_WiFi_Reference-466-diagnostic.png",
+    "derivative_sha256": "057f6cc3366697459326062eeb503d7cda7fa740610bf2161ab3156546ef6d2a",
+    "derivative_dimensions": [
+      466,
+      466
+    ],
+    "transform": "full-canvas Pillow Lanczos resize to 466x466; no crop; RGBA",
+    "name": "WiFi-overview",
+    "route": "screen=wifi",
+    "acceptance": "diagnostic-only; visual reference contains illustrative SSID/state art"
+  },
+  "additional_simulator_states": [
+    "reference=display-keypad&country=US",
+    "reference=display-keypad&country=MX",
+    "reference=display-invalid&country=US",
+    "reference=display-not-found&country=MX",
+    "reference=display-offline&country=US",
+    "reference=display-pending&country=MX",
+    "reference=display&scroll=0",
+    "reference=display-background&scroll=232&art=0|1|2",
+    "reference=display&language=en|es&units=imperial|metric",
+    "reference=clock-settings&format=12|24&face=0|1|2&clock-background=0|1|2&clock-weather=no|yes",
+    "screen=weather|usb|navigation|spotify&art=0|1|2&appearance=dark|light",
+    "screen=spotify&reference=spotify-playing&art=0|1|2",
+    "screen=wifi"
+  ]
+}

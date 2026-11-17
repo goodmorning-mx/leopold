@@ -1,0 +1,8 @@
+#pragma once
+
+#define LEOPOLD_OTA_VERIFY_KEY_PEM R"LEOPOLDKEY(
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdi7u2E1fs/wLUNgBbPaoOQvcP0qW
+esnDA07MYZQwZkQw6gfEqWzhDGeCqy7pFKnQo2vezW9yvIaZbmApchvGew==
+-----END PUBLIC KEY-----
+)LEOPOLDKEY"

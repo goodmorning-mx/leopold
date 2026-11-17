@@ -1,0 +1,381 @@
+{
+  "schema_version": 1,
+  "purpose": "Source identity and runtime conversions for Display menu icons and native-size background/clock previews",
+  "records": [
+    {
+      "key": "display-icon-background",
+      "source": "shared/assets/display-icon-background.svg",
+      "source_sha256": "fa1710405bde17d8c0336a456ae5d9478701fc4c249cf58222f3eaa3320662a5",
+      "source_dimensions": [
+        30,
+        30
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-background.png",
+      "output_png_sha256": "e9ebd821784f721923fe8973fe9a86b5bbdc150fd5e7d340cbb2f2c4c2052e4c",
+      "output_bin": "shared/assets/display-icon-background.bin",
+      "output_bin_sha256": "8c6570dc007ee67b83ec7395f931201113ac517f4d761c8200bffd1dfd00c26f",
+      "dimensions": [
+        30,
+        30
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exact white landscape/photo vector"
+    },
+    {
+      "key": "display-icon-appearance",
+      "source": "shared/references/display-assets/icon_appearance.png",
+      "source_sha256": "feb3d349b36b13d5cbda75e712fe7b60c57eeedb5f6d9e3f0e3a39fd00befc4e",
+      "source_dimensions": [
+        32,
+        32
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-appearance.png",
+      "output_png_sha256": "ddb503abc7f71063058293e4b04a7052a020cf9fe2814df7d2814ac39123160d",
+      "output_bin": "shared/assets/display-icon-appearance.bin",
+      "output_bin_sha256": "67749ae28b159ab175123654fe26951930a037ecf4517d542b9ded34f5dcd6f2",
+      "dimensions": [
+        32,
+        32
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exactly"
+    },
+    {
+      "key": "display-icon-clock",
+      "source": "shared/references/display-assets/icon_clock.png",
+      "source_sha256": "099ac3e8948276b7ed230ffa9de2ca1670e4e2592368e69d778ebd602ae2fd02",
+      "source_dimensions": [
+        31,
+        31
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-clock.png",
+      "output_png_sha256": "866e99267e0a178491d103c052083b4b0895685f06d3fbf006bb26354fe3bb12",
+      "output_bin": "shared/assets/display-icon-clock.bin",
+      "output_bin_sha256": "6ccf06c7a311492112b0e4a96c4ac26a6571f1233e2c555de09b0fb50c2eaf3e",
+      "dimensions": [
+        31,
+        31
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exactly"
+    },
+    {
+      "key": "display-icon-units",
+      "source": "shared/references/display-assets/icon_units.png",
+      "source_sha256": "f8dcb26ade2f1a0ee4834828c8613d616d15c7588fdc1b72c3d664ef5dc4e634",
+      "source_dimensions": [
+        33,
+        33
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-units.png",
+      "output_png_sha256": "10bfa5a8eb9713fbe66a2dfa17b00017f3babd478e84b52244a4a480914f3b4c",
+      "output_bin": "shared/assets/display-icon-units.bin",
+      "output_bin_sha256": "f315203b850cd8bc926181b233a0bf1f706573126efb08f607e4d0b3b0feab12",
+      "dimensions": [
+        33,
+        33
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exactly"
+    },
+    {
+      "key": "display-icon-language",
+      "source": "shared/references/display-assets/icon_language.png",
+      "source_sha256": "646acbf29bc91c043c5688a28fe642576550250d6e3c72587aa421b5abd30c16",
+      "source_dimensions": [
+        31,
+        31
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-language.png",
+      "output_png_sha256": "7e4c307c40d4dbf2da09269529102f7730ca5d8d42239c877385e664225b0d05",
+      "output_bin": "shared/assets/display-icon-language.bin",
+      "output_bin_sha256": "9e9a58582a4da3ab16cd7e9f99981149f4e61ac55540cb0efba17d0de53dad97",
+      "dimensions": [
+        31,
+        31
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exactly"
+    },
+    {
+      "key": "display-icon-weather-location",
+      "source": "shared/references/display-assets/icon_weather_location.png",
+      "source_sha256": "2b9e8b00903b13c26309bd57f326fc8996b426d515f2d5a9d8f174a0c56840bf",
+      "source_dimensions": [
+        28,
+        31
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-weather-location.png",
+      "output_png_sha256": "f2682ca33ac961e6c19c060c3cc55f8ae6e5f9d241120717cac5addb04cb778e",
+      "output_bin": "shared/assets/display-icon-weather-location.bin",
+      "output_bin_sha256": "3106778f0a633f66fa0c395697d05458cf7da51584967c1b6c19b87e698f94ba",
+      "dimensions": [
+        28,
+        31
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exactly"
+    },
+    {
+      "key": "display-icon-display",
+      "source": "shared/references/display-assets/icon_display.png",
+      "source_sha256": "77db66b39388a8cce55a624920653493b0bfebc0a054e4872c6601c1a2664ffb",
+      "source_dimensions": [
+        30,
+        30
+      ],
+      "crop": null,
+      "output_png": "shared/assets/display-icon-display.png",
+      "output_png_sha256": "fa43e995f7363ea9d7405bde26f16a048cf1c0ef363099fc63211a704ce9db0e",
+      "output_bin": "shared/assets/display-icon-display.bin",
+      "output_bin_sha256": "c53c80432cdfc57264bcff2d27089ee48820ef526e721b4728722a06e3d0edc4",
+      "dimensions": [
+        30,
+        30
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "preserved exactly"
+    },
+    {
+      "key": "background-preview-flower",
+      "source": "shared/assets/background-flower-466.png",
+      "source_sha256": "2c979c1f8188f4bef3ebaa288d1ef9045825f728ef3a4bc97c8449834ed20d47",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/background-preview-flower.png",
+      "output_png_sha256": "6d6f14c8c0b5677f361961dc999220e80d498553f4aa3230613ddd29954ce8d8",
+      "output_bin": "shared/assets/background-preview-flower.bin",
+      "output_bin_sha256": "deb3c6ecbda1cb754e363418687fb5eafd0b08061466e50f46fbbfd5dbc5547f",
+      "dimensions": [
+        88,
+        88
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "background-preview-chevron",
+      "source": "shared/assets/background-chevron-466.png",
+      "source_sha256": "b29259c888be306cc90dd2e06ccd0b327ea6318051a2c9dc0fc0c52d85e32783",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/background-preview-chevron.png",
+      "output_png_sha256": "81a064085ff8d1fedee0be91d53c7b6ff96a9e105bd7df3664b2bff79346f3fa",
+      "output_bin": "shared/assets/background-preview-chevron.bin",
+      "output_bin_sha256": "5b919d80e540e63a2764d89af9bbd1df847c17f58a0a1ce63d096680056c17a1",
+      "dimensions": [
+        88,
+        88
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "background-preview-mechanical",
+      "source": "shared/assets/background-mechanical-flower-466.png",
+      "source_sha256": "ed8762a69da870e0addec401ec34802c8f2361e45f1b55a4a41d5a2a1c451054",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/background-preview-mechanical.png",
+      "output_png_sha256": "c68cfd6fa13a13e32603f1068091c9f437a096e4576ef6da31417e6d8b25774c",
+      "output_bin": "shared/assets/background-preview-mechanical.bin",
+      "output_bin_sha256": "450c6afe9a92474dd98d5843b921937fc0a202309d8de7f3b1efbbb36d99c715",
+      "dimensions": [
+        88,
+        88
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "background-preview-black-white-circle",
+      "source": "shared/assets/background-black-white-circle-466.png",
+      "source_sha256": "2956504660f613cfa7c55caafba0fd2a97db4248f2f9edb6e1a2af5f2c18f941",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/background-preview-black-white-circle.png",
+      "output_png_sha256": "6038e2d83910e4fe7d13c90a98f6421590453867bfe903c6567e1069cbcddd2f",
+      "output_bin": "shared/assets/background-preview-black-white-circle.bin",
+      "output_bin_sha256": "17a00dae865cd9cdac15410db201888ecaf303911221b275acba9cdd992304ea",
+      "dimensions": [
+        88,
+        88
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "clock-background-preview-flower",
+      "source": "shared/assets/background-flower-466.png",
+      "source_sha256": "2c979c1f8188f4bef3ebaa288d1ef9045825f728ef3a4bc97c8449834ed20d47",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/clock-background-preview-flower.png",
+      "output_png_sha256": "b01cb9313cda5db50a924d236a4ae1b36cd4b47a1ff174352ca19e42a723722b",
+      "output_bin": "shared/assets/clock-background-preview-flower.bin",
+      "output_bin_sha256": "63d167eb1d5c2bed487e5ac5d5419f9e3066e215ba2bf0829487b8fe729f9bcb",
+      "dimensions": [
+        88,
+        32
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "clock-background-preview-chevron",
+      "source": "shared/assets/background-chevron-466.png",
+      "source_sha256": "b29259c888be306cc90dd2e06ccd0b327ea6318051a2c9dc0fc0c52d85e32783",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/clock-background-preview-chevron.png",
+      "output_png_sha256": "bf9f844a33471696900ef753e8792ddc9dc51488bb1397bc7cde0a61b551cfb6",
+      "output_bin": "shared/assets/clock-background-preview-chevron.bin",
+      "output_bin_sha256": "89e8dcc75e36eb8eaded1126c6061718af7fec4fb1bf90e90b0f0a79636e48a1",
+      "dimensions": [
+        88,
+        32
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "clock-background-preview-mechanical",
+      "source": "shared/assets/background-mechanical-flower-466.png",
+      "source_sha256": "ed8762a69da870e0addec401ec34802c8f2361e45f1b55a4a41d5a2a1c451054",
+      "source_dimensions": [
+        466,
+        466
+      ],
+      "crop": null,
+      "output_png": "shared/assets/clock-background-preview-mechanical.png",
+      "output_png_sha256": "024decc93d5f6e6fcc47613ebec1e6cde0365158787ab68949cb2f3763ee2c03",
+      "output_bin": "shared/assets/clock-background-preview-mechanical.bin",
+      "output_bin_sha256": "4568ecde8b07795381552695ce331537806e71f3b083ed703f9687b0c7a8402d",
+      "dimensions": [
+        88,
+        32
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "opaque preview tile with background alpha composited"
+    },
+    {
+      "key": "clock-face-preview-0",
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "crop": [
+        54,
+        177,
+        94,
+        217
+      ],
+      "output_png": "shared/assets/clock-face-preview-0.png",
+      "output_png_sha256": "cb29997c2b5e641692e104bdf2b772a6b82d044727a1320bc0c2ea4793796b43",
+      "output_bin": "shared/assets/clock-face-preview-0.bin",
+      "output_bin_sha256": "783f0617180bfccbc6f0952d13cad12a4715fdd42ba490311f32bf644b65c2d4",
+      "dimensions": [
+        46,
+        46
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "circular face crop"
+    },
+    {
+      "key": "clock-face-preview-1",
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "crop": [
+        101,
+        177,
+        141,
+        217
+      ],
+      "output_png": "shared/assets/clock-face-preview-1.png",
+      "output_png_sha256": "bd353469497d7714089fd7b6a37cf3e47ff4f2a3882ef8e508e57f8abccf27e9",
+      "output_bin": "shared/assets/clock-face-preview-1.bin",
+      "output_bin_sha256": "7ebc2694d8abbe2d76ffddc1d63f62aa77338f943e2963a24641d5086751089c",
+      "dimensions": [
+        46,
+        46
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "circular face crop"
+    },
+    {
+      "key": "clock-face-preview-2",
+      "source": "shared/references/display-submenus/Sub Menu/Display_Clock_Submenu.png",
+      "source_sha256": "f885c7c121bbcbc1e89e93193c2e60607de2f486cb19bb2e3952b064bb780ed4",
+      "source_dimensions": [
+        320,
+        320
+      ],
+      "crop": [
+        148,
+        177,
+        188,
+        217
+      ],
+      "output_png": "shared/assets/clock-face-preview-2.png",
+      "output_png_sha256": "58a7bc9cb6ac741e433ff856a5870c0a7228488414ee47257145821a4649cfd9",
+      "output_bin": "shared/assets/clock-face-preview-2.bin",
+      "output_bin_sha256": "c7c3f5c3d7b80e496a827631b62e844d586c2c05dad91b62824ffd35c2889b2f",
+      "dimensions": [
+        46,
+        46
+      ],
+      "format": "RGBA PNG / RGB565A8 runtime",
+      "alpha_mask": "circular face crop"
+    }
+  ],
+  "additional_references": [
+    {
+      "file": "shared/references/display-assets/banner_status.png",
+      "sha256": "e56782a74e153aaffcebae0083d7a7450672f9b61d570aafcf44c7f69ad1bbe6",
+      "dimensions": [
+        141,
+        27
+      ],
+      "role": "visual reference; preserved without alteration"
+    },
+    {
+      "file": "shared/references/display-assets/banner_selected_row.png",
+      "sha256": "f660096e9e556487a680f141e32913cfd782a5f6d591d2086208080547d76856",
+      "dimensions": [
+        230,
+        99
+      ],
+      "role": "visual reference; preserved without alteration"
+    }
+  ]
+}

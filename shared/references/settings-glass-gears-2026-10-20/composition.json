@@ -1,0 +1,292 @@
+{
+  "schema_version": 2,
+  "approval": "User 2026-10-20 explicitly requested continuous gears background and translucent controls like source.png; supersedes previous opaque black scrim composition only. Existing reference geometry, white labels and interaction/state model retained.",
+  "mode": "reconstructed-ui-component-profile; supplied image is treatment guidance, not a whole-image exact-match claim",
+  "state": "device-control-center; one neutral base plus bounded live states",
+  "source": {
+    "file": "references/settings-glass-gears-2026-10-20/source.png",
+    "dimensions": [
+      1311,
+      1200
+    ],
+    "sha256": "7246e115e88e6ba0c114218e4c9e5ca48b98dc311d32618f4482a9dc8f50f723",
+    "immutable": true
+  },
+  "guidance_derivative": {
+    "file": "references/settings-glass-gears-2026-10-20/guidance-466.png",
+    "dimensions": [
+      466,
+      466
+    ],
+    "method": "LANCZOS full image without crop to declared framebuffer; diagnostic treatment comparison only",
+    "sha256": "ae2bfbdacdd173a18d12f6614b4a333f92dd410963eee5696fe1b6d858ed5b3f"
+  },
+  "background_source": {
+    "file": "references/settings-gears-2026-10-20/source.jpeg",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "sha256": "e3083d23222806a8ff2936ba04e6893463397b487d26d92ddcfa5bbeb26a1875",
+    "immutable": true
+  },
+  "composition": {
+    "script": "scripts/prepare_settings_glass_asset.py",
+    "method": "No-crop LANCZOS background at466x466, saturation1.25, red0.82/blue1.12; original neutral artwork black unmatted using max-channel coverage, 190/255 rounded row glass scrim, 65/255 banner scrim. Clear only baked brightness region so live control draws over background. Background receives1px Gaussian softness for the reference glow treatment; pressed border retains measured alpha with active cyan #00D2FF.",
+    "rows": [
+      [
+        74,
+        131,
+        393,
+        179
+      ],
+      [
+        74,
+        185,
+        393,
+        233
+      ],
+      [
+        74,
+        239,
+        393,
+        287
+      ],
+      [
+        74,
+        293,
+        393,
+        341
+      ]
+    ],
+    "root_rows_clear": [
+      [
+        72,
+        127,
+        394,
+        183
+      ],
+      [
+        72,
+        181,
+        394,
+        237
+      ],
+      [
+        72,
+        235,
+        394,
+        291
+      ],
+      [
+        72,
+        289,
+        394,
+        345
+      ]
+    ],
+    "brightness_clear": [
+      63,
+      349,
+      405,
+      424
+    ],
+    "white_artwork_geometry_source": "references/phase1-settings/settings-neutral-466.png",
+    "prior_composition": "references/settings-gears-2026-10-20/composition.json",
+    "state_method": "Apply the same glass/background composition to each immutable reference-derived opaque icon/chevron/status cover pixel; preserve its alpha and bounds. The original transparent cyan border mask is unchanged.",
+    "title_gear_clear": [
+      146,
+      82,
+      187,
+      123
+    ]
+  },
+  "output": {
+    "png": "assets/settings-glass-gears-v1-466.png",
+    "device_asset": "assets/settings-glass-gears-v1-466.bin",
+    "dimensions": [
+      466,
+      466
+    ],
+    "format": "rgb565a8",
+    "runtime_manifest_key": "settings-gears-base",
+    "png_sha256": "8eb1520823b871ee6f44adbb04932043c011c79e7ec0cdc52754e907d7fe9ed4",
+    "device_asset_sha256": "5b490828c71daf008a8ee3b693c4391b5d24e6ebc435fbb461835e67fdbceef9"
+  },
+  "consumers": {
+    "simulator": "FirmwareLvglCanvas -> shared/lvgl_renderer.cpp",
+    "backend": "backend/assets/settings-glass-gears-v1-466.bin",
+    "device": "sky_assets.cpp; generated_settings_asset.h exact shared-byte fallback"
+  },
+  "state_assets": {
+    "settings-wifi-pressed-icon-mask": {
+      "source_asset": "assets/settings-wifi-pressed-icon-mask-61x56.png",
+      "source_sha256": "a1e58f93a71522f22b188df73fbad5daafad784160d53b9751c9db5090f45a36",
+      "bounds": [
+        72,
+        127,
+        61,
+        56
+      ],
+      "png": "assets/settings-glass-wifi-pressed-icon-mask-61x56-v1.png",
+      "device_asset": "assets/settings-glass-wifi-pressed-icon-mask-61x56-v1.bin",
+      "png_sha256": "8cbc49bdb5d84a2f31f520f5d2798c919992d0a418698627608cbd2cb1b0935f",
+      "device_asset_sha256": "870e2e482cc8469a766413cf69f5a4165d2d33660ba32d6a557ff86818078197"
+    },
+    "settings-wifi-pressed-chevron-mask": {
+      "source_asset": "assets/settings-wifi-pressed-chevron-mask-39x56.png",
+      "source_sha256": "8108090f667066af3960abed520509fd90f1abb0e2e3f4fde635c46caaca21d9",
+      "bounds": [
+        355,
+        127,
+        39,
+        56
+      ],
+      "png": "assets/settings-glass-wifi-pressed-chevron-mask-39x56-v1.png",
+      "device_asset": "assets/settings-glass-wifi-pressed-chevron-mask-39x56-v1.bin",
+      "png_sha256": "3f370e7aecefec152d3c416eaba4d6079421e9d7b5ae60e032fad1b135bd2e55",
+      "device_asset_sha256": "9480bac1e03d5f3e9cbc2aa8b94658d06c28ca82c355fd308c60d32ed6e0f8eb"
+    },
+    "settings-bluetooth-pressed-icon-mask": {
+      "source_asset": "assets/settings-bluetooth-pressed-icon-mask-61x56.png",
+      "source_sha256": "5b21d68b13c203a4f7a814040d5a909b66823534d3e3a9e69468fbec9a6e1c9b",
+      "bounds": [
+        72,
+        181,
+        61,
+        56
+      ],
+      "png": "assets/settings-glass-bluetooth-pressed-icon-mask-61x56-v1.png",
+      "device_asset": "assets/settings-glass-bluetooth-pressed-icon-mask-61x56-v1.bin",
+      "png_sha256": "c8a05ee446d81fc9b45c54610cb14752513545e5d241efa9aa5cca56e2112fd9",
+      "device_asset_sha256": "3d0f380f80d68d59efd21bdba629da6f91267c9af2d61f520a8a43532ba09330"
+    },
+    "settings-bluetooth-pressed-chevron-mask": {
+      "source_asset": "assets/settings-bluetooth-pressed-chevron-mask-39x56.png",
+      "source_sha256": "192602f761ce307964213f7fbf8763441724bbbc8d723195d49bddccf7159da6",
+      "bounds": [
+        355,
+        181,
+        39,
+        56
+      ],
+      "png": "assets/settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.png",
+      "device_asset": "assets/settings-glass-bluetooth-pressed-chevron-mask-39x56-v1.bin",
+      "png_sha256": "0e2479f1421d78b0764b6e48cdacc00cf6e6918c3ea0cfa0ed33b41a65009d43",
+      "device_asset_sha256": "5d3bd00fae59e59dfbb32a2e5df5373e7f904c88d3d29be371853d704024db3a"
+    },
+    "settings-display-pressed-icon-mask": {
+      "source_asset": "assets/settings-display-pressed-icon-mask-61x56.png",
+      "source_sha256": "10655d1e53c6a494c353c1e65c68304d2dc189dc6622ac8d2a06727b54725e2e",
+      "bounds": [
+        72,
+        235,
+        61,
+        56
+      ],
+      "png": "assets/settings-glass-display-pressed-icon-mask-61x56-v1.png",
+      "device_asset": "assets/settings-glass-display-pressed-icon-mask-61x56-v1.bin",
+      "png_sha256": "f08d5b69cc966d88e81ed171ca1c7d6176e1f7c32be3b6519d2bde2f5e19b109",
+      "device_asset_sha256": "2d2615295a778a50de4aa7d49ae9bd1fb4df31f2ba6c0c990d80ae25ce9c04dd"
+    },
+    "settings-display-pressed-chevron-mask": {
+      "source_asset": "assets/settings-display-pressed-chevron-mask-39x56.png",
+      "source_sha256": "82e928db6d7ea0b8eb9bdb1f85f4f2d7fe3562de9e42642215fdde1c72fcf8c4",
+      "bounds": [
+        355,
+        235,
+        39,
+        56
+      ],
+      "png": "assets/settings-glass-display-pressed-chevron-mask-39x56-v1.png",
+      "device_asset": "assets/settings-glass-display-pressed-chevron-mask-39x56-v1.bin",
+      "png_sha256": "e907b4eea18ed66df5c9fc45653ef5073fd9cc4d9c8f5a93b763b56120bc96b1",
+      "device_asset_sha256": "1bfc1b2fff96be1241b80ebd14a7efe150776d4ef14154e6628786ca69dddbd5"
+    },
+    "settings-sound-pressed-icon-mask": {
+      "source_asset": "assets/settings-sound-pressed-icon-mask-61x56.png",
+      "source_sha256": "a4395e0ab4c4daee3a33bed205db0fdecbbb6f2ead9d6a2738dd150d761aabdc",
+      "bounds": [
+        72,
+        289,
+        61,
+        56
+      ],
+      "png": "assets/settings-glass-sound-pressed-icon-mask-61x56-v1.png",
+      "device_asset": "assets/settings-glass-sound-pressed-icon-mask-61x56-v1.bin",
+      "png_sha256": "a0493243a8fb1e1027d1003b530b25c88b6cebe66263969d0dc1acf0c96b3127",
+      "device_asset_sha256": "b83f6c1b186654c3d070d16cc2c7f101a3644701159e304b2036f4376daf06d6"
+    },
+    "settings-sound-pressed-chevron-mask": {
+      "source_asset": "assets/settings-sound-pressed-chevron-mask-39x56.png",
+      "source_sha256": "613be056f1ca4e1c713b259a24b26ce64dfe965c379062deabf65257f2e6a8de",
+      "bounds": [
+        355,
+        289,
+        39,
+        56
+      ],
+      "png": "assets/settings-glass-sound-pressed-chevron-mask-39x56-v1.png",
+      "device_asset": "assets/settings-glass-sound-pressed-chevron-mask-39x56-v1.bin",
+      "png_sha256": "32425159bf04d140153f14c7d071497bea8ce362cf61b411ebe02d815e8dc8bc",
+      "device_asset_sha256": "b4b1b64db2a33f200deca24ed83f7a8a2cacfc73d2873a38ef23788248140d54"
+    },
+    "settings-status-bluetooth-active": {
+      "source_asset": "assets/settings-status-bluetooth-active-22x22.png",
+      "source_sha256": "839b295a0c58ac47fa64e8dd5909fb7e2102cbfb1bb2e4f953dd6c4d83005b34",
+      "bounds": [
+        153,
+        45,
+        22,
+        22
+      ],
+      "png": "assets/settings-glass-status-bluetooth-active-22x22-v1.png",
+      "device_asset": "assets/settings-glass-status-bluetooth-active-22x22-v1.bin",
+      "png_sha256": "2ed973f7e01869630984db5dcc2eb4e29fe2da128b56bafaa404b367533ae777",
+      "device_asset_sha256": "98f99344f43f3010fb4cdb44e95fd61ba1d9b78acc99aa3fa3c1d0e12f75fe8f"
+    },
+    "settings-status-wifi-active": {
+      "source_asset": "assets/settings-status-wifi-active-22x22.png",
+      "source_sha256": "1d99f6cf320e1465e4ff12dc874e8ebe241d0d6f4843b6d73eb99bd0e02cd3cc",
+      "bounds": [
+        181,
+        45,
+        22,
+        22
+      ],
+      "png": "assets/settings-glass-status-wifi-active-22x22-v1.png",
+      "device_asset": "assets/settings-glass-status-wifi-active-22x22-v1.bin",
+      "png_sha256": "366327950c83e032108a7fc63be22c482bc3d26ce0197af71fa41e56da2cdea3",
+      "device_asset_sha256": "747d459d553dd88a7e70f630066615076366531363707af44c222d46f9839724"
+    },
+    "settings-status-cloud-active": {
+      "source_asset": "assets/settings-status-cloud-active-24x24.png",
+      "source_sha256": "4535c05ad8fd8da6a825b96a6292d2030ca58804e2853a855b8a49e6f8dc0165",
+      "bounds": [
+        264,
+        45,
+        24,
+        24
+      ],
+      "png": "assets/settings-glass-status-cloud-active-24x24-v1.png",
+      "device_asset": "assets/settings-glass-status-cloud-active-24x24-v1.bin",
+      "png_sha256": "5f343656fc9335c6f1731740cad18a2c26cce388d1db875dfb10cdc30fa1518f",
+      "device_asset_sha256": "c51666129b3b266c42bfcba5a839f1b66fce7d00770d4ae25961d33f343b6aaf"
+    },
+    "settings-pressed-border-mask": {
+      "source_asset": "assets/settings-pressed-border-mask-322x56.png",
+      "source_sha256": "72ea629c133045a185aec9617fa37cb820d019ad278f60fbf4dc3d3e3439114c",
+      "bounds": [
+        72,
+        127,
+        322,
+        56
+      ],
+      "png": "assets/settings-glass-pressed-border-mask-322x56-v1.png",
+      "device_asset": "assets/settings-glass-pressed-border-mask-322x56-v1.bin",
+      "treatment": "Retain original measured alpha/geometry; use shared active cyan #00D2FF over glass. No opaque dark border cover.",
+      "png_sha256": "969ecb9fda9e2537ff8862484c3bec39e5901ba8bd001c561fc5d3d0308e01eb",
+      "device_asset_sha256": "0ae386ae00d61f48ff934d20ec68634d8f0b24a041c2eb7591edf6bc3cf70195"
+    }
+  }
+}

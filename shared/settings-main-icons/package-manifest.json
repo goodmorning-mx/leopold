@@ -1,0 +1,131 @@
+{
+  "package": "leopold-settings-main-icons-v1",
+  "scope": "Main Settings screen ONLY; no submenus, status banner, Home or other screens",
+  "source_package": "leopold-theme-icons-v3",
+  "original_sheet_sha256": "b873f065d041fab6b0e1cbd05b73a80e8aaa4176281806b970f681dc4ce20a5f",
+  "sizes": [
+    40,
+    60
+  ],
+  "runtime_namespace": "settings-main/",
+  "material_format": "BHA8 interleaved uint8 body,highlight,alpha; row-major; no file header",
+  "color_space": "sRGB encoded byte values; straight alpha",
+  "color_formula": "rgb[c] = min(255, (body * accent[c] + 127) // 255 + highlight); alpha = coverage",
+  "padding_px": {
+    "40": 1,
+    "60": 2
+  },
+  "icons": [
+    {
+      "id": "gear",
+      "runtime_id": "settings-main/gear",
+      "source_id": "settings",
+      "source_sha256": "f2b9101f926c705b74c8a43d3dc81776351bc55c912fe382f2e5d26fcb977c6a",
+      "variants": [
+        {
+          "size": 40,
+          "neutral": "40px/gear.png",
+          "material": "40px/material/gear.bha",
+          "bytes": 4800,
+          "sha256": "dd971a701afa14f171890478c28093517c2177f2a776ee389d426fedafa12bf4"
+        },
+        {
+          "size": 60,
+          "neutral": "60px/gear.png",
+          "material": "60px/material/gear.bha",
+          "bytes": 10800,
+          "sha256": "4b498fe1a445323448e7ebce9f5f364cf499bc6f055b355898e47d551385e6bf"
+        }
+      ]
+    },
+    {
+      "id": "wifi",
+      "runtime_id": "settings-main/wifi",
+      "source_id": "wifi",
+      "source_sha256": "ca1391f9881df4eb0b9ccefee2fb3e0a07e00462b915ccad0bfacbe23d73aca1",
+      "variants": [
+        {
+          "size": 40,
+          "neutral": "40px/wifi.png",
+          "material": "40px/material/wifi.bha",
+          "bytes": 4800,
+          "sha256": "3303971d1732f1d78464039ea2459297724b0a7a77a65b5768f6db1926e95fbb"
+        },
+        {
+          "size": 60,
+          "neutral": "60px/wifi.png",
+          "material": "60px/material/wifi.bha",
+          "bytes": 10800,
+          "sha256": "f73c7055257a36f6c2194bb059a1fdb070d4ff47ad62ca871a9163561da83c5c"
+        }
+      ]
+    },
+    {
+      "id": "bluetooth",
+      "runtime_id": "settings-main/bluetooth",
+      "source_id": "bluetooth",
+      "source_sha256": "ac5c525c7fc6df6b2a575a267826fdf34ef9aeedd38e541f01a8b78bf0fd0e33",
+      "variants": [
+        {
+          "size": 40,
+          "neutral": "40px/bluetooth.png",
+          "material": "40px/material/bluetooth.bha",
+          "bytes": 4800,
+          "sha256": "161ccddabc175033b40c86f043f96ec1141faafd227ceea48a88f714b4583ba8"
+        },
+        {
+          "size": 60,
+          "neutral": "60px/bluetooth.png",
+          "material": "60px/material/bluetooth.bha",
+          "bytes": 10800,
+          "sha256": "273db47d608643d9d7b45945b8e1a878a9385c2ee23907cf63d4072a32b3c4a8"
+        }
+      ]
+    },
+    {
+      "id": "remote",
+      "runtime_id": "settings-main/remote",
+      "source_id": "remote",
+      "source_sha256": "f7e87fe79d98f3efec7e7633310448ee2716a6fd034c46db56d9c22ac977ca07",
+      "variants": [
+        {
+          "size": 40,
+          "neutral": "40px/remote.png",
+          "material": "40px/material/remote.bha",
+          "bytes": 4800,
+          "sha256": "e66d049dfdbbafffe3aba152a4060dfec32070718aa743dc2c64267c83966dc6"
+        },
+        {
+          "size": 60,
+          "neutral": "60px/remote.png",
+          "material": "60px/material/remote.bha",
+          "bytes": 10800,
+          "sha256": "a92b6764bc190c3bdf38d6adfdc492b54810560c49560b306a3f0dfba28f1877"
+        }
+      ]
+    },
+    {
+      "id": "speaker",
+      "runtime_id": "settings-main/speaker",
+      "source_id": "sound",
+      "source_sha256": "df648f97f8bedc1957431d2347ce5d9a0dfa17cfb745205f881130ba9c9525ee",
+      "variants": [
+        {
+          "size": 40,
+          "neutral": "40px/speaker.png",
+          "material": "40px/material/speaker.bha",
+          "bytes": 4800,
+          "sha256": "7b8a7e584372b52ff53f124d9e1340fbcd12f4d3d3659d6816ae48e56d397988"
+        },
+        {
+          "size": 60,
+          "neutral": "60px/speaker.png",
+          "material": "60px/material/speaker.bha",
+          "bytes": 10800,
+          "sha256": "d68877daa1f9cbfbbee7d0bbc07ea1ec0bd2cf60770bd413ea2015b8c474ed32"
+        }
+      ]
+    }
+  ],
+  "integration_status": "Prepared and renderer-validated; not integrated into a running Leopold build."
+}

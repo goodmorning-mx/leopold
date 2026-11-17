@@ -7,11 +7,13 @@
 #include <sys/stat.h>
 #include <mbedtls/sha256.h>
 #include <cstdio>
+#include <atomic>
 
 #include "app_state.h"
 #include "board_config.h"
 #include "bluetooth_manager.h"
 #include "cloud_client.h"
+#include "computer_control.h"
 #include "config_guard.h"
 #include "display_manager.h"
 #include "sdui.h"
@@ -20,11 +22,21 @@
 #include "weather_client.h"
 #include "generated_firmware_ui.h"
 #include "wifi_portal.h"
+#include "wifi_scan.h"
+#include "settings_contact.h"
 #include "sky_assets.h"
+#include "persistent_asset_cache.h"
+#include "device_identity.h"
+#include "firmware_ota.h"
+#include "display_menu.h"
+#include "memory_budget.h"
+#include "local_endpoint_transport.h"
 
 namespace {
 
 using namespace leopold;
+
+void applySettingsMenuScroll(SduiScreen& screen);
 
 constexpr uint32_t kBootResetHoldMs = 5000;
 constexpr uint32_t kIndicatorRefreshMs = 1000;
@@ -33,6 +45,7 @@ constexpr uint32_t kTimeSyncRetryMs = 10000;
 constexpr uint32_t kDefaultHeartbeatMs = 30000;
 constexpr uint32_t kDefaultUiPollMs = 5000;
 constexpr uint32_t kOnboardingPollMs = 5000;
+constexpr uint32_t kFirmwarePollMs = 60UL * 60UL * 1000UL;
 constexpr uint32_t kWelcomeScreenMs = 3000;
 constexpr uint8_t kEventQueueSize = 4;
 constexpr uint8_t kEventMaxAttempts = 3;
@@ -85,15 +98,27 @@ bool onboardingStatusPending = false;
 bool uiPending = false;
 bool heartbeatPending = false;
 bool eventPending = false;
-bool assetPending = false;
+bool firmwareUpdatePending = false;
+uint8_t firmwareUpdateFailures = 0;
 bool retryConnectWithoutSetupToken = false;
 bool weatherRequested = false;
+bool weatherLookupPending = false;
+bool weatherLookupFeedback = false;
 bool servicesStarted = false;
 bool bootWasDown = false;
 bool bootLongPressHandled = false;
 bool wifiWasConnected = false;
 bool timeSyncStarted = false;
 bool fatalError = false;
+bool startupPending = false;
+std::atomic<bool> storageInitComplete{false};
+std::atomic<bool> localStoreReady{false};
+std::atomic<bool> assetCacheReady{false};
+std::atomic<bool> identityReadyForServices{false};
+std::atomic<bool> cacheRestorePending{false};
+bool networkServicesStarted = false;
+bool wifiScanWaitingForServices = false;
+bool startupServicesLoopObserved = false;
 bool onboardingPending = false;
 bool welcomeActive = false;
 bool welcomeShownThisBoot = false;
@@ -106,12 +131,12 @@ bool lastBluetoothConnectedIndicator = false;
 uint8_t welcomeStep = 0;
 uint8_t welcomeStepsShown = 0;
 uint8_t activeEventIndex = 0;
-uint8_t nextAssetIndex = 0;
 uint8_t cloudFailures = 0;
 uint32_t bootPressedAt = 0;
 uint32_t nextCloudAttemptAt = 0;
 uint32_t nextUiPollAt = 0;
 uint32_t nextOnboardingPollAt = 0;
+uint32_t nextFirmwareCheckAt = 0;
 uint32_t nextHeartbeatAt = 0;
 uint32_t nextWelcomeAt = 0;
 uint32_t heartbeatIntervalMs = kDefaultHeartbeatMs;
@@ -125,15 +150,92 @@ LocalPanel localPanel = LocalPanel::kNone;
 WifiNetworkChoice wifiNetworks[kVisibleWifiNetworks];
 uint8_t wifiNetworkCount = 0;
 String selectedWifiName;
+String failedWifiName;
 String selectedWifiPassword;
 int8_t wifiKeyGroup = -1;
 bool wifiUppercase = false;
 uint32_t wifiSelectionStartedAt = 0;
-bool wifiScanRunning = false;
+WifiScan wifiScan;
 bool bluetoothScanWasRunning = false;
 SduiComponent* capturedSlider = nullptr;
+int16_t settingsMenuScrollOffset = 0;
+leopold::display_menu::State displayMenuState;
 char usbCommand[160] = {};
 uint8_t usbCommandLength = 0;
+
+enum class StartupStage : uint8_t {
+  kBeginning = 1,
+  kDisplayFailed,
+  kDisplayReady,
+  kHomeConstructed,
+  kHomeFlushPending,
+  kHomeFlushSubmitted,
+  kIdentityStarting,
+  kIdentityReady,
+  kIdentityUnavailable,
+  kStorageStarting,
+  kStorageReady,
+  kStorageUnavailable,
+  kNetworkServicesStarted,
+  kNetworkServicesDisabled,
+};
+std::atomic<uint8_t> startupStage{static_cast<uint8_t>(StartupStage::kBeginning)};
+bool usbDiagnosticsAnnounced = false;
+bool homeFlushObserved = false;
+uint32_t homeFlushBaselineCallbacks = 0;
+uint64_t homeFlushBaselinePixels = 0;
+uint32_t homeFlushObservedAtMs = 0;
+
+const char* startupStageName(uint8_t stage) {
+  switch (static_cast<StartupStage>(stage)) {
+    case StartupStage::kBeginning: return "beginning";
+    case StartupStage::kDisplayFailed: return "display_failed";
+    case StartupStage::kDisplayReady: return "display_ready";
+    case StartupStage::kHomeConstructed: return "home_constructed";
+    case StartupStage::kHomeFlushPending: return "home_flush_pending";
+    case StartupStage::kHomeFlushSubmitted: return "home_flush_submitted";
+    case StartupStage::kIdentityStarting: return "identity_starting";
+    case StartupStage::kIdentityReady: return "identity_ready";
+    case StartupStage::kIdentityUnavailable: return "identity_unavailable";
+    case StartupStage::kStorageStarting: return "storage_starting";
+    case StartupStage::kStorageReady: return "storage_ready";
+    case StartupStage::kStorageUnavailable: return "storage_unavailable";
+    case StartupStage::kNetworkServicesStarted: return "network_services_started";
+    case StartupStage::kNetworkServicesDisabled: return "network_services_disabled";
+  }
+  return "unknown";
+}
+
+void logStartupBoundary(const char* boundary) {
+  Serial.printf("LEOPOLD_STARTUP boundary=%s stage=%s t_ms=%lu stack_free=%lu\n",
+                boundary ? boundary : "unknown",
+                startupStageName(startupStage.load(std::memory_order_relaxed)),
+                static_cast<unsigned long>(millis()),
+                static_cast<unsigned long>(uxTaskGetStackHighWaterMark(nullptr) * sizeof(StackType_t)));
+  leopold::memory_budget::log(boundary);
+}
+
+void writeBootDiagnostics(Stream& output) {
+  const uint32_t flushCalls = screen.flushCallbackCount();
+  const uint64_t flushPixels = screen.flushPixelCount();
+  output.printf(
+      "LEOPOLD_DIAGNOSTICS build=%s commit=%s ui=%lu reset_reason=%d stage=%s display=%u home_flush_callback_observed=%u home_flush_ms=%lu flush_calls=%lu flush_pixels_submitted=%llu touch=%u identity=%u storage_complete=%u local_store=%u cache=%u services=%u free_heap=%lu min_free_heap=%lu\n",
+      leopold::config::kBuildId,
+      leopold::config::kSourceCommit,
+      static_cast<unsigned long>(leopold::generated_ui::kUiRevision),
+      static_cast<int>(esp_reset_reason()), startupStageName(startupStage.load(std::memory_order_relaxed)),
+      startupStage.load(std::memory_order_relaxed) >= static_cast<uint8_t>(StartupStage::kDisplayReady) &&
+              startupStage.load(std::memory_order_relaxed) != static_cast<uint8_t>(StartupStage::kDisplayFailed) ? 1u : 0u,
+      homeFlushObserved ? 1u : 0u,
+      static_cast<unsigned long>(homeFlushObservedAtMs),
+      static_cast<unsigned long>(flushCalls), static_cast<unsigned long long>(flushPixels),
+      touch.available() ? 1u : 0u, identityReadyForServices ? 1u : 0u,
+      storageInitComplete ? 1u : 0u, localStoreReady ? 1u : 0u, assetCacheReady ? 1u : 0u,
+      networkServicesStarted ? 1u : 0u,
+      static_cast<unsigned long>(ESP.getFreeHeap()),
+      static_cast<unsigned long>(ESP.getMinFreeHeap()));
+  screen.writeDisplayInfo(output);
+}
 
 struct UsbAssetSpec {
   const char* file;
@@ -141,7 +243,7 @@ struct UsbAssetSpec {
 };
 
 constexpr UsbAssetSpec kUsbAssetSpecs[] = {
-    {"sky_home.bin", 466u * 466u * 3u},
+    {"home-controls-outward-10-466.bin", 466u * 466u * 3u},
     {"sky_flower.bin", 466u * 466u * 3u},
     {"sky_chevron.bin", 466u * 466u * 3u},
     {"icon_clock.bin", 80u * 80u * 3u},
@@ -235,6 +337,13 @@ void beginBluetoothScan() {
   Serial.println(started ? "BLE scan started" : "BLE scan could not start");
 }
 
+bool isConnectivityBack(const TouchPoint& point) {
+  return point.x >= generated_ui::kConnectivityBackX &&
+      point.x < generated_ui::kConnectivityBackX + generated_ui::kConnectivityBackWidth &&
+      point.y >= generated_ui::kConnectivityBackY &&
+      point.y < generated_ui::kConnectivityBackY + generated_ui::kConnectivityBackHeight;
+}
+
 void renderWifiNetworks(const char* message = nullptr) {
   const char* names[kVisibleWifiNetworks] = {};
   int32_t signals[kVisibleWifiNetworks] = {};
@@ -245,17 +354,29 @@ void renderWifiNetworks(const char* message = nullptr) {
     secured[index] = wifiNetworks[index].secured;
   }
   screen.showWifiNetworks(
-      names, signals, secured, wifiNetworkCount, wifiScanRunning, message);
+      names, signals, secured, wifiNetworkCount, wifiScan.searching(), message);
 }
 
 void beginWifiScan() {
-  wifi.prepareForScan();
-  WiFi.scanDelete();
-  wifiNetworkCount = 0;
-  wifiScanRunning = WiFi.scanNetworks(true, true) == WIFI_SCAN_RUNNING;
   localPanel = LocalPanel::kWifiNetworks;
-  renderWifiNetworks(wifiScanRunning ? nullptr : "No se pudo iniciar la busqueda");
-  Serial.println("On-device Wi-Fi scan started");
+  wifiNetworkCount = 0;
+  if (!wifiScan.begin()) {
+    const char* message = strcmp(wifiScan.phase(), "draining") == 0
+        ? "Liberando busqueda anterior; intenta otra vez"
+        : "La busqueda ya esta en curso";
+    Serial.printf(
+        "LEOPOLD_WIFI_SCAN request=ignored phase=%s services=%u\n",
+        wifiScan.phase(), networkServicesStarted ? 1u : 0u);
+    renderWifiNetworks(message);
+    return;
+  }
+  wifiScanWaitingForServices = !networkServicesStarted;
+  Serial.printf(
+      "LEOPOLD_WIFI_SCAN request=accepted services=%u startup=%s\n",
+      networkServicesStarted ? 1u : 0u,
+      startupStageName(startupStage.load(std::memory_order_relaxed)));
+  renderWifiNetworks(
+      wifiScanWaitingForServices ? "Iniciando conectividad" : nullptr);
 }
 
 void renderWifiPassword() {
@@ -366,6 +487,9 @@ void setState(
     Serial.printf("Leopold state: %s\n", appStateName(state));
   }
   const bool preserveUi =
+#if defined(LEOPOLD_LOCAL_DEVELOPMENT)
+      hasUi ||
+#endif
       assistantReady ||
       (hasUi && (state == AppState::kCloudConnecting ||
                 state == AppState::kOnline || state == AppState::kOffline));
@@ -375,9 +499,7 @@ void setState(
 }
 
 uint32_t retryDelayMs(uint8_t failures) {
-  const uint8_t exponent = min<uint8_t>(failures, 5);
-  const uint32_t base = min<uint32_t>(2000UL << exponent, 60000UL);
-  return base + random(0, 751);
+  return leopold::local_endpoint::retryBaseMs(failures) + random(0, 751);
 }
 
 void scheduleCloudRetry(uint32_t now) {
@@ -386,24 +508,12 @@ void scheduleCloudRetry(uint32_t now) {
   onboardingStatusPending = false;
   uiPending = false;
   heartbeatPending = false;
-  assetPending = false;
-  nextAssetIndex = 0;
   ++cloudFailures;
   nextCloudAttemptAt = now + retryDelayMs(cloudFailures);
   if (onboardingPending) {
     setState(AppState::kOffline, "TERMINA EN", "TU TELEFONO");
   } else {
     setState(AppState::kOffline);
-  }
-}
-
-void requestNextCloudAsset() {
-  if (!cloudConnected || assetPending || leopold::sky::allAssetsLoaded()) return;
-  if (nextAssetIndex >= leopold::sky::assetCount()) return;
-  const char* file = leopold::sky::assetFile(nextAssetIndex);
-  assetPending = cloud.requestAsset(file);
-  if (assetPending) {
-    Serial.printf("Cloud asset request: %s\n", file);
   }
 }
 
@@ -443,104 +553,28 @@ EXT_RAM_BSS_ATTR SduiScreen preservedSpotify;
 EXT_RAM_BSS_ATTR SduiScreen preservedSpotifyActions;
 EXT_RAM_BSS_ATTR SduiScreen preservedYoutube;
 
-SduiScreen& appendScreen(const char* id, const char* background = "#000000") {
-  SduiScreen& target = currentUi.screens[currentUi.screenCount++];
-  memset(&target, 0, sizeof(target));
-  strlcpy(target.screenId, id, sizeof(target.screenId));
-  target.background = SduiParser::rgb565(background);
-  return target;
+void readDisplayMenuPreferences() {
+  displayMenuState.background = screen.backgroundArt();
+  displayMenuState.dark = screen.sharedRenderState().appearanceDark;
+  displayMenuState.accent = screen.accentIndex();
+  displayMenuState.metric = weather.metric();
+  displayMenuState.spanish = screen.spanishLanguage();
+  displayMenuState.clock24 = telemetry.twentyFourHour();
+  displayMenuState.clockFace = screen.clockFace();
+  displayMenuState.clockBackground = screen.clockBackground();
+  displayMenuState.clockWeather = screen.sharedRenderState().clockShowWeather;
 }
 
-void addText(
-    SduiScreen& target,
-    const char* id,
-    const char* text,
-    int16_t x,
-    int16_t y,
-    uint8_t size = 2,
-    const char* color = "#FFFFFF",
-    TextAlign align = TextAlign::kCenter) {
-  if (target.componentCount >= kMaxSduiComponents) return;
-  SduiComponent& component = target.components[target.componentCount++];
-  component.type = ComponentType::kText;
-  strlcpy(component.id, id, sizeof(component.id));
-  strlcpy(component.text, text, sizeof(component.text));
-  component.x = x;
-  component.y = y;
-  component.size = size;
-  component.color = SduiParser::rgb565(color);
-  component.align = align;
+void buildDeviceDisplayMenu(SduiScreen& target) {
+  readDisplayMenuPreferences();
+  leopold::display_menu::build(target, displayMenuState);
 }
 
-void addButton(
-    SduiScreen& target,
-    const char* id,
-    const char* label,
-    int16_t x,
-    int16_t y,
-    int16_t width,
-    int16_t height,
-    const char* color = "#FFFFFF") {
-  if (target.componentCount >= kMaxSduiComponents) return;
-  SduiComponent& component = target.components[target.componentCount++];
-  component.type = ComponentType::kButton;
-  strlcpy(component.id, id, sizeof(component.id));
-  strlcpy(component.text, label, sizeof(component.text));
-  if (strcmp(id, "open-usb") == 0) {
-    strlcpy(component.icon, "usb", sizeof(component.icon));
-  } else if (strcmp(id, "open-whatsapp") == 0) {
-    strlcpy(component.icon, "whatsapp", sizeof(component.icon));
-  }
-  component.x = x;
-  component.y = y;
-  component.width = width;
-  component.height = height;
-  component.size = 1;
-  component.color = SduiParser::rgb565(color);
+void buildDeviceClockMenu(SduiScreen& target) {
+  readDisplayMenuPreferences();
+  leopold::display_menu::buildClock(target, displayMenuState);
 }
 
-void addBack(SduiScreen& target) {
-  addButton(target, "open-home", "<", 24, 42, 66, 52, "#FFFFFF");
-}
-
-void updateAdditionalOptionsLabels() {
-  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
-    SduiScreen& options = currentUi.screens[index];
-    if (strcmp(options.screenId, "device-additional-options") != 0) continue;
-    for (uint8_t componentIndex = 0;
-         componentIndex < options.componentCount;
-         ++componentIndex) {
-      SduiComponent& component = options.components[componentIndex];
-      if (strcmp(component.id, "options-title") == 0) {
-        strlcpy(
-            component.text,
-            screen.spanishLanguage() ? "OPCIONES" : "ADDITIONAL OPTIONS",
-            sizeof(component.text));
-      } else if (strcmp(component.id, "background-toggle") == 0) {
-        const char* backgroundLabel = screen.backgroundMode() == 0
-            ? (screen.spanishLanguage() ? "FONDO OSCURO" : "BACKGROUND: DARK")
-            : screen.backgroundMode() == 2
-                ? (screen.spanishLanguage() ? "FONDO CHEVRON" : "BACKGROUND: CHEVRON")
-                : (screen.spanishLanguage() ? "FONDO ORIGINAL" : "BACKGROUND: ORIGINAL");
-        strlcpy(
-            component.text,
-            backgroundLabel,
-            sizeof(component.text));
-      } else if (strcmp(component.id, "language-toggle") == 0) {
-        strlcpy(
-            component.text,
-            screen.spanishLanguage() ? "IDIOMA: ESPANOL" : "LANGUAGE: ENGLISH",
-            sizeof(component.text));
-      } else if (strcmp(component.id, "open-settings") == 0) {
-        strlcpy(
-            component.text,
-            screen.spanishLanguage() ? "ATRAS" : "BACK",
-            sizeof(component.text));
-      }
-    }
-    return;
-  }
-}
 
 void syncControlCenterScreen() {
   memset(&preservedSpotify, 0, sizeof(preservedSpotify));
@@ -571,6 +605,9 @@ void syncControlCenterScreen() {
   generated_ui::appendFallbackScreens(
       currentUi, hasSpotifyScreen ? &preservedSpotify : nullptr);
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+    applySettingsMenuScroll(currentUi.screens[index]);
+  }
+  for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     if (strcmp(currentUi.screens[index].screenId, "device-control-center") != 0) continue;
     for (uint8_t componentIndex = 0;
          componentIndex < currentUi.screens[index].componentCount;
@@ -593,7 +630,6 @@ void syncControlCenterScreen() {
   if (hasYoutubeScreen && !hasScreen("youtube-feed") && currentUi.screenCount < kMaxSduiScreens) {
     currentUi.screens[currentUi.screenCount++] = preservedYoutube;
   }
-  updateAdditionalOptionsLabels();
   Serial.printf("Sky shell ready: %u screens\n", currentUi.screenCount);
 }
 
@@ -618,9 +654,22 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     return;
   }
 
+  const bool wasDisplayMenu = strcmp(previousScreenId, "device-additional-options") == 0;
+  const bool wasAppearanceMenu = strcmp(previousScreenId, "device-appearance-options") == 0;
+  const bool wasClockMenu = strcmp(previousScreenId, "device-clock-options") == 0;
   syncControlCenterScreen();
 
-  if (previousScreenId[0] != '\0') {
+  if (wasDisplayMenu || wasAppearanceMenu || wasClockMenu) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, "device-additional-options") == 0) {
+        currentUi.activeScreen = index;
+        buildDeviceDisplayMenu(currentUi.active());
+        if (wasAppearanceMenu) { displayMenuState.expanded = 1; buildDeviceDisplayMenu(currentUi.active()); }
+        else if (wasClockMenu) buildDeviceClockMenu(currentUi.active());
+        break;
+      }
+    }
+  } else if (previousScreenId[0] != '\0') {
     for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
       if (strcmp(currentUi.screens[index].screenId, previousScreenId) == 0) {
         currentUi.activeScreen = index;
@@ -629,6 +678,13 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     }
   }
   if (strcmp(currentUi.active().screenId, "leopold-welcome") == 0) {
+#if defined(LEOPOLD_LOCAL_DEVELOPMENT)
+    Serial.println("Cloud welcome UI ignored in local-development mode");
+    syncControlCenterScreen();
+    hasUi = currentUi.screenCount > 0;
+    weather.render(currentUi);
+    return;
+#else
     hasUi = false;
     assistantReady = true;
     welcomeActive = true;
@@ -638,6 +694,7 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
     nextWelcomeAt = now + kWelcomeScreenMs;
     nextUiPollAt = now + currentUi.pollAfterMs;
     return;
+#endif
   }
   welcomeActive = false;
   assistantReady = false;
@@ -654,6 +711,7 @@ void acceptUi(const CloudResponse& response, uint32_t now) {
   if (!uiStore.save(response.body, response.bodyLength)) {
     Serial.println("SDUI cache write failed");
   }
+  weather.render(currentUi);
   screen.renderSdui(currentUi);
   nextUiPollAt = now + currentUi.pollAfterMs;
 }
@@ -678,9 +736,14 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
       connectPending = false;
       if (response.httpCode == 401 || response.httpCode == 403) {
         cloudConnected = false;
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT)
         screen.showNotActivated();
         appState = AppState::kError;
         Serial.println("Leopold state: ERROR");
+#else
+        appState = AppState::kOffline;
+        Serial.printf("Cloud authorization unavailable (HTTP %d); local UI remains active\n", response.httpCode);
+#endif
         nextCloudAttemptAt = now + retryDelayMs(++cloudFailures);
       } else if (response.httpCode == 409 && !retryConnectWithoutSetupToken) {
         retryConnectWithoutSetupToken = true;
@@ -695,15 +758,21 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
         setState(AppState::kOnline);
         nextHeartbeatAt = now + heartbeatIntervalMs;
         if (onboardingPending && onboardingUrl[0] != '\0') {
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT)
           screen.showState(
               AppState::kOnline,
               "TERMINA EN",
               "TU TELEFONO");
+#else
+          Serial.println("Cloud onboarding is available; local UI remains active");
+#endif
           nextOnboardingPollAt = now + kOnboardingPollMs;
           Serial.println("Waiting for claim from captive onboarding");
         } else {
           wifi.completeSetup();
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT)
           startWelcome(ownerDisplayName, now);
+#endif
           if (!welcomeActive) {
             nextUiPollAt = now;
           }
@@ -723,7 +792,11 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
           onboardingUrl[0] = '\0';
           wifi.completeSetup();
           const char* ownerName = document["owner_display_name"] | "";
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT)
           startWelcome(ownerName, now);
+#else
+          (void)ownerName;
+#endif
           if (!welcomeActive) {
             nextUiPollAt = now;
           }
@@ -738,6 +811,11 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
 
     case CloudOperation::kFetchUi:
       uiPending = false;
+#if defined(LEOPOLD_LOCAL_DEVELOPMENT)
+      cloudConnected = successful || response.httpCode == HTTP_CODE_NOT_MODIFIED;
+      nextUiPollAt = now + currentUi.pollAfterMs;
+      Serial.println("Remote SDUI ignored in local-development mode; shared local UI retained");
+#else
       if (response.httpCode == HTTP_CODE_NOT_MODIFIED) {
         cloudConnected = true;
         nextUiPollAt = now + currentUi.pollAfterMs;
@@ -747,23 +825,10 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
       } else {
         scheduleCloudRetry(now);
       }
+#endif
       break;
 
     case CloudOperation::kFetchAsset:
-      assetPending = false;
-      if (successful && response.body != nullptr &&
-          leopold::sky::loadCloudAsset(
-              response.assetFile, reinterpret_cast<uint8_t*>(response.body),
-              response.bodyLength)) {
-        Serial.printf("Cloud asset loaded: %s (%u bytes)\n",
-                      response.assetFile,
-                      static_cast<unsigned>(response.bodyLength));
-        ++nextAssetIndex;
-      } else {
-        Serial.printf("Cloud asset failed: %s http=%d\n",
-                      response.assetFile, response.httpCode);
-        nextAssetIndex = 0;
-      }
       break;
 
     case CloudOperation::kHeartbeat:
@@ -790,6 +855,23 @@ void handleCloudResponse(CloudResponse& response, uint32_t now) {
       }
       if (!successful && response.httpCode < 0) {
         scheduleCloudRetry(now);
+      }
+      break;
+
+    case CloudOperation::kFirmwareUpdate:
+      firmwareUpdatePending = false;
+      if (response.httpCode == HTTP_CODE_NO_CONTENT ||
+          (response.httpCode >= 200 && response.httpCode < 300)) {
+        firmwareUpdateFailures = 0;
+        nextFirmwareCheckAt = now + kFirmwarePollMs;
+      } else {
+        firmwareUpdateFailures = min<uint8_t>(firmwareUpdateFailures + 1, 5);
+        nextFirmwareCheckAt = now + retryDelayMs(firmwareUpdateFailures);
+      }
+      if (response.httpCode == HTTP_CODE_OK) {
+        Serial.println("OTA update selected; reboot requested");
+      } else if (response.httpCode != HTTP_CODE_NO_CONTENT) {
+        Serial.printf("OTA check ended code=%d; retry delayed\n", response.httpCode);
       }
       break;
   }
@@ -846,7 +928,7 @@ void queueTap(const char* componentId, uint32_t revision, uint32_t now) {
       eventId,
       sizeof(eventId),
       "%s-%08lx-%04lx",
-      LEOPOLD_DEVICE_ID,
+      leopold::identity::deviceId(),
       static_cast<unsigned long>(now),
       static_cast<unsigned long>(eventSequence++ & 0xFFFF));
   snprintf(
@@ -870,9 +952,101 @@ bool isComputerControl(const char* componentId) {
       strcmp(componentId, "computer-screenshot") == 0;
 }
 
+const SduiComponent* findSettingsButtonAt(
+    const SduiScreen& screen,
+    int16_t x,
+    int16_t y) {
+  if (strcmp(screen.screenId, "device-control-center") != 0) return nullptr;
+  if (x < generated_ui::kSettingsMenuX ||
+      x >= generated_ui::kSettingsMenuX + generated_ui::kSettingsMenuWidth ||
+      y < generated_ui::kSettingsMenuY ||
+      y >= generated_ui::kSettingsMenuY + generated_ui::kSettingsMenuHeight) return nullptr;
+  for (uint8_t index = 0; index < generated_ui::kSettingsInteractionRowCount; ++index) {
+    const generated_ui::SettingsRowBounds& bounds = generated_ui::kSettingsRowBounds[index];
+    if (x < bounds.x || x >= bounds.x + bounds.width ||
+        y < bounds.y || y >= bounds.y + bounds.height) continue;
+    for (uint8_t componentIndex = 0;
+         componentIndex < screen.componentCount;
+         ++componentIndex) {
+      const SduiComponent& component = screen.components[componentIndex];
+      if (component.type == ComponentType::kButton &&
+          strcmp(component.id, bounds.id) == 0) return &component;
+    }
+  }
+  return nullptr;
+}
+
+void applySettingsMenuScroll(SduiScreen& screen) {
+  if (strcmp(screen.screenId, "device-control-center") != 0) return;
+  for (uint8_t rowIndex = 0; rowIndex < generated_ui::kSettingsInteractionRowCount; ++rowIndex) {
+    const generated_ui::SettingsRowBounds& bounds = generated_ui::kSettingsRowBounds[rowIndex];
+    for (uint8_t componentIndex = 0; componentIndex < screen.componentCount; ++componentIndex) {
+      SduiComponent& component = screen.components[componentIndex];
+      if (strcmp(component.id, bounds.id) != 0) continue;
+      component.x = bounds.x;
+      component.y = static_cast<int16_t>(bounds.y - settingsMenuScrollOffset);
+      component.width = bounds.width;
+      component.height = bounds.height;
+      break;
+    }
+  }
+}
+
+bool openLocalScreen(const char* componentId);
+
+bool handleSettingsTap(const SduiComponent& button, uint32_t now) {
+  if (strcmp(button.id, "settings-wifi") == 0) {
+    localPanel = LocalPanel::kWifi;
+    showLocalConnectivityPanel(now);
+    Serial.println("Wi-Fi details opened");
+    return true;
+  }
+  if (strcmp(button.id, "settings-bluetooth") == 0) {
+    localPanel = LocalPanel::kBluetooth;
+    showLocalConnectivityPanel(now);
+    Serial.println("Bluetooth details opened");
+    return true;
+  }
+  if (strcmp(button.id, "settings-display") == 0) {
+    if (openLocalScreen("open-additional-options")) {
+      buildDeviceDisplayMenu(currentUi.active());
+      screen.renderSduiScreen(currentUi);
+    }
+    return true;
+  }
+  if (strcmp(button.id, "settings-accounts") == 0) {
+    if (openLocalScreen("open-accounts")) screen.renderSduiScreen(currentUi);
+    return true;
+  }
+  if (strcmp(button.id, "settings-sound") == 0) {
+    Serial.printf("Settings row has no destination: %s\n", button.id);
+    return true;
+  }
+  return false;
+}
+
 void sendComputerControlOverUsb(const char* componentId) {
   if (!isComputerControl(componentId)) return;
-  Serial.printf("LEOPOLD_CMD:%s\n", componentId);
+  if (strcmp(componentId, "computer-screenshot") == 0) {
+    Serial.println("CAPTURE unavailable: select a supported host mode first");
+    return;
+  }
+  Serial.println(leopold::sendComputerControl(componentId)
+      ? "Computer Consumer Control report sent"
+      : "Computer control unavailable: USB HID host is not connected");
+}
+
+void refreshComputerControlState(SduiDocument& document) {
+  const char* status = leopold::computerControlConnected() ? "Connected" : "Not connected";
+  for (uint8_t screenIndex = 0; screenIndex < document.screenCount; ++screenIndex) {
+    SduiScreen& liveScreen = document.screens[screenIndex];
+    for (uint8_t componentIndex = 0; componentIndex < liveScreen.componentCount; ++componentIndex) {
+      SduiComponent& component = liveScreen.components[componentIndex];
+      if (strcmp(component.id, "computer-status") == 0) {
+        strlcpy(component.text, status, sizeof(component.text));
+      }
+    }
+  }
 }
 
 const SduiComponent* firstButton() {
@@ -883,6 +1057,26 @@ const SduiComponent* firstButton() {
     }
   }
   return nullptr;
+}
+
+void syncDisplayIndicators() {
+  char timeText[9] = {};
+  telemetry.formattedTime(timeText);
+  screen.drawIndicators(
+      wifi.connected(), cloudConnected, bluetooth.enabled(), bluetooth.connected(),
+      telemetry.batteryPercent(), timeText);
+  refreshComputerControlState(currentUi);
+  for (uint8_t screenIndex = 0; screenIndex < currentUi.screenCount; ++screenIndex) {
+    SduiScreen& liveScreen = currentUi.screens[screenIndex];
+    for (uint8_t componentIndex = 0; componentIndex < liveScreen.componentCount; ++componentIndex) {
+      SduiComponent& component = liveScreen.components[componentIndex];
+      if (strcmp(component.id, "sky-time") == 0) {
+        strlcpy(component.text, timeText, sizeof(component.text));
+      } else if (strcmp(component.id, "computer-status") == 0) {
+        strlcpy(component.text, leopold::computerControlConnected() ? "Connected" : "Not connected", sizeof(component.text));
+      }
+    }
+  }
 }
 
 bool openLocalScreen(const char* componentId) {
@@ -900,6 +1094,7 @@ bool openLocalScreen(const char* componentId) {
   else if (strcmp(requested, "additional-options") == 0) {
     screenId = "device-additional-options";
   }
+  else if (strcmp(requested, "accounts") == 0) screenId = "device-accounts";
   else if (strcmp(requested, "weather") == 0) screenId = "sky-weather";
   else if (strcmp(requested, "navigation") == 0) screenId = "sky-navigation";
   else if (strcmp(requested, "spotify") == 0) screenId = "spotify-player";
@@ -907,11 +1102,13 @@ bool openLocalScreen(const char* componentId) {
   for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
     if (strcmp(currentUi.screens[index].screenId, screenId) == 0) {
       currentUi.activeScreen = index;
-      screen.renderSduiScreen(currentUi);
-      if (strcmp(screenId, "sky-weather") == 0) {
-        weather.render(currentUi);
-        screen.renderSduiScreen(currentUi);
+      if (strcmp(screenId, "device-control-center") == 0) {
+        settingsMenuScrollOffset = 0;
+        applySettingsMenuScroll(currentUi.active());
       }
+      syncDisplayIndicators();
+      if (strcmp(screenId, "sky-weather") == 0) weather.render(currentUi);
+      screen.renderSduiScreen(currentUi);
       lastIndicatorAt = 0;
       Serial.printf("Local screen opened: %s\n", screenId);
       return true;
@@ -920,15 +1117,222 @@ bool openLocalScreen(const char* componentId) {
   return false;
 }
 
+void clearWeatherLookupIntent() {
+  weatherLookupPending = false;
+  weatherLookupFeedback = false;
+  displayMenuState.status[0] = '\0';
+}
+
+void updateWeatherLookupIntent(const leopold::display_menu::State& before,
+                               leopold::display_menu::Effect effect,
+                               const char* buttonId) {
+  using leopold::display_menu::Effect;
+  if ((weatherLookupPending || weatherLookupFeedback) &&
+      (before.country != displayMenuState.country ||
+       strcmp(before.postal, displayMenuState.postal) != 0 ||
+       before.expanded != displayMenuState.expanded ||
+       effect == Effect::kBack || effect == Effect::kClock ||
+       strcmp(buttonId, "display-postal-cancel") == 0)) {
+    clearWeatherLookupIntent();
+  }
+  if (effect == Effect::kLookup) {
+    // Keep a refused Apply pending while its draft is current. Once accepted,
+    // navigation and Cancel only detach the editor from the background save.
+    if (!weatherLookupFeedback) weatherLookupPending = weather.ready();
+    const bool waiting = weatherLookupPending || weatherLookupFeedback;
+    leopold::display_menu::copy(displayMenuState.status, sizeof(displayMenuState.status),
+        waiting ? (displayMenuState.spanish ? "Buscando ubicación..." : "Looking up location...")
+                : (displayMenuState.spanish ? "No se pudo iniciar. Intenta de nuevo." : "Lookup could not start. Try again."));
+  }
+}
+
 void processInput(uint32_t now) {
   TouchPoint point;
   TouchGesture gesture = TouchGesture::kNone;
   const bool hasGesture = touch.pollGesture(gesture, point, now);
+  static uint32_t buttonContactId = 0;
+  static char buttonOriginId[33] = {};
+  static bool buttonContactCancelled = true;
+  if (hasUi && localPanel == LocalPanel::kNone && touch.contactDown()) {
+    const TouchPoint sample = touch.lastPoint();
+    if (buttonContactId != touch.contactId()) {
+      buttonContactId = touch.contactId();
+      const SduiComponent* origin = findButtonAt(currentUi.active(), sample.x, sample.y);
+      strlcpy(buttonOriginId, origin == nullptr ? "" : origin->id, sizeof(buttonOriginId));
+      buttonContactCancelled = origin == nullptr;
+    } else if (buttonOriginId[0] != '\0') {
+      const SduiComponent* current = findButtonAt(currentUi.active(), sample.x, sample.y);
+      if (current == nullptr || strcmp(current->id, buttonOriginId) != 0) buttonContactCancelled = true;
+    }
+  }
+  char validButtonReleaseId[33] = {};
+  if (hasGesture && !touch.contactDown()) {
+    if (gesture == TouchGesture::kTap && !buttonContactCancelled && buttonOriginId[0] != '\0') {
+      const SduiComponent* released = findButtonAt(currentUi.active(), point.x, point.y);
+      if (released != nullptr && strcmp(released->id, buttonOriginId) == 0)
+        strlcpy(validButtonReleaseId, buttonOriginId, sizeof(validButtonReleaseId));
+    }
+    buttonContactId = 0;
+    buttonOriginId[0] = '\0';
+    buttonContactCancelled = true;
+  }
+  static uint32_t forecastContactId = 0;
+  static char forecastPressId[33] = {};
+  bool forecastReleaseValid = false;
+  if (hasUi && localPanel == LocalPanel::kNone &&
+      strcmp(currentUi.active().screenId, "sky-weather") == 0) {
+    if (touch.contactDown()) {
+      const TouchPoint sample = touch.lastPoint();
+      const SduiComponent* pressed = findButtonAt(currentUi.active(), sample.x, sample.y);
+      if (forecastContactId != touch.contactId()) {
+        forecastContactId = touch.contactId();
+        forecastPressId[0] = '\0';
+        if (pressed != nullptr && strncmp(pressed->id, "weather-forecast-", 17) == 0)
+          strlcpy(forecastPressId, pressed->id, sizeof(forecastPressId));
+      } else if (forecastPressId[0] != '\0' &&
+                 (pressed == nullptr || strcmp(pressed->id, forecastPressId) != 0)) {
+        forecastPressId[0] = '\0';
+      }
+    } else if (hasGesture && forecastPressId[0] != '\0') {
+      const SduiComponent* released = findButtonAt(currentUi.active(), point.x, point.y);
+      forecastReleaseValid = gesture == TouchGesture::kTap && released != nullptr &&
+          strcmp(released->id, forecastPressId) == 0;
+      forecastPressId[0] = '\0';
+      forecastContactId = 0;
+    }
+  }
+  static SettingsContact settingsContact;
+  static uint32_t settingsContactId = 0;
+  static bool settingsContactInitialized = false;
+  static bool settingsListGestureCaptured = false;
+  static int16_t settingsListStartY = 0;
+  static int16_t settingsListStartX = 0;
+  const char* releasedSettingsRow = nullptr;
+  if (hasUi && localPanel == LocalPanel::kNone &&
+      strcmp(currentUi.active().screenId, "device-control-center") == 0) {
+    const TouchPoint sample = touch.lastPoint();
+    const SduiComponent* row = findSettingsButtonAt(currentUi.active(), sample.x, sample.y);
+    const char* rowId = row ? row->id : nullptr;
+    if (touch.contactDown()) {
+      if (!settingsContactInitialized || settingsContactId != touch.contactId()) {
+        settingsContactId = touch.contactId();
+        settingsContactInitialized = true;
+        settingsContact.begin(rowId);
+        settingsListGestureCaptured = sample.x >= generated_ui::kSettingsMenuX &&
+            sample.x < generated_ui::kSettingsMenuX + generated_ui::kSettingsMenuWidth &&
+            sample.y >= generated_ui::kSettingsMenuY &&
+            sample.y < generated_ui::kSettingsMenuY + generated_ui::kSettingsMenuHeight;
+        settingsListStartY = sample.y;
+        settingsListStartX = sample.x;
+      }
+      if (settingsListGestureCaptured && abs(sample.y - settingsListStartY) >=
+              generated_ui::kSettingsGestureStartThreshold &&
+          abs(sample.y - settingsListStartY) >= abs(sample.x - settingsListStartX)) {
+        settingsContact.move(nullptr);
+        settingsMenuScrollOffset = sample.y < settingsListStartY
+            ? generated_ui::kSettingsMenuMaximumScroll : 0;
+        applySettingsMenuScroll(currentUi.active());
+        screen.setPressedButton(nullptr);
+        screen.renderSduiScreen(currentUi);
+      }
+      settingsContact.move(rowId);
+      if (screen.setPressedButton(settingsContact.selected())) screen.renderSduiScreen(currentUi);
+    } else if (hasGesture) {
+      releasedSettingsRow = settingsContact.release(rowId,
+          (gesture == TouchGesture::kTap && generated_ui::kSettingsReleaseTap) ||
+          (gesture == TouchGesture::kLongPress && generated_ui::kSettingsReleaseLongPress) ||
+          (gesture == TouchGesture::kRelease && generated_ui::kSettingsReleaseNeutral));
+    }
+  }
+  if (hasUi && localPanel == LocalPanel::kNone &&
+      strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
+    static uint32_t menuContactId = 0;
+    static int16_t menuStartX = 0, menuStartY = 0, menuStartScroll = 0;
+    static int menuStartGallery = 0;
+    static bool menuCaptured = false, menuMoved = false, menuGalleryCaptured = false;
+    const TouchPoint sample = touch.lastPoint();
+    if (touch.contactDown()) {
+      if (menuContactId != touch.contactId()) {
+        menuContactId = touch.contactId(); menuStartX = sample.x; menuStartY = sample.y;
+        menuStartScroll = displayMenuState.scroll; menuMoved = false;
+        menuStartGallery = displayMenuState.backgroundGalleryOffset;
+        menuCaptured = sample.x >= leopold::display_menu::kViewportX &&
+            sample.x < leopold::display_menu::kViewportX + leopold::display_menu::kViewportWidth &&
+            sample.y >= leopold::display_menu::kViewportY &&
+            sample.y < leopold::display_menu::kViewportY + leopold::display_menu::kViewportHeight;
+        const SduiComponent* origin = findButtonAt(currentUi.active(), sample.x, sample.y);
+        menuGalleryCaptured = origin != nullptr && strncmp(origin->id, "display-background-", 19) == 0;
+      }
+      const int dx = static_cast<int>(sample.x) - menuStartX;
+      const int dy = static_cast<int>(sample.y) - menuStartY;
+      if (menuCaptured && max(abs(dx), abs(dy)) >= generated_ui::kSettingsGestureStartThreshold) {
+        if (menuGalleryCaptured && abs(dx) >= abs(dy)) {
+          const int next = (menuStartGallery + (dx < 0 ? 1 : leopold::display_menu::kBackgroundCount - 1)) % leopold::display_menu::kBackgroundCount;
+          menuMoved = true;
+          if (displayMenuState.backgroundGalleryOffset != next) {
+            displayMenuState.backgroundGalleryOffset = next;
+            buildDeviceDisplayMenu(currentUi.active());
+            screen.clearPressedButton(); screen.renderSduiScreen(currentUi);
+          }
+        } else if (abs(dy) >= abs(dx)) {
+          menuMoved = true;
+          displayMenuState.scroll = leopold::display_menu::clamp(menuStartScroll - dy,
+              0, leopold::display_menu::maxScroll(displayMenuState));
+          buildDeviceDisplayMenu(currentUi.active());
+          screen.clearPressedButton(); screen.renderSduiScreen(currentUi);
+        }
+      }
+      if (menuMoved) return;
+    } else if (menuCaptured && menuMoved) {
+      menuCaptured = menuMoved = menuGalleryCaptured = false;
+      screen.clearPressedButton(); screen.renderSduiScreen(currentUi);
+      return;
+    } else if (!touch.contactDown()) {
+      menuCaptured = menuGalleryCaptured = false;
+    }
+  }
+  if (hasUi && localPanel == LocalPanel::kNone &&
+      strcmp(currentUi.active().screenId, "computer-controls") == 0) {
+    static uint32_t computerContactId = 0;
+    const TouchPoint sample = touch.lastPoint();
+    const SduiComponent* button = findButtonAt(currentUi.active(), sample.x, sample.y);
+    const char* pressedId = button != nullptr && isComputerControl(button->id)
+        ? button->id : nullptr;
+    if (touch.contactDown()) {
+      computerContactId = touch.contactId();
+      if (screen.setPressedButton(pressedId)) screen.renderSduiScreen(currentUi);
+    } else if (hasGesture && computerContactId != 0) {
+      computerContactId = 0;
+      if (screen.clearPressedButton()) screen.renderSduiScreen(currentUi);
+    }
+  }
+  if (hasGesture && (gesture == TouchGesture::kSwipeUp ||
+      gesture == TouchGesture::kSwipeLeft || gesture == TouchGesture::kSwipeRight) &&
+      localPanel != LocalPanel::kNone) {
+    wifi.cancelSelection(now);
+    wifiScan.cancel();
+    selectedWifiPassword = String();
+    localPanel = LocalPanel::kNone;
+  }
   if (hasGesture && gesture == TouchGesture::kDrag && hasUi &&
-      localPanel == LocalPanel::kNone && capturedSlider == nullptr) {
-    const SduiComponent* pressed =
-        findButtonAt(currentUi.active(), point.x, point.y);
-    if (pressed != nullptr && screen.setPressedButton(pressed->id)) {
+      localPanel == LocalPanel::kNone && capturedSlider == nullptr &&
+      strcmp(currentUi.active().screenId, "device-control-center") != 0) {
+    const SduiComponent* pressed = findButtonAt(currentUi.active(), point.x, point.y);
+    if (buttonOriginId[0] != '\0' &&
+        (buttonContactCancelled || pressed == nullptr || strcmp(pressed->id, buttonOriginId) != 0))
+      pressed = nullptr;
+    if (touch.traceEnabled()) {
+      static uint32_t lastHitTraceAt = 0;
+      if (now - lastHitTraceAt >= 250) {
+        Serial.printf("TOUCH_TRACE hit screen=%s x=%u y=%u button=%s\n",
+                      currentUi.active().screenId, point.x, point.y,
+                      pressed == nullptr ? "none" : pressed->id);
+        lastHitTraceAt = now;
+      }
+    }
+    const char* pressedId = pressed == nullptr ? nullptr : pressed->id;
+    if (screen.setPressedButton(pressedId)) {
+      if (touch.traceEnabled()) Serial.printf("TOUCH_TRACE render pressed=%s\n", pressedId == nullptr ? "none" : pressedId);
       screen.renderSduiScreen(currentUi);
     }
   } else if (hasGesture && gesture != TouchGesture::kDrag &&
@@ -938,6 +1342,7 @@ void processInput(uint32_t now) {
     }
   }
   if (hasGesture && gesture == TouchGesture::kSwipeUp &&
+      !(strcmp(currentUi.active().screenId, "device-control-center") == 0 && settingsListGestureCaptured) &&
       capturedSlider == nullptr && hasUi) {
     localPanel = LocalPanel::kNone;
     openLocalScreen("open-home");
@@ -951,7 +1356,7 @@ void processInput(uint32_t now) {
     Serial.println("Clock format toggled");
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kBluetoothDevices) {
-    if (point.x <= 100 && point.y <= 92) {
+    if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kBluetooth;
       showLocalConnectivityPanel(now);
     } else if (point.y >= 400) {
@@ -968,19 +1373,28 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel == LocalPanel::kWifiNetworks) {
-    if (point.x <= 100 && point.y <= 92) {
+    if (isConnectivityBack(point)) {
+      wifi.cancelSelection(now);
+      wifiScan.cancel();
       localPanel = LocalPanel::kWifi;
       showLocalConnectivityPanel(now);
-    } else if (point.y >= 400) {
+    } else if (point.x >= generated_ui::kWifiRefreshX &&
+               point.x < generated_ui::kWifiRefreshX + generated_ui::kWifiRefreshWidth &&
+               point.y >= generated_ui::kWifiRefreshY &&
+               point.y < generated_ui::kWifiRefreshY + generated_ui::kWifiRefreshHeight) {
       beginWifiScan();
-    } else if (point.y >= 105 && point.y < 400) {
+    } else if (point.x >= 34 && point.x <= 432 && point.y >= 111 && point.y < 396) {
       const uint8_t index = (point.y - 111) / 57;
-      if (index < wifiNetworkCount) {
+      if ((point.y - 111) % 57 < 49 && index < wifiNetworkCount) {
         selectedWifiName = wifiNetworks[index].name;
         selectedWifiPassword = String();
         wifiKeyGroup = -1;
         wifiUppercase = false;
-        if (wifiNetworks[index].secured) {
+        if (selectedWifiName != failedWifiName && wifi.connectSavedNetwork(selectedWifiName.c_str(), now)) {
+          localPanel = LocalPanel::kWifiConnecting;
+          wifiSelectionStartedAt = now;
+          screen.showWifiConnecting(selectedWifiName.c_str(), "Connecting to saved network...");
+        } else if (wifiNetworks[index].secured) {
           localPanel = LocalPanel::kWifiPassword;
           renderWifiPassword();
         } else {
@@ -990,12 +1404,12 @@ void processInput(uint32_t now) {
           screen.showWifiConnecting(
               selectedWifiName.c_str(), "Negociando conexion...");
         }
-        Serial.printf("Wi-Fi selected on device: %s\n", selectedWifiName.c_str());
+        Serial.println("Wi-Fi network selected on device");
       }
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiPassword) {
-    if (point.x <= 88 && point.y <= 76) {
+    if (isConnectivityBack(point)) {
       if (wifiKeyGroup >= 0) {
         wifiKeyGroup = -1;
         renderWifiPassword();
@@ -1003,7 +1417,9 @@ void processInput(uint32_t now) {
         localPanel = LocalPanel::kWifiNetworks;
         renderWifiNetworks();
       }
-    } else if (point.y >= 75 && point.y <= 151 && point.x >= 340) {
+    } else if (point.y >= generated_ui::kWifiPasswordFieldY &&
+               point.y < generated_ui::kWifiPasswordFieldY + generated_ui::kWifiPasswordFieldHeight &&
+               point.x >= 340 && point.x < generated_ui::kWifiPasswordFieldX + generated_ui::kWifiPasswordFieldWidth) {
       if (!selectedWifiPassword.isEmpty()) {
         selectedWifiPassword.remove(selectedWifiPassword.length() - 1);
         renderWifiPassword();
@@ -1046,25 +1462,41 @@ void processInput(uint32_t now) {
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
              localPanel == LocalPanel::kWifiConnecting) {
-    if (point.x <= 100 && point.y <= 92) {
-      WiFi.disconnect(false, false);
+    if (isConnectivityBack(point)) {
+      wifi.cancelSelection(now);
       localPanel = LocalPanel::kWifiNetworks;
       renderWifiNetworks("Conexion cancelada");
       Serial.println("On-device Wi-Fi connection cancelled");
     }
   } else if (hasGesture && gesture == TouchGesture::kTap &&
       localPanel != LocalPanel::kNone) {
-    if (point.x <= 116 && point.y <= 108) {
+    if (isConnectivityBack(point)) {
       localPanel = LocalPanel::kNone;
+      syncDisplayIndicators();
       screen.renderSduiScreen(currentUi);
       lastIndicatorAt = 0;
       Serial.println("Connectivity details closed");
+     } else if (localPanel == LocalPanel::kWifi &&
+               point.x >= generated_ui::kWifiScanX &&
+               point.x < generated_ui::kWifiScanX + generated_ui::kWifiScanWidth &&
+               point.y >= generated_ui::kWifiScanY &&
+               point.y < generated_ui::kWifiScanY + generated_ui::kWifiScanHeight) {
+      beginWifiScan();
+      return;
+    } else if (localPanel == LocalPanel::kWifi &&
+               point.x >= generated_ui::kWifiChangeX &&
+               point.x < generated_ui::kWifiChangeX + generated_ui::kWifiChangeWidth &&
+               point.y >= generated_ui::kWifiChangeY &&
+               point.y < generated_ui::kWifiChangeY + generated_ui::kWifiChangeHeight) {
+      beginWifiScan();
+      return;
     } else if (point.y >= 356 && point.y <= 450) {
       if (localPanel == LocalPanel::kWifi) {
         if (point.x < 233) {
           wifi.reconnectNow(now);
         } else {
           beginWifiScan();
+          return; // Keep the scan list; do not repaint the details panel over it.
         }
       } else if (localPanel == LocalPanel::kCloud && wifi.connected()) {
         cloudConnected = false;
@@ -1081,42 +1513,71 @@ void processInput(uint32_t now) {
                point.x <= 88 && point.y <= 94))) {
     openLocalScreen("open-home");
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
-             ((point.x >= 72 && point.x <= 170 &&
-               point.y >= 120 && point.y <= 218) ||
-              (point.x >= 180 && point.x <= 278 &&
-               point.y >= 120 && point.y <= 218) ||
-              (point.x >= 124 && point.x <= 222 &&
-               point.y >= 224 && point.y <= 322))) {
-    localPanel = point.y >= 224
-        ? LocalPanel::kCloud
-        : (point.x >= 180 ? LocalPanel::kBluetooth : LocalPanel::kWifi);
+             localPanel == LocalPanel::kNone &&
+             strcmp(currentUi.active().screenId, "sky-home") == 0 &&
+             point.y >= generated_ui::kHomeStatusTouchY && point.y < generated_ui::kHomeStatusTouchY + generated_ui::kHomeStatusTouchHeight &&
+             point.x >= generated_ui::kHomeStatusCloudTouchX && point.x < generated_ui::kHomeStatusWifiTouchX + generated_ui::kHomeStatusWifiTouchWidth) {
+    if (point.x < generated_ui::kHomeStatusBluetoothTouchX) localPanel = LocalPanel::kCloud;
+    else if (point.x < generated_ui::kHomeStatusWifiTouchX) localPanel = LocalPanel::kBluetooth;
+    else localPanel = LocalPanel::kWifi;
     showLocalConnectivityPanel(now);
-    Serial.println(
-        localPanel == LocalPanel::kWifi
-            ? "Wi-Fi details opened"
-            : (localPanel == LocalPanel::kBluetooth
-                   ? "Bluetooth details opened"
-                   : "Cloud details opened"));
+    Serial.println("Home status indicator opened connectivity details");
+  } else if (hasGesture && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") == 0 &&
+             localPanel == LocalPanel::kNone) {
+    const SduiComponent* button = findSettingsButtonAt(currentUi.active(), point.x, point.y);
+    if (releasedSettingsRow && button && strcmp(releasedSettingsRow, button->id) == 0)
+      handleSettingsTap(*button, now);
   } else if (hasGesture && gesture == TouchGesture::kTap && hasUi &&
-             strcmp(currentUi.active().screenId, "device-additional-options") == 0) {
+             (strcmp(currentUi.active().screenId, "device-additional-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-appearance-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-clock-options") == 0 ||
+              strcmp(currentUi.active().screenId, "device-accounts") == 0)) {
+    const bool clockPage = strcmp(currentUi.active().screenId, "device-clock-options") == 0;
+    const bool accountsPage = strcmp(currentUi.active().screenId, "device-accounts") == 0;
     const SduiComponent* button = findButtonAt(currentUi.active(), point.x, point.y);
-    if (button != nullptr) {
-      if (strcmp(button->id, "open-settings") == 0) {
-        openLocalScreen("open-settings");
-      } else if (strcmp(button->id, "background-toggle") == 0) {
-        screen.cycleBackground();
-        updateAdditionalOptionsLabels();
-        screen.renderSduiScreen(currentUi);
-        Serial.println("Background preference toggled");
-      } else if (strcmp(button->id, "language-toggle") == 0) {
-        screen.toggleLanguage();
-        updateAdditionalOptionsLabels();
-        screen.renderSduiScreen(currentUi);
-        Serial.println("Language preference toggled");
+    const bool insideMenu = point.x >= leopold::display_menu::kViewportX &&
+        point.x < leopold::display_menu::kViewportX + leopold::display_menu::kViewportWidth &&
+        point.y >= leopold::display_menu::kViewportY &&
+        point.y < leopold::display_menu::kViewportY + leopold::display_menu::kViewportHeight;
+    // Match browser clipping: scrolled controls cannot intercept the fixed header.
+    if (button != nullptr && (accountsPage || strcmp(button->id, "menu-back") == 0 || insideMenu)) {
+      if (accountsPage) {
+        if (strcmp(button->id, "menu-back") == 0) openLocalScreen("open-settings");
+      } else {
+        readDisplayMenuPreferences();
+        const auto before = displayMenuState;
+        const auto effect = leopold::display_menu::act(displayMenuState, button->id, clockPage);
+        updateWeatherLookupIntent(before, effect, button->id);
+        if (effect == leopold::display_menu::Effect::kBack) {
+          if (clockPage) buildDeviceDisplayMenu(currentUi.active());
+          else {
+            displayMenuState.expanded = -1; displayMenuState.scroll = 0;
+            openLocalScreen("open-settings");
+          }
+        } else if (effect == leopold::display_menu::Effect::kClock) {
+          buildDeviceClockMenu(currentUi.active());
+        } else {
+          if (effect == leopold::display_menu::Effect::kPreferences) {
+            if (before.dark != displayMenuState.dark) screen.setAppearanceDark(displayMenuState.dark);
+            if (before.accent != displayMenuState.accent) screen.setAccentIndex(displayMenuState.accent);
+            if (before.metric != displayMenuState.metric) weather.setMetric(displayMenuState.metric, currentUi);
+            if (before.spanish != displayMenuState.spanish) screen.toggleLanguage();
+            if (before.clock24 != displayMenuState.clock24) telemetry.toggleTimeFormat();
+            if (before.clockFace != displayMenuState.clockFace) screen.setClockFace(displayMenuState.clockFace);
+            if (before.clockWeather != displayMenuState.clockWeather) screen.setClockShowWeather(displayMenuState.clockWeather);
+            if (before.background != displayMenuState.background)
+              screen.setBackgroundArt(static_cast<uint8_t>(displayMenuState.background));
+            if (before.clockBackground != displayMenuState.clockBackground)
+              screen.setClockBackground(static_cast<uint8_t>(displayMenuState.clockBackground));
+          }
+          if (clockPage) buildDeviceClockMenu(currentUi.active()); else buildDeviceDisplayMenu(currentUi.active());
+        }
       }
+      screen.renderSduiScreen(currentUi);
     }
   }
+
   SduiComponent* slider = nullptr;
   if (hasGesture && hasUi && localPanel == LocalPanel::kNone) {
     if (gesture == TouchGesture::kDrag && capturedSlider == nullptr) {
@@ -1139,8 +1600,13 @@ void processInput(uint32_t now) {
       const int16_t relativeX = min<int16_t>(
           max<int16_t>(point.x - slider->x, 0),
           slider->width);
-      slider->value = static_cast<uint32_t>(relativeX) * slider->maximum /
-                      slider->width;
+      constexpr uint32_t kBrightnessMinimum = 5;
+      constexpr uint32_t kBrightnessMaximum = 100;
+      const uint32_t midpoint = slider->width / 2;
+      slider->value = relativeX <= midpoint
+          ? kBrightnessMinimum + static_cast<uint32_t>(relativeX) * (50 - kBrightnessMinimum) / midpoint
+          : 50 + static_cast<uint32_t>(relativeX - midpoint) * (kBrightnessMaximum - 50) /
+              (slider->width - midpoint);
     }
     if (strcmp(slider->id, "display-brightness") == 0) {
       screen.setBrightnessPercent(slider->value);
@@ -1181,7 +1647,18 @@ void processInput(uint32_t now) {
         gesture == TouchGesture::kSwipeLeft
             ? "Welcome swiped left"
             : "Welcome swiped right");
+  } else if (hasUi && gesture == TouchGesture::kSwipeUp) {
+    for (uint8_t index = 0; index < currentUi.screenCount; ++index) {
+      if (strcmp(currentUi.screens[index].screenId, "sky-home") == 0) {
+        currentUi.activeScreen = index;
+        break;
+      }
+    }
+    screen.renderSduiScreen(currentUi);
+    lastIndicatorAt = 0;
+    Serial.println("SDUI swipe up: sky-home");
   } else if (hasUi &&
+             !(strcmp(currentUi.active().screenId, "device-control-center") == 0 && settingsListGestureCaptured) &&
              (gesture == TouchGesture::kSwipeLeft ||
               gesture == TouchGesture::kSwipeRight) &&
              currentUi.screenCount > 1) {
@@ -1200,12 +1677,35 @@ void processInput(uint32_t now) {
         currentUi.active().screenId,
         currentUi.activeScreen + 1,
         currentUi.screenCount);
-  } else if (gesture == TouchGesture::kTap && hasUi) {
+  } else if (gesture == TouchGesture::kTap && hasUi &&
+             strcmp(currentUi.active().screenId, "device-control-center") != 0 &&
+             strcmp(currentUi.active().screenId, "device-additional-options") != 0 &&
+             strcmp(currentUi.active().screenId, "device-appearance-options") != 0 &&
+             strcmp(currentUi.active().screenId, "device-clock-options") != 0) {
+    // Settings releases were consumed above, including cancelled contacts.
     Serial.printf("Touch tap: x=%u y=%u\n", point.x, point.y);
-    const SduiComponent* button =
+    const SduiComponent* button = validButtonReleaseId[0] == '\0' ? nullptr :
         findButtonAt(currentUi.active(), point.x, point.y);
-    if (button != nullptr) {
-      if (strcmp(button->id, "weather-units") == 0 &&
+    if (button != nullptr && strcmp(button->id, "voltage-placeholder-home") != 0) {
+      if (strncmp(button->id, "weather-forecast-", 17) == 0 &&
+          strcmp(currentUi.active().screenId, "sky-weather") == 0 && forecastReleaseValid) {
+        const uint8_t days = strcmp(button->id, "weather-forecast-1") == 0 ? 1 :
+            strcmp(button->id, "weather-forecast-3") == 0 ? 3 :
+            strcmp(button->id, "weather-forecast-5") == 0 ? 5 : 0;
+        if (days == 1 || days == 3 || days == 5) {
+          weather.setForecastDays(days, currentUi);
+          screen.renderSduiScreen(currentUi);
+        }
+      } else if (strncmp(button->id, "display-accent-", 15) == 0) {
+        static const char* names[] = {"red", "orange", "yellow", "green", "blue", "indigo", "violet"};
+        for (uint8_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
+          if (strstr(button->id, names[index]) != nullptr) { screen.setAccentIndex(index); break; }
+        }
+        screen.renderSduiScreen(currentUi);
+      } else if (strncmp(button->id, "display-background-", 19) == 0 && button->id[19] >= '0' && button->id[19] < '0' + leopold::display_menu::kBackgroundCount) {
+        screen.setBackgroundArt(static_cast<uint8_t>(button->id[19] - '0'));
+        screen.renderSduiScreen(currentUi);
+      } else if (strcmp(button->id, "weather-units") == 0 &&
           strcmp(currentUi.active().screenId, "sky-weather") == 0) {
         weather.toggleUnits(currentUi);
         screen.renderSduiScreen(currentUi);
@@ -1257,8 +1757,30 @@ void processUsbCommands() {
     const char value = static_cast<char>(Serial.read());
     if (value == '\n' || value == '\r') {
       usbCommand[usbCommandLength] = '\0';
-      if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
+      if (strcmp(usbCommand, "LEOPOLD_OTA_CANCEL") == 0) {
+        leopold::firmware_ota::cancel();
+        Serial.println("LEOPOLD_OTA_CANCEL_REQUESTED");
+      } else if (strcmp(usbCommand, "LEOPOLD_SCREENSHOT") == 0) {
         if (!screen.writeLvglScreenshot(Serial)) Serial.println("LEOPOLD_SCREENSHOT_ERROR no framebuffer");
+      } else if (strcmp(usbCommand, "LEOPOLD_DISPLAY_INFO") == 0) {
+        screen.writeDisplayInfo(Serial);
+      } else if (strcmp(usbCommand, "LEOPOLD_DIAGNOSTICS") == 0) {
+        writeBootDiagnostics(Serial);
+      } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE ON") == 0) {
+        touch.setTraceEnabled(true);
+        screen.setTouchTraceEnabled(true);
+        Serial.println("LEOPOLD_TOUCH_TRACE_OK on");
+      } else if (strcmp(usbCommand, "LEOPOLD_TOUCH_TRACE OFF") == 0) {
+        touch.setTraceEnabled(false);
+        screen.setTouchTraceEnabled(false);
+        Serial.println("LEOPOLD_TOUCH_TRACE_OK off");
+      } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION") == 0) {
+        screen.showCalibration();
+        Serial.printf("LEOPOLD_CALIBRATION_OK %s\n", screen.calibrationMode() ? "on" : "unavailable");
+      } else if (strcmp(usbCommand, "LEOPOLD_CALIBRATION_EXIT") == 0) {
+        screen.exitCalibration();
+        if (hasUi) screen.renderSduiScreen(currentUi);
+        Serial.println("LEOPOLD_CALIBRATION_OK off");
       } else if (strncmp(usbCommand, "LEOPOLD_SCREEN ", 15) == 0) {
         localPanel = LocalPanel::kNone;
         const char* requestedScreen = usbCommand + 15;
@@ -1318,7 +1840,18 @@ void processEvents(uint32_t now) {
 }
 
 void processNetwork(uint32_t now) {
+  if (!networkServicesStarted) return;
+  leopold::local_endpoint::requestResolve(LEOPOLD_API_BASE_URL);
+  if (wifiScanWaitingForServices) {
+    wifiScanWaitingForServices = false;
+    if (localPanel == LocalPanel::kWifiNetworks && wifiScan.searching()) {
+      renderWifiNetworks();
+      Serial.println("LEOPOLD_WIFI_SCAN phase=service_ready");
+    }
+  }
   bluetooth.loop();
+  const int16_t scanResult = wifiScan.poll([]() { wifi.prepareForScan(); });
+  // Also drain cancellation after leaving the list, before another scan can start.
   if (localPanel == LocalPanel::kBluetoothDevices) {
     if (bluetoothScanWasRunning && !bluetooth.scanning()) {
       bluetoothScanWasRunning = false;
@@ -1328,22 +1861,27 @@ void processNetwork(uint32_t now) {
     return;
   }
   if (localPanel == LocalPanel::kWifiNetworks) {
-    const int16_t scanResult = WiFi.scanComplete();
-    if (wifiScanRunning && scanResult >= 0) {
-      wifiScanRunning = false;
-      wifiNetworkCount = min<uint8_t>(scanResult, kVisibleWifiNetworks);
-      for (uint8_t index = 0; index < wifiNetworkCount; ++index) {
-        wifiNetworks[index].name = WiFi.SSID(index);
-        wifiNetworks[index].rssi = WiFi.RSSI(index);
-        wifiNetworks[index].secured =
-            WiFi.encryptionType(index) != WIFI_AUTH_OPEN;
+    if (scanResult >= 0) {
+      wifiNetworkCount = 0;
+      // Arduino's scan is RSSI-sorted. Keep the strongest instance of each SSID.
+      for (int16_t result = 0; result < scanResult && wifiNetworkCount < kVisibleWifiNetworks; ++result) {
+        const String name = WiFi.SSID(result);
+        if (name.isEmpty()) continue;
+        bool duplicate = false;
+        for (uint8_t index = 0; index < wifiNetworkCount; ++index) {
+          if (wifiNetworks[index].name == name) duplicate = true;
+        }
+        if (duplicate) continue;
+        wifiNetworks[wifiNetworkCount].name = name;
+        wifiNetworks[wifiNetworkCount].rssi = WiFi.RSSI(result);
+        wifiNetworks[wifiNetworkCount].secured = WiFi.encryptionType(result) != WIFI_AUTH_OPEN;
+        ++wifiNetworkCount;
       }
       WiFi.scanDelete();
       renderWifiNetworks(
           wifiNetworkCount == 0 ? "No encontramos redes" : nullptr);
       Serial.printf("On-device Wi-Fi scan found %u networks\n", wifiNetworkCount);
-    } else if (wifiScanRunning && scanResult == WIFI_SCAN_FAILED) {
-      wifiScanRunning = false;
+    } else if (scanResult == WIFI_SCAN_FAILED) {
       renderWifiNetworks("La busqueda fallo. Intenta otra vez");
     }
     return;
@@ -1352,17 +1890,21 @@ void processNetwork(uint32_t now) {
     return;
   }
   if (localPanel == LocalPanel::kWifiConnecting) {
-    if (WiFi.status() == WL_CONNECTED) {
+    wifi.loop(now); // Confirm success before storing the candidate credentials.
+    if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == selectedWifiName) {
       wifiWasConnected = true;
+      failedWifiName = String();
       cloudConnected = false;
       cloudFailures = 0;
       nextCloudAttemptAt = now;
       localPanel = LocalPanel::kWifi;
       selectedWifiPassword = String();
       showLocalConnectivityPanel(now);
-      Serial.printf("On-device Wi-Fi connected: %s\n", WiFi.SSID().c_str());
+      Serial.println("On-device Wi-Fi connected");
     } else if (now - wifiSelectionStartedAt >= kWifiSelectionTimeoutMs ||
                WiFi.status() == WL_CONNECT_FAILED) {
+      failedWifiName = selectedWifiName;
+      wifi.cancelSelection(now);
       localPanel = LocalPanel::kWifiNetworks;
       renderWifiNetworks("No se pudo conectar. Revisa la contrasena");
       Serial.println("On-device Wi-Fi connection failed");
@@ -1410,10 +1952,7 @@ void processNetwork(uint32_t now) {
           "time.cloudflare.com");
       timeSyncStarted = true;
     }
-    screen.showState(
-        AppState::kOnline,
-        "WIFI CONECTADO",
-        "CONECTANDO NUBE");
+    setState(AppState::kCloudConnecting);
     appState = AppState::kCloudConnecting;
     nextCloudAttemptAt = now + 1200;
     return;
@@ -1439,28 +1978,91 @@ void processNetwork(uint32_t now) {
       nextOnboardingPollAt = now + 1000;
     }
   }
-  requestNextCloudAsset();
-  if (leopold::sky::allAssetsLoaded() && !servicesStarted) {
-    if (hasUi) {
-      // The first frame may have been rendered before the cloud assets
-      // arrived. Rebuild it now so LVGL resolves the newly loaded images.
-      screen.renderSdui(currentUi);
-    }
+  if (hasUi && !servicesStarted) {
+    // Optional catalog assets never gate local UI or Weather startup. The
+    // embedded essential pack remains usable while optional artwork loads.
+    const bool weatherWasReady = weather.ready();
     weather.begin();
+    leopold::WeatherLocation savedLocation{};
+    if (!weatherWasReady && weather.savedLocation(savedLocation)) {
+      leopold::display_menu::copy(displayMenuState.location, sizeof(displayMenuState.location), savedLocation.city);
+      displayMenuState.country = strcmp(savedLocation.country, "US") == 0 ? 1 : 2;
+      leopold::weather_location::draft(savedLocation, displayMenuState.postal, sizeof(displayMenuState.postal));
+    }
+    weather.render(currentUi);
+    if (localPanel == LocalPanel::kNone) screen.renderSdui(currentUi);
     servicesStarted = true;
   }
-  if (servicesStarted && !weatherRequested) {
-    weatherRequested = weather.requestRefresh(currentUi);
+  if (servicesStarted && !weatherRequested && weather.requestRefresh()) {
+    weatherRequested = true;
+    lastWeatherRefreshAt = now;
   }
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT)
   if (cloudConnected && !onboardingPending &&
       !uiPending && now >= nextUiPollAt) {
     uiPending = cloud.requestUi(uiEtag);
   }
+#endif
   if (cloudConnected && !heartbeatPending && now >= nextHeartbeatAt) {
     heartbeatPending = cloud.requestHeartbeat(
         WiFi.RSSI(),
         telemetry.batteryPercent(),
         now / 1000);
+  }
+#if !defined(LEOPOLD_LOCAL_DEVELOPMENT) || defined(LEOPOLD_OTA_TEST_MODE)
+  if (cloudConnected && !onboardingPending && !firmwareUpdatePending &&
+      now >= nextFirmwareCheckAt) {
+    firmwareUpdatePending = cloud.requestFirmwareUpdate();
+    if (!firmwareUpdatePending) {
+      firmwareUpdateFailures = min<uint8_t>(firmwareUpdateFailures + 1, 5);
+      nextFirmwareCheckAt = now + retryDelayMs(firmwareUpdateFailures);
+    }
+  }
+#endif
+}
+
+void processWeatherResults() {
+  const bool canRender = hasUi && currentUi.screenCount > 0 &&
+      !welcomeActive && !assistantReady && localPanel == LocalPanel::kNone;
+  const bool editingLocation = canRender && displayMenuState.expanded == 5 &&
+      strcmp(currentUi.active().screenId, "device-additional-options") == 0;
+  if (!editingLocation && (weatherLookupPending || weatherLookupFeedback)) {
+    clearWeatherLookupIntent();
+  }
+
+  bool success = false;
+  bool weatherChanged = weather.takeRefreshResult(success) && success;
+  leopold::WeatherLocation verifiedLocation{};
+  if (weather.takeLocationLookupResult(success, verifiedLocation)) {
+    if (success) {
+      leopold::display_menu::copy(displayMenuState.location, sizeof(displayMenuState.location), verifiedLocation.city);
+      weatherChanged = true;
+      weatherRequested = false;
+    }
+    const bool showFeedback = weatherLookupFeedback && leopold::weather_location::matches(
+        static_cast<uint8_t>(displayMenuState.country), displayMenuState.postal, verifiedLocation);
+    if (showFeedback) {
+      leopold::display_menu::copy(displayMenuState.status, sizeof(displayMenuState.status),
+          success ? (displayMenuState.spanish ? "Ubicación guardada." : "Location saved.")
+                  : (displayMenuState.spanish ? "No se verificó. Se conserva la pantalla anterior." : "Location not verified. Previous display kept."));
+    }
+    if (editingLocation && (showFeedback || success)) {
+      buildDeviceDisplayMenu(currentUi.active());
+      screen.renderSduiScreen(currentUi);
+    }
+    weatherLookupFeedback = false;
+  }
+  if (weatherChanged) {
+    weather.render(currentUi);
+    if (canRender && strcmp(currentUi.active().screenId, "sky-weather") == 0) {
+      screen.renderSduiScreen(currentUi);
+    }
+  }
+
+  if (weatherLookupPending && weather.requestLocationLookup(
+      static_cast<uint8_t>(displayMenuState.country), displayMenuState.postal)) {
+    weatherLookupPending = false;
+    weatherLookupFeedback = true;
   }
 }
 
@@ -1477,13 +2079,12 @@ void refreshIndicators(uint32_t now) {
         "time.google.com",
         "time.cloudflare.com");
     lastTimeSyncAttemptAt = now;
-    struct tm localTime = {};
-    if (getLocalTime(&localTime, 1000)) {
-      Serial.println("NTP time synchronized");
-    }
   }
   char timeText[9] = {};
   telemetry.formattedTime(timeText);
+  screen.drawIndicators(
+      wifiConnected, cloudConnected, bluetooth.enabled(), bluetooth.connected(),
+      telemetry.batteryPercent(), timeText);
   const uint16_t millivolts = telemetry.batteryMillivolts();
   char voltageText[16] = {};
   snprintf(
@@ -1504,19 +2105,20 @@ void refreshIndicators(uint32_t now) {
         strlcpy(component.text, voltageText, sizeof(component.text));
       } else if (strcmp(component.id, "input-voltage-label") == 0) {
         snprintf(component.text, sizeof(component.text), "INPUT VOLTAGE  %s", voltageText);
+      } else if (strcmp(component.id, "computer-status") == 0) {
+        strlcpy(component.text, leopold::computerControlConnected() ? "Connected" : "Not connected", sizeof(component.text));
       }
     }
   }
   const bool bluetoothEnabled = bluetooth.enabled();
   const bool bluetoothConnected = bluetooth.connected();
-  bool weatherRefreshed = weather.takeRefreshResult();
   if (hasUi && currentUi.screenCount > 0 &&
       strcmp(currentUi.active().screenId, "sky-weather") == 0 &&
       wifiConnected &&
       (lastWeatherRefreshAt == 0 ||
-       now - lastWeatherRefreshAt >= kWeatherRefreshMs)) {
+       now - lastWeatherRefreshAt >= kWeatherRefreshMs) &&
+      weather.requestRefresh()) {
     lastWeatherRefreshAt = now;
-    weather.requestRefresh(currentUi);
   }
   const bool statusChanged =
       !indicatorsInitialized || wifiConnected != lastWifiIndicator ||
@@ -1539,7 +2141,7 @@ void refreshIndicators(uint32_t now) {
       generated_ui::statusBarVisible(currentUi.active().screenId);
   if ((statusChanged && hasUi && currentUi.screenCount > 0 &&
        strcmp(currentUi.active().screenId, "device-control-center") == 0) ||
-      liveSkyScreen || weatherRefreshed) {
+      liveSkyScreen) {
     screen.renderSduiScreen(currentUi);
   }
   indicatorsInitialized = true;
@@ -1553,56 +2155,205 @@ void refreshIndicators(uint32_t now) {
 }  // namespace
 
 void setup() {
+  // Keep the application CDC port from interpreting terminal control-line or
+  // 1200-baud sequences as a request to enter the ROM bootloader. Normal
+  // BOOT/RESET hardware recovery remains available.
+  Serial.enableReboot(false);
   Serial.begin(115200);
   delay(100);
+  enableLoopWDT();
+  startupStage.store(static_cast<uint8_t>(StartupStage::kBeginning), std::memory_order_relaxed);
+  const uint32_t bootStartedAt = millis();
+  Serial.printf("LEOPOLD_STARTUP reset_reason=%d stage=begin t_ms=%lu\n",
+                static_cast<int>(esp_reset_reason()), static_cast<unsigned long>(bootStartedAt));
   Serial.printf(
       "Leopold firmware %s starting\n",
       leopold::config::kFirmwareVersion);
+  Serial.printf("LEOPOLD_FIRMWARE_REVISION commit=%s ui=%lu build=%s\n",
+                leopold::config::kSourceCommit,
+                static_cast<unsigned long>(leopold::generated_ui::kUiRevision),
+                leopold::config::kBuildId);
   randomSeed(micros());
+  leopold::firmware_ota::beginBootVerification();
 
   pinMode(leopold::board::kBootButton, INPUT_PULLUP);
   if (!screen.begin()) {
     Serial.println("Display initialization failed");
-    while (true) {
-      delay(100);
-    }
-  }
-  screen.showState(leopold::AppState::kBooting);
-
-  touch.begin();
-  telemetry.begin();
-  uiStore.begin();
-  // Cloud assets are authoritative. Do not preload SD bytes: a partially
-  // readable card must never cause stale local pixels to bypass the cloud.
-  Serial.printf(
-      "Assets will load from GoodMorning Cloud (%u files)\n",
-      static_cast<unsigned>(leopold::sky::assetCount()));
-  hasUi = false;
-  cachedRawUi = String();
-
-  if (!cloud.begin()) {
-    setState(leopold::AppState::kError, "SIN MEMORIA", "REINICIA LEOPOLD");
+    startupStage.store(static_cast<uint8_t>(StartupStage::kDisplayFailed), std::memory_order_relaxed);
+    leopold::firmware_ota::setLocalHealth(false, false, false, false,
+        leopold::firmware_ota::BootHealthDiagnostics::InitStage::kDisplayFailed);
     fatalError = true;
     return;
   }
-  wifi.begin(LEOPOLD_DEVICE_ID);
-  setState(leopold::AppState::kWifiConnecting);
+  startupStage.store(static_cast<uint8_t>(StartupStage::kDisplayReady), std::memory_order_relaxed);
+  if (!leopold::sky::loadEmbeddedHomeAsset()) {
+    Serial.println("Embedded home asset failed to load");
+  }
+  if (!leopold::sky::loadEmbeddedSettingsAsset()) {
+    Serial.println("Embedded neutral Settings asset failed to load");
+  }
+  screen.showState(leopold::AppState::kBooting);
+  // Publish the generated local Home before identity, storage, cloud or Wi-Fi
+  // initialization. screen.loop() schedules the first actual LVGL panel flush.
   memset(&currentUi, 0, sizeof(currentUi));
   syncControlCenterScreen();
   hasUi = currentUi.screenCount > 0;
-  if (hasUi) {
-    screen.renderSduiScreen(currentUi);
+  homeFlushBaselineCallbacks = screen.flushCallbackCount();
+  homeFlushBaselinePixels = screen.flushPixelCount();
+  if (hasUi) screen.renderSduiScreen(currentUi);
+  startupStage.store(static_cast<uint8_t>(StartupStage::kHomeConstructed), std::memory_order_relaxed);
+  screen.loop();
+  leopold::memory_budget::log("home-flush-dispatch");
+  const uint32_t homeFlushCalls = screen.flushCallbackCount() - homeFlushBaselineCallbacks;
+  const uint64_t homeFlushPixels = screen.flushPixelCount() - homeFlushBaselinePixels;
+  startupStage.store(static_cast<uint8_t>(homeFlushCalls > 0 ? StartupStage::kHomeFlushSubmitted
+                                                            : StartupStage::kHomeFlushPending),
+                     std::memory_order_relaxed);
+  homeFlushObserved = homeFlushCalls > 0;
+  if (homeFlushObserved) homeFlushObservedAtMs = millis();
+  Serial.printf("LEOPOLD_STARTUP stage=home_flush_dispatch lvgl_callbacks=%lu pixels_submitted=%llu callback_observed=%u driver_return_feedback=none t_ms=%lu stack_free=%lu\n",
+                static_cast<unsigned long>(homeFlushCalls),
+                static_cast<unsigned long long>(homeFlushPixels),
+                homeFlushObserved ? 1u : 0u,
+                static_cast<unsigned long>(millis() - bootStartedAt),
+                static_cast<unsigned long>(uxTaskGetStackHighWaterMark(nullptr) * sizeof(StackType_t)));
+  touch.begin();
+  telemetry.begin();
+
+  startupPending = true;
+}
+
+namespace {
+void startupServicesTask(void*) {
+  const uint32_t startedAt = millis();
+  startupStage.store(static_cast<uint8_t>(StartupStage::kIdentityStarting), std::memory_order_relaxed);
+  Serial.printf("LEOPOLD_STARTUP stage=identity_begin t_ms=%lu\n",
+                static_cast<unsigned long>(startedAt));
+  identityReadyForServices = leopold::identity::begin();
+  Serial.printf("LEOPOLD_STARTUP stage=identity_end elapsed_ms=%lu ready=%u\n",
+                static_cast<unsigned long>(millis() - startedAt), identityReadyForServices ? 1u : 0u);
+  if (!identityReadyForServices) {
+    startupStage.store(static_cast<uint8_t>(StartupStage::kIdentityUnavailable), std::memory_order_relaxed);
+    Serial.println("Device identity unavailable; local UI remains active and network services are disabled");
+    leopold::firmware_ota::setLocalHealth(true, touch.available(), false, false,
+        leopold::firmware_ota::BootHealthDiagnostics::InitStage::kIdentityFailed);
+    storageInitComplete = true;
+    startupStage.store(static_cast<uint8_t>(StartupStage::kStorageUnavailable), std::memory_order_relaxed);
+    vTaskDelete(nullptr);
+    return;
   }
+  startupStage.store(static_cast<uint8_t>(StartupStage::kIdentityReady), std::memory_order_relaxed);
+  leopold::beginComputerControl();
+  Serial.println("LEOPOLD_STARTUP stage=storage_worker_begin");
+  startupStage.store(static_cast<uint8_t>(StartupStage::kStorageStarting), std::memory_order_relaxed);
+  localStoreReady = uiStore.begin();
+  assetCacheReady = localStoreReady && leopold::asset_cache::begin();
+  cacheRestorePending.store(assetCacheReady.load(std::memory_order_relaxed), std::memory_order_relaxed);
+  if (!assetCacheReady)
+    Serial.println("Asset cache unavailable; embedded offline artwork remains active");
+  Serial.printf("LEOPOLD_STARTUP stage=storage_worker_end elapsed_ms=%lu stack_free=%lu\n",
+                static_cast<unsigned long>(millis() - startedAt),
+                static_cast<unsigned long>(uxTaskGetStackHighWaterMark(nullptr) * sizeof(StackType_t)));
+  storageInitComplete = true;
+  startupStage.store(static_cast<uint8_t>(StartupStage::kStorageReady), std::memory_order_relaxed);
+  vTaskDelete(nullptr);
+}
+
+void finishStartup() {
+  const uint32_t startedAt = millis();
+  Serial.printf("LEOPOLD_STARTUP stage=optional_worker_start t_ms=%lu\n",
+                static_cast<unsigned long>(startedAt));
+  const BaseType_t taskCreated = xTaskCreatePinnedToCore(
+      startupServicesTask, "leopold-startup", 8192, nullptr, 1, nullptr, 0);
+  if (taskCreated != pdPASS) {
+    Serial.println("Optional storage worker unavailable; local UI remains active");
+    storageInitComplete = true;
+    startupStage.store(static_cast<uint8_t>(StartupStage::kStorageUnavailable), std::memory_order_relaxed);
+  }
+  startupPending = false;
+  Serial.printf("LEOPOLD_STARTUP stage=identity_ready elapsed_ms=%lu stack_free=%lu\n",
+                static_cast<unsigned long>(millis() - startedAt),
+                static_cast<unsigned long>(uxTaskGetStackHighWaterMark(nullptr) * sizeof(StackType_t)));
+}
+
+void restoreCachedWallpapers() {
+  logStartupBoundary("cache_restore_entry");
+  const auto* global = leopold::asset_cache::selectedWallpaper(screen.backgroundArt());
+  const auto* clock = leopold::asset_cache::selectedWallpaper(screen.clockBackground());
+  if (global && leopold::asset_cache::contains(*global)) {
+    if (screen.backgroundArt() == 0)
+      leopold::asset_cache::setPin(*global, leopold::asset_cache::Pin::kGlobalWallpaper);
+    else
+      leopold::sky::loadCachedAsset(global->file, leopold::asset_cache::Pin::kGlobalWallpaper);
+  }
+  if (clock && global && strcmp(clock->sha256, global->sha256) == 0)
+    leopold::asset_cache::setPin(*clock, leopold::asset_cache::Pin::kClockWallpaper);
+  else if (clock && leopold::asset_cache::contains(*clock))
+    leopold::sky::loadCachedAsset(clock->file, leopold::asset_cache::Pin::kClockWallpaper);
+  if (hasUi && currentUi.screenCount > 0) screen.renderSduiScreen(currentUi);
+  cacheRestorePending = false;
+  logStartupBoundary("cache_restore_exit");
+}
+
+void startNetworkServices() {
+  if (!identityReadyForServices) {
+    networkServicesStarted = true;
+    startupStage.store(static_cast<uint8_t>(StartupStage::kNetworkServicesDisabled), std::memory_order_relaxed);
+    Serial.println("LEOPOLD_STARTUP network_services=disabled identity=unavailable local_ui=ready");
+    return;
+  }
+  logStartupBoundary("cloud_begin_entry");
+  const bool cloudReady = cloud.begin();
+  logStartupBoundary("cloud_begin_exit");
+  if (!cloudReady) Serial.println("Cloud worker unavailable; local UI remains active");
+  leopold::firmware_ota::setLocalHealth(true, touch.available(), localStoreReady, cloudReady,
+      leopold::firmware_ota::BootHealthDiagnostics::InitStage::kSetupReady);
+  logStartupBoundary("wifi_begin_entry");
+  if (!leopold::local_endpoint::start()) {
+    Serial.println("Local endpoint resolver task unavailable; local UI remains active");
+  }
+  wifi.begin(leopold::identity::deviceId());
+  logStartupBoundary("wifi_begin_exit");
+#if defined(LEOPOLD_DIAGNOSTIC_BLE_BYPASS)
+  Serial.println("LEOPOLD_DIAGNOSTICS optional_ble_init=bypassed_for_ab");
+#else
+  if (!bluetooth.begin(wifi.accessPointName(), leopold::identity::deviceId())) {
+    Serial.println("Bluetooth LE unavailable; local UI and Wi-Fi remain active");
+  }
+#endif
+  appState = leopold::AppState::kWifiConnecting;
+  networkServicesStarted = true;
+  startupStage.store(static_cast<uint8_t>(StartupStage::kNetworkServicesStarted), std::memory_order_relaxed);
+  logStartupBoundary("network_services_started");
+}
 }
 
 void loop() {
   const uint32_t now = millis();
   processUsbCommands();
+  if (Serial && !usbDiagnosticsAnnounced) {
+    writeBootDiagnostics(Serial);
+    usbDiagnosticsAnnounced = true;
+  }
   processInput(now);
+  if (startupPending) finishStartup();
+  if (storageInitComplete && !networkServicesStarted) startNetworkServices();
+  if (cacheRestorePending) {
+#if defined(LEOPOLD_DIAGNOSTIC_CACHE_RESTORE_BYPASS)
+    logStartupBoundary("cache_restore_bypass_entry");
+    cacheRestorePending = false;
+    Serial.println("LEOPOLD_DIAGNOSTICS cache_restore=bypassed_for_ab");
+    logStartupBoundary("cache_restore_bypass_exit");
+#else
+    restoreCachedWallpapers();
+#endif
+  }
   if (fatalError) {
+    leopold::firmware_ota::loopHealth(now);
     delay(5);
     return;
   }
+  processWeatherResults();
   processNetwork(now);
   processWelcome(now);
 
@@ -1620,6 +2371,22 @@ void loop() {
   if (!welcomeActive && !assistantReady) {
     refreshIndicators(now);
   }
+  const bool firstPostServicesLoop = networkServicesStarted && !startupServicesLoopObserved;
+  if (firstPostServicesLoop) logStartupBoundary("post_services_screen_loop_entry");
   screen.loop();
+  if (firstPostServicesLoop) {
+    startupServicesLoopObserved = true;
+    logStartupBoundary("post_services_screen_loop_exit");
+  }
+  if (!homeFlushObserved && screen.flushCallbackCount() > homeFlushBaselineCallbacks) {
+    homeFlushObserved = true;
+    homeFlushObservedAtMs = millis();
+    startupStage.store(static_cast<uint8_t>(StartupStage::kHomeFlushSubmitted), std::memory_order_relaxed);
+    Serial.printf("LEOPOLD_STARTUP stage=home_flush_submitted callbacks=%lu pixels=%llu t_ms=%lu\n",
+                  static_cast<unsigned long>(screen.flushCallbackCount() - homeFlushBaselineCallbacks),
+                  static_cast<unsigned long long>(screen.flushPixelCount() - homeFlushBaselinePixels),
+                  static_cast<unsigned long>(homeFlushObservedAtMs));
+  }
+  leopold::firmware_ota::loopHealth(now);
   delay(5);
 }

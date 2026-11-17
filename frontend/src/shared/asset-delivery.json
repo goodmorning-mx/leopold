@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "catalog_version": 1,
+  "renderer_compatibility": 17,
+  "asset_origin_configuration": "LEOPOLD_ASSET_ORIGIN",
+  "tls_trust_configuration": "LEOPOLD_ASSET_TLS_ROOT_CA",
+  "manifest_route": "/v1/device/assets",
+  "content_route": "/v1/device/assets/{filename}",
+  "authentication": "existing authenticated device API; origin is build-time trusted; redirects disabled",
+  "cache": {
+    "persistent_limit_bytes": 1400000,
+    "staging_limit_bytes": 651468,
+    "max_parallel_downloads": 1,
+    "slots": {
+      "global-wallpaper": "one verified selected global background",
+      "clock-wallpaper": "one verified selected Clock background"
+    },
+    "eviction": "least-recently-used unpinned and unleased entries only",
+    "activation": "stream to temporary file; verify exact byte count, SHA-256, catalog compatibility; atomically activate after success",
+    "attempts": 3,
+    "timeout_ms": 5000
+  },
+  "delivery_classes": {
+    "essential": [
+      "boot",
+      "connectivity",
+      "settings",
+      "recovery"
+    ],
+    "preview": "small gallery preview fetched only while visible",
+    "selected": "full-size content fetched only when chosen",
+    "optional": "catalog content not required to start unrelated services"
+  },
+  "dependencies": {
+    "sky-home": [
+      "open-clock",
+      "open-weather",
+      "open-navigation",
+      "open-whatsapp",
+      "open-spotify",
+      "settings-status-bluetooth-active",
+      "settings-status-wifi-active",
+      "settings-status-cloud-active",
+      "selected-global-wallpaper"
+    ],
+    "sky-clock": [
+      "selected-clock-wallpaper",
+      "selected-global-wallpaper"
+    ],
+    "sky-weather": [
+      "open-weather",
+      "selected-global-wallpaper"
+    ],
+    "computer-controls": [
+      "selected-global-wallpaper"
+    ],
+    "device-control-center": [
+      "settings-pressed-border-mask",
+      "settings-wifi-pressed-icon-mask",
+      "settings-wifi-pressed-chevron-mask",
+      "settings-bluetooth-pressed-icon-mask",
+      "settings-bluetooth-pressed-chevron-mask",
+      "settings-display-pressed-icon-mask",
+      "settings-display-pressed-chevron-mask",
+      "settings-sound-pressed-icon-mask",
+      "settings-sound-pressed-chevron-mask",
+      "settings-row-bluetooth",
+      "settings-row-display",
+      "settings-title-gear",
+      "settings-row-wifi",
+      "settings-row-sound",
+      "selected-global-wallpaper"
+    ],
+    "device-additional-options": [
+      "display-icon-background",
+      "display-icon-appearance",
+      "display-icon-clock",
+      "display-icon-units",
+      "display-icon-language",
+      "display-icon-weather-location",
+      "display-icon-display",
+      "background-preview-flower",
+      "background-preview-chevron",
+      "background-preview-mechanical",
+      "background-preview-black-white-circle",
+      "clock-background-preview-flower",
+      "clock-background-preview-chevron",
+      "clock-background-preview-mechanical",
+      "clock-face-preview-0",
+      "clock-face-preview-1",
+      "clock-face-preview-2",
+      "selected-global-wallpaper"
+    ],
+    "recovery": [
+      "essential-offline-pack"
+    ],
+    "sky-voltage": [
+      "selected-global-wallpaper"
+    ],
+    "device-clock-options": [
+      "selected-global-wallpaper"
+    ],
+    "device-appearance-options": [
+      "selected-global-wallpaper"
+    ],
+    "sky-navigation": [
+      "selected-global-wallpaper"
+    ],
+    "spotify-player": [
+      "selected-global-wallpaper"
+    ],
+    "spotify-actions": [
+      "selected-global-wallpaper"
+    ],
+    "youtube-feed": [
+      "selected-global-wallpaper"
+    ],
+    "device-accounts": [
+      "selected-global-wallpaper"
+    ]
+  }
+}

@@ -72,10 +72,10 @@ void WifiPortal::begin(const char* deviceId) {
   manager_.setCustomHeadElement(customHead_);
   manager_.setDarkMode(true);
   for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
-    char ssidId[24] = {};
-    char passwordId[24] = {};
-    char ssidLabel[40] = {};
-    char passwordLabel[40] = {};
+    auto& ssidId = backupSsidId_[index];
+    auto& passwordId = backupPasswordId_[index];
+    auto& ssidLabel = backupSsidLabel_[index];
+    auto& passwordLabel = backupPasswordLabel_[index];
     snprintf(ssidId, sizeof(ssidId), "backup_ssid_%u", index + 1);
     snprintf(passwordId, sizeof(passwordId), "backup_password_%u", index + 1);
     snprintf(ssidLabel, sizeof(ssidLabel), "Backup Wi-Fi %u", index + 1);
@@ -91,26 +91,45 @@ void WifiPortal::begin(const char* deviceId) {
     manager_.addParameter(backupSsid_[index]);
     manager_.addParameter(backupPassword_[index]);
   }
-  manager_.setSaveParamsCallback([this]() { saveBackupNetworks(); });
+  manager_.setSaveParamsCallback([this]() { importPortalNetworks(); });
   std::vector<const char*> menu = {"wifi", "info", "exit"};
   manager_.setMenu(menu);
 
   WiFi.persistent(true);
   WiFi.setAutoReconnect(true);
   WiFi.mode(WIFI_STA);
-  WiFi.begin();
+  if (backupNetworks_[0].ssid[0] != '\0') {
+    WiFi.begin(backupNetworks_[0].ssid, backupNetworks_[0].password);
+  } else {
+    WiFi.begin();
+  }
   connectStartedAt_ = millis();
   disconnectedAt_ = connectStartedAt_;
   nextBackupNetwork_ = 0;
-  if (!manager_.getWiFiIsSaved()) {
+  if (backupNetworks_[0].ssid[0] == '\0' && !manager_.getWiFiIsSaved()) {
     startPortal(connectStartedAt_);
   }
 }
 
 void WifiPortal::loop(uint32_t now) {
+  // Commit credentials only after the requested network actually connects.
+  if (pendingConnection_ && WiFi.status() == WL_CONNECTED &&
+      WiFi.SSID() == pendingNetwork_.ssid) {
+    rememberNetwork(pendingNetwork_.ssid, pendingNetwork_.password);
+    saveBackupNetworks();
+    memset(&pendingNetwork_, 0, sizeof(pendingNetwork_));
+    pendingConnection_ = false;
+    manualSelection_ = false;
+    nextBackupNetwork_ = 0;
+    WiFi.setAutoReconnect(true);
+    connectStartedAt_ = now;
+  }
+  if (manualSelection_) return;
   if (portalActive_) {
     manager_.process();
     if (WiFi.status() == WL_CONNECTED) {
+      rememberNetwork(WiFi.SSID().c_str(), WiFi.psk().c_str());
+      saveBackupNetworks();
       manager_.stopConfigPortal();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);
@@ -127,6 +146,8 @@ void WifiPortal::loop(uint32_t now) {
 
   if (disconnectedAt_ == 0) {
     disconnectedAt_ = now;
+    connectStartedAt_ = now;
+    nextBackupNetwork_ = 0;
     WiFi.reconnect();
   }
 
@@ -167,10 +188,21 @@ void WifiPortal::reconnectNow(uint32_t now) {
     WiFi.softAPdisconnect(true);
     portalActive_ = false;
   }
+  manualSelection_ = false;
+  pendingConnection_ = false;
+  memset(&pendingNetwork_, 0, sizeof(pendingNetwork_));
   WiFi.mode(WIFI_STA);
-  WiFi.reconnect();
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(false);
+  WiFi.disconnect(false, false);
+  if (backupNetworks_[0].ssid[0] != '\0') {
+    WiFi.begin(backupNetworks_[0].ssid, backupNetworks_[0].password);
+  } else {
+    WiFi.begin(); // Existing provisioned driver credentials remain intact.
+  }
   connectStartedAt_ = now;
   disconnectedAt_ = now;
+  nextBackupNetwork_ = 0;
   Serial.println("Manual Wi-Fi reconnect requested");
 }
 
@@ -187,23 +219,73 @@ void WifiPortal::prepareForScan() {
     WiFi.softAPdisconnect(true);
     portalActive_ = false;
   }
+  // Scanning a connected station must not drop its working network.
+  if (WiFi.status() == WL_CONNECTED) {
+    rememberNetwork(WiFi.SSID().c_str(), WiFi.psk().c_str());
+    saveBackupNetworks();
+  }
+  manualSelection_ = true;
+  pendingConnection_ = false;
+  memset(&pendingNetwork_, 0, sizeof(pendingNetwork_));
+  WiFi.setAutoReconnect(false);
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect(false, false);
-  disconnectedAt_ = 0;
+  // An unfinished association competes with esp_wifi_scan_start. Keep a
+  // working connection, but stop attempts without erasing driver credentials.
+  if (WiFi.status() != WL_CONNECTED) WiFi.disconnect(false, false);
+}
+
+void WifiPortal::cancelSelection(uint32_t now) {
+  if (pendingConnection_) {
+    reconnectNow(now);
+    return;
+  }
+  manualSelection_ = false;
+  WiFi.setAutoReconnect(true);
+  connectStartedAt_ = now;
+  disconnectedAt_ = now;
+  nextBackupNetwork_ = 0;
+}
+
+bool WifiPortal::hasSavedNetwork(const char* networkName) const {
+  if (networkName == nullptr) return false;
+  for (const auto& network : backupNetworks_) {
+    if (strcmp(network.ssid, networkName) == 0 && network.ssid[0] != '\0') return true;
+  }
+  return false;
+}
+
+bool WifiPortal::connectSavedNetwork(const char* networkName, uint32_t now) {
+  for (const auto& network : backupNetworks_) {
+    if (strcmp(network.ssid, networkName) == 0 && network.ssid[0] != '\0') {
+      // Copy before prepareForScan potentially reorders the store.
+      SavedNetwork saved = network;
+      connectToNetwork(saved.ssid, saved.password, now);
+      memset(&saved, 0, sizeof(saved));
+      return true;
+    }
+  }
+  return false;
 }
 
 void WifiPortal::connectToNetwork(
     const char* networkName,
     const char* password,
     uint32_t now) {
+  if (networkName == nullptr || password == nullptr || networkName[0] == '\0' ||
+      strlen(networkName) > 32 || strlen(password) > 64) return;
   prepareForScan();
-  WiFi.persistent(true);
-  WiFi.begin(networkName, password);
-  rememberNetwork(networkName, password);
-  saveBackupNetworks();
+  strlcpy(pendingNetwork_.ssid, networkName, sizeof(pendingNetwork_.ssid));
+  strlcpy(pendingNetwork_.password, password, sizeof(pendingNetwork_.password));
+  pendingConnection_ = true;
+  // Leave the last provisioned driver's credentials untouched on failure.
+  // The existing NVS backup store is updated only on success and preferred at boot.
+  WiFi.persistent(false);
+  WiFi.disconnect(false, false);
+  WiFi.begin(pendingNetwork_.ssid, pendingNetwork_.password);
   connectStartedAt_ = now;
   disconnectedAt_ = now;
-  Serial.printf("Connecting to selected Wi-Fi: %s\n", networkName);
+  Serial.println("Connecting to selected Wi-Fi");
 }
 
 void WifiPortal::completeSetup() {
@@ -214,6 +296,11 @@ void WifiPortal::completeSetup() {
 }
 
 void WifiPortal::startPortal(uint32_t now) {
+  // Refresh the portal fields after on-device changes, before user editing.
+  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+    backupSsid_[index]->setValue(backupNetworks_[index].ssid, 32);
+    backupPassword_[index]->setValue(backupNetworks_[index].password, kMaxCredentialLength);
+  }
   manager_.startConfigPortal(accessPointName_);
   portalActive_ = true;
   connectStartedAt_ = now;
@@ -243,11 +330,15 @@ void WifiPortal::loadBackupNetworks() {
   preferences.end();
 }
 
-void WifiPortal::saveBackupNetworks() {
+void WifiPortal::importPortalNetworks() {
   for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
     strlcpy(backupNetworks_[index].ssid, backupSsid_[index]->getValue(), sizeof(backupNetworks_[index].ssid));
     strlcpy(backupNetworks_[index].password, backupPassword_[index]->getValue(), sizeof(backupNetworks_[index].password));
   }
+  saveBackupNetworks();
+}
+
+void WifiPortal::saveBackupNetworks() {
   Preferences preferences;
   preferences.begin("wifi-backups", false);
   for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
@@ -264,31 +355,34 @@ void WifiPortal::saveBackupNetworks() {
 void WifiPortal::tryNextBackupNetwork(uint32_t now) {
   while (nextBackupNetwork_ < kBackupNetworkCount) {
     const SavedNetwork& network = backupNetworks_[nextBackupNetwork_++];
-    if (network.ssid[0] == '\0' || network.password[0] == '\0') continue;
+    if (network.ssid[0] == '\0') continue;
+    WiFi.persistent(false);
     WiFi.disconnect(false, false);
     WiFi.begin(network.ssid, network.password);
     connectStartedAt_ = now;
     disconnectedAt_ = now;
-    Serial.printf("Trying saved Wi-Fi network %u: %s\n", nextBackupNetwork_, network.ssid);
+    Serial.printf("Trying saved Wi-Fi network %u\n", nextBackupNetwork_);
     return;
   }
 }
 
 void WifiPortal::rememberNetwork(const char* networkName, const char* password) {
   if (networkName == nullptr || password == nullptr || networkName[0] == '\0') return;
+  uint8_t target = kBackupNetworkCount;
   for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
-    if (strcmp(backupNetworks_[index].ssid, networkName) == 0) {
-      strlcpy(backupNetworks_[index].password, password, sizeof(backupNetworks_[index].password));
-      return;
+    if (strcmp(backupNetworks_[index].ssid, networkName) == 0) { target = index; break; }
+  }
+  if (target == kBackupNetworkCount) {
+    target = kBackupNetworkCount - 1;
+    for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
+      if (backupNetworks_[index].ssid[0] == '\0') { target = index; break; }
     }
   }
-  for (uint8_t index = 0; index < kBackupNetworkCount; ++index) {
-    if (backupNetworks_[index].ssid[0] == '\0') {
-      strlcpy(backupNetworks_[index].ssid, networkName, sizeof(backupNetworks_[index].ssid));
-      strlcpy(backupNetworks_[index].password, password, sizeof(backupNetworks_[index].password));
-      return;
-    }
-  }
+  // Most recently successful network first; bounded legacy store stays at 3
+  // until the strategy's separate versioned ten-network migration.
+  for (uint8_t index = target; index > 0; --index) backupNetworks_[index] = backupNetworks_[index - 1];
+  strlcpy(backupNetworks_[0].ssid, networkName, sizeof(backupNetworks_[0].ssid));
+  strlcpy(backupNetworks_[0].password, password, sizeof(backupNetworks_[0].password));
 }
 
 }  // namespace leopold
