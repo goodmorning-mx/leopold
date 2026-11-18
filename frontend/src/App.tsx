@@ -99,10 +99,14 @@ function AuthForm({
 
   return (
     <div className="auth-page" lang={language}>
-      <nav className="auth-language" aria-label={copy.language}>
-        <button type="button" lang="es" aria-pressed={language === 'es'} onClick={() => setLanguage('es')}>Español</button>
-        <button type="button" lang="en" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>English</button>
-      </nav>
+      <label className="auth-language">
+        <span>{copy.language}</span>
+        <select value={language} onChange={(event) => setLanguage(event.target.value as AuthLanguage)}>
+          {Object.entries(authCopy).map(([code, translation]) => (
+            <option key={code} value={code} lang={code}>{translation.nativeName}</option>
+          ))}
+        </select>
+      </label>
       <section className="panel auth-panel">
         <div className="wordmark">GOODMORNING</div>
         <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>

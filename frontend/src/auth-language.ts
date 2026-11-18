@@ -1,7 +1,6 @@
-export type AuthLanguage = 'es' | 'en';
-
 export const authCopy = {
   es: {
+    nativeName: 'Español',
     title: 'Configura Leopold', language: 'Idioma', setup: 'Configurar Leopold', account: 'Tu cuenta',
     registerHeading: 'Crea tu perfil.', loginHeading: 'Inicia sesión.',
     setupDescription: 'Usaremos esta cuenta para guardar tus dispositivos y servicios.',
@@ -11,6 +10,7 @@ export const authCopy = {
     error: 'No pudimos continuar. Inténtalo de nuevo.',
   },
   en: {
+    nativeName: 'English',
     title: 'Set up Leopold', language: 'Language', setup: 'Set up Leopold', account: 'Your account',
     registerHeading: 'Create your profile.', loginHeading: 'Sign in.',
     setupDescription: 'We’ll use this account to save your devices and services.',
@@ -20,6 +20,8 @@ export const authCopy = {
     error: 'We couldn’t continue. Please try again.',
   },
 };
+
+export type AuthLanguage = keyof typeof authCopy;
 
 const errors: Record<string, Record<AuthLanguage, string>> = {
   'Invalid email or password': { es: 'Correo o contraseña incorrectos.', en: 'Invalid email or password.' },
