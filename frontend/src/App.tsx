@@ -590,6 +590,18 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
           )}
         </article>
       </section>
+      <section className="account-simulator" aria-labelledby="account-simulator-title">
+        <div className="section-heading">
+          <div>
+            <p className="kicker">Explorar Leopold</p>
+            <h2 id="account-simulator-title">Simulador</h2>
+          </div>
+          <a className="button secondary compact" href="/simulator" target="_blank" rel="noopener noreferrer">
+            Abrir en otra pestaña
+          </a>
+        </div>
+        <iframe className="account-simulator-frame" src="/simulator" title="Simulador de Leopold" loading="lazy" />
+      </section>
     </main>
   );
 }

@@ -4,6 +4,10 @@ The simulator is a 466 × 466 preview at `/simulator`. It compiles the same
 LVGL renderer as the ESP32 and uses browser adapters for input, persistence
 and simulated services.
 
+The signed-in account page embeds this same route below devices and services.
+The iframe loads lazily and is removed when the user signs out. Its heading
+also provides a link to open the simulator in a separate tab.
+
 ## Run and validate
 
 ```bash
