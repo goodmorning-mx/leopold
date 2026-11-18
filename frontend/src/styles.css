@@ -28,19 +28,35 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .auth-page {
   display: grid;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 28px;
   width: 100%;
-  min-height: calc(100vh - 48px);
-  padding-top: 64px;
+  min-height: 100vh;
+  padding: 112px 24px 40px;
+  background:
+    radial-gradient(ellipse at 20% 32%, rgba(64, 91, 122, .2), transparent 38%),
+    radial-gradient(ellipse at 82% 75%, rgba(115, 82, 135, .14), transparent 42%);
 }
-.auth-language {
+.auth-topbar {
   position: absolute;
-  top: 20px;
-  right: 24px;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 76px;
+  border-bottom: 1px solid rgba(255, 255, 255, .09);
+}
+.auth-nav-glass { width: 100%; height: 100%; }
+.auth-nav-glass .glass-surface__content { padding: 0 max(24px, calc((100vw - 920px) / 2)); }
+.auth-nav-content { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; }
+.auth-brand { color: #fff; font-size: 21px; font-weight: 800; letter-spacing: -.04em; text-decoration: none; }
+.auth-card-glass { width: min(100%, 480px); height: auto; }
+.auth-card-glass .glass-surface__content { height: auto; padding: 0; }
+.auth-language {
   display: flex;
   align-items: center;
   gap: 10px;
   color: #bbb;
+  font-size: 13px;
 }
 .auth-language select {
   min-height: 44px;
@@ -54,6 +70,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   cursor: pointer;
 }
 .auth-language select:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.auth-panel {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, .17);
+  background: rgba(255, 255, 255, .045);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .28);
+}
 
 .wordmark {
   color: #fff;
@@ -377,6 +399,12 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 .youtube-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 @media (max-width: 620px) {
+  .auth-page { gap: 20px; padding: 100px 18px 28px; }
+  .auth-topbar { height: 68px; }
+  .auth-nav-glass .glass-surface__content { padding-inline: 18px; }
+  .auth-language { gap: 6px; }
+  .auth-language select { min-height: 40px; padding: 7px 9px; }
+  .auth-panel { padding: 28px 24px; }
   .topbar { padding-inline: 20px; }
   .account-heading, .devices-section { width: min(calc(100% - 32px), 920px); }
   .account-heading { padding-top: 44px; }
