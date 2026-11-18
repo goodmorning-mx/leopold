@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import QrScanner from 'qr-scanner';
 import Simulator from './simulator/Simulator';
+import { authCopy, authError, type AuthLanguage } from './auth-language';
 
 type User = { email: string; display_name: string };
 type Device = {
@@ -55,6 +56,18 @@ function AuthForm({
   context: 'account' | 'setup';
   onAuthenticated: (user: User) => void;
 }) {
+  const [language, setLanguage] = useState<AuthLanguage>('es');
+  const copy = authCopy[language];
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = copy.title;
+    return () => {
+      document.documentElement.lang = 'es';
+      document.title = authCopy.es.title;
+    };
+  }, [language, copy.title]);
+
   const [mode, setMode] = useState<Mode>('login');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -78,59 +91,65 @@ function AuthForm({
       });
       onAuthenticated(user);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pudimos continuar');
+      setMessage(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="panel auth-panel">
-      <div className="wordmark">GOODMORNING</div>
-      <p className="kicker">{context === 'setup' ? 'Configurar Leopold' : 'Tu cuenta'}</p>
-      <h1>{mode === 'register' ? 'Crea tu perfil.' : 'Inicia sesión.'}</h1>
-      <p className="muted">
-        {context === 'setup'
-          ? 'Usaremos esta cuenta para guardar tus dispositivos y servicios.'
-          : 'Administra tus dispositivos Leopold desde un solo lugar.'}
-      </p>
+    <div className="auth-page" lang={language}>
+      <nav className="auth-language" aria-label={copy.language}>
+        <button type="button" lang="es" aria-pressed={language === 'es'} onClick={() => setLanguage('es')}>Español</button>
+        <button type="button" lang="en" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>English</button>
+      </nav>
+      <section className="panel auth-panel">
+        <div className="wordmark">GOODMORNING</div>
+        <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>
+        <h1>{mode === 'register' ? copy.registerHeading : copy.loginHeading}</h1>
+        <p className="muted">
+          {context === 'setup'
+            ? copy.setupDescription
+            : copy.accountDescription}
+        </p>
 
-      <div className="switcher" aria-label="Elegir acceso">
-        <button className={mode === 'login' ? 'selected' : ''} onClick={() => setMode('login')}>
-          Iniciar sesión
-        </button>
-        <button className={mode === 'register' ? 'selected' : ''} onClick={() => setMode('register')}>
-          Crear cuenta
-        </button>
-      </div>
+        <div className="switcher" aria-label={copy.access}>
+          <button className={mode === 'login' ? 'selected' : ''} onClick={() => setMode('login')}>
+            {copy.login}
+          </button>
+          <button className={mode === 'register' ? 'selected' : ''} onClick={() => setMode('register')}>
+            {copy.register}
+          </button>
+        </div>
 
-      <form onSubmit={authenticate}>
-        {mode === 'register' && (
+        <form onSubmit={authenticate}>
+          {mode === 'register' && (
+            <label>
+              {copy.name}
+              <input name="display_name" autoComplete="name" required maxLength={80} />
+            </label>
+          )}
           <label>
-            Nombre
-            <input name="display_name" autoComplete="name" required maxLength={80} />
+            {copy.email}
+            <input name="email" type="email" autoComplete="email" required maxLength={254} />
           </label>
-        )}
-        <label>
-          Correo
-          <input name="email" type="email" autoComplete="email" required maxLength={254} />
-        </label>
-        <label>
-          Contraseña
-          <input
-            name="password"
-            type="password"
-            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-            required
-            minLength={8}
-          />
-        </label>
-        <button className="button primary" disabled={busy}>
-          {busy ? 'Continuando…' : mode === 'register' ? 'Crear perfil' : 'Entrar'}
-        </button>
-      </form>
-      {message && <p className="notice error" role="alert">{message}</p>}
-    </section>
+          <label>
+            {copy.password}
+            <input
+              name="password"
+              type="password"
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              required
+              minLength={8}
+            />
+          </label>
+          <button className="button primary" disabled={busy}>
+            {busy ? copy.busy : mode === 'register' ? copy.createProfile : copy.submit}
+          </button>
+        </form>
+        {message && <p className="notice error" role="alert">{authError(message, language)}</p>}
+      </section>
+    </div>
   );
 }
 
