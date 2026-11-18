@@ -392,6 +392,11 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 
 /* Local Leopold simulator. Coordinates inside .device-surface are the physical
    466px canvas, so SDUI can be copied to firmware without layout conversion. */
+@media (max-width: 360px) {
+  .account-simulator { width: 100%; }
+  .account-simulator > .section-heading { margin-inline: 16px; }
+  .account-simulator-frame { border-inline: 0; border-radius: 0; }
+}
 .simulator-shell { min-height: 100vh; padding: 32px max(20px, 4vw) 64px; background: radial-gradient(circle at 50% 8%, #303947 0, #11151d 31%, #050608 70%); }
 .simulator-header { display: flex; align-items: end; justify-content: space-between; gap: 28px; width: min(1180px, 100%); margin: 0 auto 32px; }
 .simulator-header .kicker { margin-top: 0; }
