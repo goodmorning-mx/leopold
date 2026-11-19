@@ -285,6 +285,28 @@ def admin_unclaim_device(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.delete("/device/owner", status_code=status.HTTP_204_NO_CONTENT)
+def device_unclaim_itself(
+    device: AuthenticatedDevice,
+    db: Db,
+) -> Response:
+    """Allow a device to release its own account association."""
+    locked_device = db.scalar(
+        select(Device).where(Device.id == device.id).with_for_update()
+    )
+    if locked_device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    now = datetime.now(timezone.utc)
+    db.query(DeviceClaimToken).filter(
+        DeviceClaimToken.device_id == locked_device.id,
+        DeviceClaimToken.used_at.is_(None),
+    ).update({DeviceClaimToken.used_at: now})
+    locked_device.owner_id = None
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.put("/admin/devices/{device_id}/ui", response_model=UIDocument)
 def publish_device_ui(
     device_id: str,
