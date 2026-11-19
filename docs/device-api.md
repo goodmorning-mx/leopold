@@ -71,6 +71,19 @@ Cuando el firmware vuelva a conectarse, el endpoint de conexión emitirá un nue
 QR de onboarding para que una cuenta lo reclame. Usa exclusivamente el entorno
 dev para dispositivos de prueba.
 
+Un dispositivo también puede retirar su propia asociación usando sus credenciales
+de dispositivo, sin privilegios administrativos:
+
+```bash
+curl --fail-with-body \
+  -X DELETE "$LEOPOLD_API_URL/v1/device/owner" \
+  -H "X-Leopold-Device-ID: $LEOPOLD_DEVICE_ID" \
+  -H "Authorization: Bearer $LEOPOLD_DEVICE_SECRET"
+```
+
+Esta operación solo libera el dispositivo autenticado, invalida sus QR pendientes
+y conserva su registro, secreto y firmware.
+
 ## Autenticación
 
 Cada llamada a `/v1/device/*` incluye:
