@@ -1,6 +1,6 @@
 import { FormEvent, Suspense, lazy, useEffect, useId, useMemo, useRef, useState } from 'react';
 import QrScanner from 'qr-scanner';
-import { authCopy, authError, type AuthLanguage } from './auth-language';
+import { authCopy, authError, pageCopy, type AccountNotice, type AuthLanguage, type ScannerNotice } from './auth-language';
 import GlassSurface from './components/GlassSurface';
 import GlyphRainBackground from './components/GlyphRainBackground';
 
@@ -176,22 +176,16 @@ function currentSetupToken(): string | null {
 
 function AuthForm({
   context,
+  language,
+  onLanguageChange,
   onAuthenticated,
 }: {
   context: 'account' | 'setup';
+  language: AuthLanguage;
+  onLanguageChange: (language: AuthLanguage) => void;
   onAuthenticated: (user: User) => void;
 }) {
-  const [language, setLanguage] = useState<AuthLanguage>('es');
   const copy = authCopy[language];
-
-  useEffect(() => {
-    document.documentElement.lang = language;
-    document.title = copy.title;
-    return () => {
-      document.documentElement.lang = 'es';
-      document.title = authCopy.es.title;
-    };
-  }, [language, copy.title]);
 
   const [mode, setMode] = useState<Mode>('login');
   const [busy, setBusy] = useState(false);
@@ -225,7 +219,7 @@ function AuthForm({
   return (
     <div className="auth-page" lang={language}>
       <GlyphRainBackground />
-      <LeopoldCardNav language={language} onLanguageChange={setLanguage} variant="auth" onModeChange={setMode} />
+      <LeopoldCardNav language={language} onLanguageChange={onLanguageChange} variant="auth" onModeChange={setMode} />
       <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.1}>
         <section className="panel auth-panel">
           <img className="auth-wordmark" src="/brand/leopold-wordmark.png" alt="Leopold" />
@@ -278,7 +272,16 @@ function AuthForm({
   );
 }
 
-function SetupFlow({ token }: { token: string }) {
+function SetupFlow({
+  token,
+  language,
+  onLanguageChange,
+}: {
+  token: string;
+  language: AuthLanguage;
+  onLanguageChange: (language: AuthLanguage) => void;
+}) {
+  const copy = pageCopy[language].setup;
   const [claim, setClaim] = useState<ClaimStatus | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [message, setMessage] = useState('');
@@ -292,7 +295,7 @@ function SetupFlow({ token }: { token: string }) {
         if (!stopped) setClaim(status);
         return status;
       } catch (error) {
-        if (!stopped) setMessage(error instanceof Error ? error.message : 'No pudimos encontrar Leopold');
+        if (!stopped) setMessage(pageCopy[language].requestError);
         return null;
       }
     };
@@ -306,45 +309,41 @@ function SetupFlow({ token }: { token: string }) {
       stopped = true;
       window.clearInterval(interval);
     };
-  }, [token]);
+  }, [token, language]);
 
   useEffect(() => {
     if (!user || !claim?.valid || claim.claimed || autoClaimStarted.current) return;
     autoClaimStarted.current = true;
     void api<ClaimStatus>(`/v1/onboarding/${token}/claim`, { method: 'POST' })
       .then(setClaim)
-      .catch((error: Error) => {
+      .catch(() => {
         autoClaimStarted.current = false;
-        setMessage(error.message);
+        setMessage(pageCopy[language].requestError);
       });
-  }, [claim, token, user]);
+  }, [claim, language, token, user]);
 
   const ssid = new URLSearchParams(window.location.search).get('ssid') ?? 'Leopold-XXXX';
 
   if (!claim) {
     return (
-      <StatusPanel
-        title="Preparando el dispositivo"
-        copy="Estamos recuperando la sesión de emparejamiento."
-        loading
-      />
+      <StatusPanel title={copy.preparing} copy={copy.recovering} loading />
     );
   }
 
   if (!user) {
-    return <AuthForm context="setup" onAuthenticated={setUser} />;
+    return <AuthForm context="setup" language={language} onLanguageChange={onLanguageChange} onAuthenticated={setUser} />;
   }
 
   if (claim.pending) {
-    return <WifiInstructions ssid={ssid} />;
+    return <WifiInstructions ssid={ssid} language={language} />;
   }
 
   if (claim.claimed) {
     return (
       <StatusPanel
-        title="Leopold está listo"
-        copy="El dispositivo ya aparece en tu perfil."
-        action={<a className="button primary" href="/">Ir a mis dispositivos</a>}
+        title={copy.ready}
+        copy={copy.readyDescription}
+        action={<a className="button primary" href="/">{copy.goToDevices}</a>}
       />
     );
   }
@@ -352,24 +351,25 @@ function SetupFlow({ token }: { token: string }) {
   if (!claim.valid) {
     return (
       <StatusPanel
-        title="La sesión terminó"
-        copy="Reinicia Leopold y vuelve a escanear el QR para comenzar otra vez."
-        action={<a className="button secondary" href="/">Volver a mi cuenta</a>}
+        title={copy.expired}
+        copy={copy.expiredDescription}
+        action={<a className="button secondary" href="/">{copy.backToAccount}</a>}
       />
     );
   }
 
   return (
     <StatusPanel
-      title={`Vinculando para ${user.display_name}`}
-      copy="Esto sólo toma unos segundos. No necesitas hacer nada más."
+      title={copy.linking(user.display_name)}
+      copy={copy.linkingDescription}
       loading
       message={message}
     />
   );
 }
 
-function WifiInstructions({ ssid }: { ssid: string }) {
+function WifiInstructions({ ssid, language }: { ssid: string; language: AuthLanguage }) {
+  const copy = pageCopy[language].setup;
   const [copied, setCopied] = useState(false);
 
   async function copyNetwork() {
@@ -381,31 +381,30 @@ function WifiInstructions({ ssid }: { ssid: string }) {
   return (
     <section className="panel wifi-panel">
       <div className="wordmark">GOODMORNING</div>
-      <p className="kicker">Agregar dispositivo · Paso 2 de 2</p>
-      <h1>Conéctate a Leopold.</h1>
-      <p className="muted">
-        La sesión ya está guardada en tu perfil. Ahora conecta temporalmente el teléfono al dispositivo.
-      </p>
+      <p className="kicker">{copy.step}</p>
+      <h1>{copy.connectHeading}</h1>
+      <p className="muted">{copy.sessionSaved}</p>
       <div className="network-card">
-        <span>Red Wi‑Fi</span>
+        <span>{copy.wifiNetwork}</span>
         <strong>{ssid}</strong>
         <button className="text-button" onClick={() => void copyNetwork()}>
-          {copied ? 'Copiada' : 'Copiar nombre'}
+          {copied ? copy.copied : copy.copyName}
         </button>
       </div>
       <ol className="setup-steps">
-        <li><span>1</span><div><strong>Abre Ajustes → Wi‑Fi</strong><small>Esta página puede quedarse abierta.</small></div></li>
-        <li><span>2</span><div><strong>Selecciona {ssid}</strong><small>El portal de Leopold aparecerá automáticamente.</small></div></li>
-        <li><span>3</span><div><strong>Elige el Wi‑Fi de tu casa</strong><small>Cuando Leopold tenga internet, terminaremos solos.</small></div></li>
+        <li><span>1</span><div><strong>{copy.wifiStepOneTitle}</strong><small>{copy.wifiStepOneCopy}</small></div></li>
+        <li><span>2</span><div><strong>{copy.wifiStepTwoTitle(ssid)}</strong><small>{copy.wifiStepTwoCopy}</small></div></li>
+        <li><span>3</span><div><strong>{copy.wifiStepThreeTitle}</strong><small>{copy.wifiStepThreeCopy}</small></div></li>
       </ol>
-      <div className="waiting-line"><div className="spinner small" /> Esperando conexión del dispositivo…</div>
+      <div className="waiting-line"><div className="spinner small" /> {copy.waitingForDevice}</div>
     </section>
   );
 }
 
-function PairingScanner({ onClose }: { onClose: () => void }) {
+function PairingScanner({ onClose, language }: { onClose: () => void; language: AuthLanguage }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<ScannerNotice | null>(null);
+  const copy = pageCopy[language].scanner;
 
   function openPairing(rawValue: string) {
     try {
@@ -415,10 +414,13 @@ function PairingScanner({ onClose }: { onClose: () => void }) {
       const validPath =
         /^\/setup\/[A-Fa-f0-9]{32,64}$/.test(url.pathname) ||
         /^\/v1\/onboarding\/[A-Fa-f0-9]{32,64}\/continue$/.test(url.pathname);
-      if (!validHost || !validPath) throw new Error('Este QR no pertenece a un Leopold');
+      if (!validHost || !validPath) {
+        setMessage('invalidCode');
+        return;
+      }
       window.location.assign(url.toString());
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pudimos leer el QR');
+    } catch {
+      setMessage('invalidCode');
     }
   }
 
@@ -434,7 +436,7 @@ function PairingScanner({ onClose }: { onClose: () => void }) {
       },
     );
     void scanner.start().catch(() => {
-      setMessage('Permite el acceso a la cámara o selecciona una foto del QR.');
+      setMessage('cameraPermission');
     });
     return () => scanner.destroy();
   }, []);
@@ -446,27 +448,27 @@ function PairingScanner({ onClose }: { onClose: () => void }) {
       const result = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
       openPairing(result.data);
     } catch {
-      setMessage('No encontramos un QR de Leopold en esa imagen.');
+      setMessage('noCode');
     }
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Escanear Leopold">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={copy.dialog}>
       <section className="scanner-modal">
         <div className="modal-heading">
           <div>
-            <p className="kicker">Agregar dispositivo · Paso 1 de 2</p>
-            <h2>Escanea tu Leopold</h2>
+            <p className="kicker">{copy.step}</p>
+            <h2>{copy.title}</h2>
           </div>
-          <button className="close-button" onClick={onClose} aria-label="Cerrar">×</button>
+          <button className="close-button" onClick={onClose} aria-label={copy.close}>×</button>
         </div>
-        <p className="muted">Apunta al QR que aparece en la pantalla del dispositivo.</p>
+        <p className="muted">{copy.instructions}</p>
         <div className="camera-frame"><video ref={videoRef} muted playsInline /></div>
         <label className="button secondary file-button">
-          Elegir foto del QR
+          {copy.choosePhoto}
           <input type="file" accept="image/*" capture="environment" onChange={(event) => void scanFile(event)} />
         </label>
-        {message && <p className="notice error">{message}</p>}
+        {message && <p className="notice error">{copy[message]}</p>}
       </section>
     </div>
   );
@@ -511,16 +513,17 @@ function Profile({
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<AccountNotice | null>(null);
   const [spotify, setSpotify] = useState<SpotifyStatus | null>(null);
   const [youtube, setYoutube] = useState<YouTubeStatus | null>(null);
+  const copy = pageCopy[language];
 
   async function loadDevices() {
     setLoading(true);
     try {
       setDevices(await api<Device[]>('/v1/me/devices'));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pudimos cargar tus dispositivos');
+    } catch {
+      setMessage('devicesLoadError');
     } finally {
       setLoading(false);
     }
@@ -530,24 +533,24 @@ function Profile({
     void loadDevices();
     void api<SpotifyStatus>('/v1/integrations/spotify/status')
       .then(setSpotify)
-      .catch((error: Error) => setMessage(error.message));
+      .catch(() => setMessage('servicesLoadError'));
     void api<YouTubeStatus>('/v1/integrations/youtube/status')
       .then(setYoutube)
-      .catch((error: Error) => setMessage(error.message));
+      .catch(() => setMessage('servicesLoadError'));
     const result = new URLSearchParams(window.location.search).get('spotify');
     if (result === 'connected') {
-      setMessage('Spotify quedó conectado. Leopold recibirá el reproductor automáticamente.');
+      setMessage('spotifyConnected');
       window.history.replaceState({}, '', '/');
     } else if (result === 'denied') {
-      setMessage('La conexión con Spotify fue cancelada.');
+      setMessage('spotifyDenied');
       window.history.replaceState({}, '', '/');
     }
     const youtubeResult = new URLSearchParams(window.location.search).get('youtube');
     if (youtubeResult === 'connected') {
-      setMessage('YouTube quedó conectado. Leopold recibirá tu experiencia visual automáticamente.');
+      setMessage('youtubeConnected');
       window.history.replaceState({}, '', '/');
     } else if (youtubeResult === 'denied') {
-      setMessage('La conexión con YouTube fue cancelada.');
+      setMessage('youtubeDenied');
       window.history.replaceState({}, '', '/');
     }
   }, []);
@@ -557,13 +560,13 @@ function Profile({
   }
 
   async function disconnectSpotify() {
-    if (!window.confirm('¿Desconectar Spotify de todos tus dispositivos Leopold?')) return;
+    if (!window.confirm(copy.confirmDisconnectSpotify)) return;
     try {
       await api<void>('/v1/integrations/spotify', { method: 'DELETE' });
       setSpotify({ configured: true, connected: false, display_name: null });
-      setMessage('Spotify fue desconectado. Leopold volvió a su pantalla principal.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pudimos desconectar Spotify');
+      setMessage('spotifyDisconnected');
+    } catch {
+      setMessage('actionError');
     }
   }
 
@@ -572,25 +575,25 @@ function Profile({
   }
 
   async function disconnectYoutube() {
-    if (!window.confirm('¿Desconectar YouTube de todos tus dispositivos Leopold?')) return;
+    if (!window.confirm(copy.confirmDisconnectYoutube)) return;
     try {
       await api<void>('/v1/integrations/youtube', { method: 'DELETE' });
       setYoutube({ configured: true, connected: false, display_name: null });
-      setMessage('YouTube fue desconectado de Leopold.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pudimos desconectar YouTube');
+      setMessage('youtubeDisconnected');
+    } catch {
+      setMessage('actionError');
     }
   }
 
   async function removeDevice(device: Device) {
     const name = device.label || device.device_id;
-    if (!window.confirm(`¿Quitar ${name} de tu cuenta?`)) return;
-    setMessage('');
+    if (!window.confirm(copy.confirmRemoveDevice(name))) return;
+    setMessage(null);
     try {
       await api<void>(`/v1/me/devices/${device.device_id}`, { method: 'DELETE' });
       setDevices((current) => current.filter((item) => item.device_id !== device.device_id));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pudimos quitar el dispositivo');
+    } catch {
+      setMessage('deviceRemoveError');
     }
   }
 
@@ -600,30 +603,30 @@ function Profile({
       <LeopoldCardNav language={language} onLanguageChange={onLanguageChange} variant="account" onLogout={onLogout} />
       <div className="account-content">
       <section className="account-heading" id="profile">
-        <p className="kicker">Perfil</p>
-        <h1>Hola, {user.display_name}</h1>
+        <p className="kicker">{copy.profile}</p>
+        <h1>{copy.greeting} {user.display_name}</h1>
         <p className="muted">{user.email}</p>
       </section>
 
       <section className="devices-section" id="devices">
         <div className="section-heading">
           <div>
-            <p className="kicker">Mis dispositivos</p>
-            <h2>Leopold</h2>
+            <p className="kicker">{copy.myDevices}</p>
+            <h2>{copy.devicesTitle}</h2>
           </div>
           <button className="button primary compact" onClick={() => setShowScanner(true)}>
-            Agregar dispositivo
+            {copy.addDevice}
           </button>
         </div>
 
-        {showScanner && <PairingScanner onClose={() => setShowScanner(false)} />}
+        {showScanner && <PairingScanner onClose={() => setShowScanner(false)} language={language} />}
 
         {loading ? (
-          <div className="empty"><div className="spinner small" /> Cargando dispositivos…</div>
+          <div className="empty"><div className="spinner small" /> {copy.loadingDevices}</div>
         ) : devices.length === 0 ? (
           <div className="empty">
-            <strong>Aún no tienes dispositivos.</strong>
-            <span>Pulsa “Agregar dispositivo” para configurar el primero.</span>
+            <strong>{copy.noDevices}</strong>
+            <span>{copy.addFirstDevice}</span>
           </div>
         ) : (
           <div className="device-list">
@@ -635,55 +638,55 @@ function Profile({
                   <span>{device.device_id}</span>
                   <small>
                     <i className={device.status === 'online' ? 'online' : ''} />
-                    {device.status === 'online' ? 'Conectado' : 'Sin conexión'}
-                    {device.firmware_version ? ` · Firmware ${device.firmware_version}` : ''}
+                    {device.status === 'online' ? copy.online : copy.offline}
+                    {device.firmware_version ? copy.firmwareVersion(device.firmware_version) : ''}
                   </small>
                 </div>
                 <button className="remove-button" onClick={() => void removeDevice(device)}>
-                  Quitar
+                  {copy.removeDevice}
                 </button>
               </article>
             ))}
           </div>
         )}
-        {message && <p className="notice error" role="alert">{message}</p>}
+        {message && <p className="notice error" role="alert">{copy.notices[message]}</p>}
       </section>
 
       <section className="services-section" id="services">
         <div className="section-heading">
           <div>
-            <p className="kicker">Servicios</p>
-            <h2>Experiencias</h2>
+            <p className="kicker">{copy.services}</p>
+            <h2>{copy.experiences}</h2>
           </div>
         </div>
         <article className="service-row spotify-service">
-          <div className="spotify-mark" aria-hidden="true">●</div>
+          <img className="spotify-mark" src="/brand/spotify-icon.svg" alt="Spotify" />
           <div className="device-copy">
             <strong>Spotify</strong>
             <span>
               {spotify?.connected
-                ? `Conectado${spotify.display_name ? ` como ${spotify.display_name}` : ''}`
-                : 'Controla la música desde Leopold'}
+                ? copy.spotifyConnected(spotify.display_name)
+                : copy.spotifyDescription}
             </span>
             <small>
               {spotify?.connected
-                ? 'El reproductor ya se envía a tus dispositivos'
+                ? copy.spotifySynced
                 : spotify?.configured === false
-                  ? 'Pendiente de configurar en el servidor'
-                  : 'Requiere Spotify Premium para controlar reproducción'}
+                  ? copy.spotifyNotConfigured
+                  : copy.spotifyPremium}
             </small>
           </div>
           {spotify?.connected ? (
             <button className="remove-button" onClick={() => void disconnectSpotify()}>
-              Desconectar
+              {copy.spotifyDisconnect}
             </button>
           ) : (
             <button
-              className="button spotify-button compact"
+              className="button service-connect-button compact"
               disabled={!spotify?.configured}
               onClick={connectSpotify}
             >
-              Conectar
+              {copy.spotifyConnect}
             </button>
           )}
         </article>
@@ -693,28 +696,28 @@ function Profile({
             <strong>YouTube</strong>
             <span>
               {youtube?.connected
-                ? `Conectado${youtube.display_name ? ` como ${youtube.display_name}` : ''}`
-                : 'Lleva tus suscripciones y descubrimientos a Leopold'}
+                ? copy.youtubeConnected(youtube.display_name)
+                : copy.youtubeDescription}
             </span>
             <small>
               {youtube?.connected
-                ? 'Cloud envía una experiencia visual a tus dispositivos'
+                ? copy.youtubeSynced
                 : youtube?.configured === false
-                  ? 'Pendiente de configurar OAuth en el servidor'
-                  : 'Acceso de sólo lectura; Leopold nunca publica por ti'}
+                  ? copy.youtubeNotConfigured
+                  : copy.youtubeReadOnly}
             </small>
           </div>
           {youtube?.connected ? (
             <button className="remove-button" onClick={() => void disconnectYoutube()}>
-              Desconectar
+              {copy.youtubeDisconnect}
             </button>
           ) : (
             <button
-              className="button youtube-button compact"
+              className="button service-connect-button compact"
               disabled={!youtube?.configured}
               onClick={connectYoutube}
             >
-              Conectar
+              {copy.youtubeConnect}
             </button>
           )}
         </article>
@@ -731,11 +734,12 @@ function SimulatorPage({
   language: AuthLanguage;
   onLanguageChange: (language: AuthLanguage) => void;
 }) {
+  const copy = pageCopy[language];
   return (
     <div className="account-shell simulator-account-shell" lang={language}>
       <GlyphRainBackground />
       <LeopoldCardNav language={language} onLanguageChange={onLanguageChange} variant="simulator" />
-      <Suspense fallback={<div className="simulator-loading" role="status">Cargando el simulador…</div>}>
+      <Suspense fallback={<div className="simulator-loading" role="status">{copy.loadingSimulator}</div>}>
         <Simulator />
       </Suspense>
     </div>
@@ -746,8 +750,15 @@ function App() {
   const isSimulator = window.location.pathname === '/simulator';
   const token = useMemo(currentSetupToken, []);
   const [language, setLanguage] = useState<AuthLanguage>('es');
+  const copy = authCopy[language];
+  const page = pageCopy[language];
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(!token && !isSimulator);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = copy.title;
+  }, [language, copy.title]);
 
   useEffect(() => {
     if (token || isSimulator) return;
@@ -763,9 +774,9 @@ function App() {
   }
 
   if (isSimulator) return <SimulatorPage language={language} onLanguageChange={setLanguage} />;
-  if (token) return <main className="center-shell"><SetupFlow token={token} /></main>;
-  if (loading) return <main className="center-shell"><StatusPanel title="Cargando tu perfil" copy="" loading /></main>;
-  if (!user) return <main className="center-shell"><AuthForm context="account" onAuthenticated={setUser} /></main>;
+  if (token) return <main className="center-shell"><SetupFlow token={token} language={language} onLanguageChange={setLanguage} /></main>;
+  if (loading) return <main className="center-shell"><StatusPanel title={page.loadingProfile} copy="" loading /></main>;
+  if (!user) return <main className="center-shell"><AuthForm context="account" language={language} onLanguageChange={setLanguage} onAuthenticated={setUser} /></main>;
   return <Profile user={user} onLogout={() => void logout()} language={language} onLanguageChange={setLanguage} />;
 }
 

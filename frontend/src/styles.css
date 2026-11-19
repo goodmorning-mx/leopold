@@ -458,8 +458,8 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 .device-icon img { display: block; width: 34px; height: 34px; object-fit: contain; }
 .account-shell .notice.error { border-color: color-mix(in srgb, #ff6262 44%, var(--auth-border)); color: #ffc7c7; background: color-mix(in srgb, #6a2222 36%, transparent); }
 .account-shell .button:disabled { opacity: .46; cursor: not-allowed; }
-.account-shell .spotify-service .spotify-button { border-color: var(--auth-accent); color: #00131a; background: var(--auth-accent); }
-.account-shell .youtube-service .youtube-button { border-color: var(--auth-accent-secondary); color: #fff; background: var(--auth-accent-secondary); }
+.account-shell .service-connect-button { border-color: #1db954; color: #06120a; background: #1db954; }
+.account-shell .service-connect-button:hover:not(:disabled) { border-color: #1ed760; background: #1ed760; }
 .simulator-shell .notice { border-color: color-mix(in srgb, var(--auth-accent, #00d2ff) 36%, var(--auth-border, #2b3545)); color: var(--auth-text, #fff); background: color-mix(in srgb, var(--auth-accent, #00d2ff) 10%, transparent); }
 .device-copy { display: grid; gap: 3px; min-width: 0; flex: 1; }
 .device-copy span, .device-copy small { color: var(--auth-muted); font-size: 12px; }
@@ -502,21 +502,11 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
 }
 .service-row + .service-row { margin-top: 14px; }
 .spotify-mark {
-  display: grid;
-  place-items: center;
+  display: block;
+  flex: none;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  color: #000;
-  background: #1db954;
-  font-size: 34px;
 }
-.spotify-button {
-  color: #000;
-  border-color: #1db954;
-  background: #1db954;
-}
-.spotify-button:disabled { opacity: 0.45; cursor: not-allowed; }
 .youtube-mark {
   display: grid;
   place-items: center;
@@ -527,12 +517,6 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
   background: #ff453a;
   font-size: 22px;
 }
-.youtube-button {
-  color: #fff;
-  border-color: #ff453a;
-  background: #ff453a;
-}
-.youtube-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 @media (max-width: 620px) {
   .auth-page { gap: 20px; padding: 112px 18px 28px; }
