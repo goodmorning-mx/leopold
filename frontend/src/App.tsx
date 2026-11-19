@@ -107,14 +107,27 @@ function AuthForm({
               <img src="/brand/leopold-mark.png" alt="" />
               <span>Leopold</span>
             </a>
-            <label className="auth-language">
-              <span>{copy.language}</span>
-              <select value={language} onChange={(event) => setLanguage(event.target.value as AuthLanguage)}>
-                {Object.entries(authCopy).map(([code, translation]) => (
-                  <option key={code} value={code} lang={code}>{translation.nativeName}</option>
-                ))}
-              </select>
-            </label>
+            <div className="auth-language" role="group" aria-label={copy.language}>
+              {Object.keys(authCopy).map((code) => {
+                const selected = language === code;
+                const flag = code === 'es' ? '🇲🇽' : '🇺🇸';
+                const accessibleName = code === 'es' ? 'Español (México)' : 'English (United States)';
+                return (
+                  <button
+                    key={code}
+                    className={`language-flag${selected ? ' selected' : ''}`}
+                    type="button"
+                    aria-label={accessibleName}
+                    aria-pressed={selected}
+                    title={accessibleName}
+                    lang={code}
+                    onClick={() => setLanguage(code as AuthLanguage)}
+                  >
+                    <span aria-hidden="true">{flag}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </GlassSurface>
       </header>
