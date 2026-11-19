@@ -1,9 +1,10 @@
-import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, lazy, useEffect, useId, useMemo, useRef, useState } from 'react';
 import QrScanner from 'qr-scanner';
-import Simulator from './simulator/Simulator';
 import { authCopy, authError, type AuthLanguage } from './auth-language';
 import GlassSurface from './components/GlassSurface';
 import GlyphRainBackground from './components/GlyphRainBackground';
+
+const Simulator = lazy(() => import('./simulator/Simulator'));
 
 type User = { email: string; display_name: string };
 type Device = {
@@ -28,14 +29,18 @@ type SpotifyStatus = {
 type YouTubeStatus = SpotifyStatus;
 type Mode = 'register' | 'login';
 
-function AuthCardNav({
+function LeopoldCardNav({
   language,
   onLanguageChange,
+  variant,
   onModeChange,
+  onLogout,
 }: {
   language: AuthLanguage;
   onLanguageChange: (language: AuthLanguage) => void;
-  onModeChange: (mode: Mode) => void;
+  variant: 'auth' | 'account' | 'simulator';
+  onModeChange?: (mode: Mode) => void;
+  onLogout?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -57,15 +62,10 @@ function AuthCardNav({
     };
   }, [open]);
 
-  const chooseMode = (mode: Mode) => {
-    onModeChange(mode);
-    setOpen(false);
-  };
-
   return (
-    <header className="auth-topbar">
+    <header className={`auth-topbar${variant === 'auth' ? '' : ' account-nav-topbar'}`}>
       <GlassSurface className="auth-nav-glass" width="100%" height="auto" borderRadius={22} backgroundOpacity={0.1}>
-        <nav className={`auth-card-nav${open ? ' is-open' : ''}`} aria-label={copy.access}>
+        <nav className={`auth-card-nav${open ? ' is-open' : ''}`} aria-label={copy.navigation}>
           <div className="auth-nav-bar">
             <button
               className="auth-nav-menu"
@@ -106,18 +106,43 @@ function AuthCardNav({
           </div>
           <div className="auth-nav-disclosure" id={menuId} aria-hidden={!open}>
             <div className="auth-nav-cards">
-              <section className="auth-nav-card" aria-label={copy.access}>
-                <div className="auth-nav-card-heading">{copy.access}</div>
-                <p>{copy.accountDescription}</p>
-                <div className="auth-nav-actions">
-                  <button type="button" tabIndex={open ? 0 : -1} onClick={() => chooseMode('login')}>{copy.login}</button>
-                  <button type="button" tabIndex={open ? 0 : -1} onClick={() => chooseMode('register')}>{copy.register}</button>
-                </div>
-              </section>
-              <section className="auth-nav-card auth-nav-card-brand" aria-label="Leopold">
-                <img src="/brand/leopold-wordmark.png" alt="Leopold" />
-                <p>{copy.navDescription}</p>
-              </section>
+              {variant === 'auth' ? (
+                <>
+                  <section className="auth-nav-card" aria-label={copy.access}>
+                    <div className="auth-nav-card-heading">{copy.access}</div>
+                    <p>{copy.accountDescription}</p>
+                    <div className="auth-nav-actions">
+                      <button type="button" tabIndex={open ? 0 : -1} onClick={() => { onModeChange?.('login'); setOpen(false); }}>{copy.login}</button>
+                      <button type="button" tabIndex={open ? 0 : -1} onClick={() => { onModeChange?.('register'); setOpen(false); }}>{copy.register}</button>
+                    </div>
+                  </section>
+                  <section className="auth-nav-card auth-nav-card-brand" aria-label="Leopold">
+                    <img src="/brand/leopold-wordmark.png" alt="Leopold" />
+                    <p>{copy.navDescription}</p>
+                  </section>
+                </>
+              ) : (
+                <>
+                  <section className="auth-nav-card" aria-label={copy.navigation}>
+                    <div className="auth-nav-card-heading">{copy.explore}</div>
+                    <p>{copy.accountDescription}</p>
+                    <div className="auth-nav-actions">
+                      <a href={variant === 'account' ? '#devices' : '/#devices'} tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>{copy.devices}</a>
+                      <a href={variant === 'account' ? '#services' : '/#services'} tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>{copy.services}</a>
+                      <a className="primary" href="/simulator" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>{copy.simulator}</a>
+                    </div>
+                    {variant === 'account' && onLogout && (
+                      <button className="auth-nav-logout" type="button" tabIndex={open ? 0 : -1} onClick={() => { setOpen(false); onLogout(); }}>
+                        {copy.logout}
+                      </button>
+                    )}
+                  </section>
+                  <section className="auth-nav-card auth-nav-card-brand" aria-label="Leopold">
+                    <img src="/brand/leopold-wordmark.png" alt="Leopold" />
+                    <p>{copy.navDescription}</p>
+                  </section>
+                </>
+              )}
             </div>
           </div>
         </nav>
@@ -200,7 +225,7 @@ function AuthForm({
   return (
     <div className="auth-page" lang={language}>
       <GlyphRainBackground />
-      <AuthCardNav language={language} onLanguageChange={setLanguage} onModeChange={setMode} />
+      <LeopoldCardNav language={language} onLanguageChange={setLanguage} variant="auth" onModeChange={setMode} />
       <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.1}>
         <section className="panel auth-panel">
           <img className="auth-wordmark" src="/brand/leopold-wordmark.png" alt="Leopold" />
@@ -472,7 +497,17 @@ function StatusPanel({
   );
 }
 
-function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
+function Profile({
+  user,
+  onLogout,
+  language,
+  onLanguageChange,
+}: {
+  user: User;
+  onLogout: () => void;
+  language: AuthLanguage;
+  onLanguageChange: (language: AuthLanguage) => void;
+}) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
@@ -560,19 +595,17 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
   }
 
   return (
-    <main className="account-shell">
-      <header className="topbar">
-        <div className="wordmark">GOODMORNING</div>
-        <button className="text-button" onClick={onLogout}>Cerrar sesión</button>
-      </header>
-
-      <section className="account-heading">
+    <main className="account-shell" lang={language}>
+      <GlyphRainBackground />
+      <LeopoldCardNav language={language} onLanguageChange={onLanguageChange} variant="account" onLogout={onLogout} />
+      <div className="account-content">
+      <section className="account-heading" id="profile">
         <p className="kicker">Perfil</p>
         <h1>Hola, {user.display_name}</h1>
         <p className="muted">{user.email}</p>
       </section>
 
-      <section className="devices-section">
+      <section className="devices-section" id="devices">
         <div className="section-heading">
           <div>
             <p className="kicker">Mis dispositivos</p>
@@ -596,9 +629,9 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
           <div className="device-list">
             {devices.map((device) => (
               <article className="device-row" key={device.device_id}>
-                <div className="device-icon">L</div>
+                <div className="device-icon"><img src="/brand/leopold-mark.png" alt="" /></div>
                 <div className="device-copy">
-                  <strong>{device.label || 'Leopold Pocket'}</strong>
+                  <strong>{device.label || device.device_id}</strong>
                   <span>{device.device_id}</span>
                   <small>
                     <i className={device.status === 'online' ? 'online' : ''} />
@@ -616,7 +649,7 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
         {message && <p className="notice error" role="alert">{message}</p>}
       </section>
 
-      <section className="services-section">
+      <section className="services-section" id="services">
         <div className="section-heading">
           <div>
             <p className="kicker">Servicios</p>
@@ -686,45 +719,54 @@ function Profile({ user, onLogout }: { user: User; onLogout: () => void }) {
           )}
         </article>
       </section>
-      <section className="account-simulator" aria-labelledby="account-simulator-title">
-        <div className="section-heading">
-          <div>
-            <p className="kicker">Explorar Leopold</p>
-            <h2 id="account-simulator-title">Simulador</h2>
-          </div>
-          <a className="button secondary compact" href="/simulator" target="_blank" rel="noopener noreferrer">
-            Abrir en otra pestaña
-          </a>
-        </div>
-        <iframe className="account-simulator-frame" src="/simulator" title="Simulador de Leopold" loading="lazy" />
-      </section>
+      </div>
     </main>
   );
 }
 
+function SimulatorPage({
+  language,
+  onLanguageChange,
+}: {
+  language: AuthLanguage;
+  onLanguageChange: (language: AuthLanguage) => void;
+}) {
+  return (
+    <div className="account-shell simulator-account-shell" lang={language}>
+      <GlyphRainBackground />
+      <LeopoldCardNav language={language} onLanguageChange={onLanguageChange} variant="simulator" />
+      <Suspense fallback={<div className="simulator-loading" role="status">Cargando el simulador…</div>}>
+        <Simulator />
+      </Suspense>
+    </div>
+  );
+}
+
 function App() {
-  if (window.location.pathname === '/simulator') return <Simulator />;
+  const isSimulator = window.location.pathname === '/simulator';
   const token = useMemo(currentSetupToken, []);
+  const [language, setLanguage] = useState<AuthLanguage>('es');
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(!token);
+  const [loading, setLoading] = useState(!token && !isSimulator);
 
   useEffect(() => {
-    if (token) return;
+    if (token || isSimulator) return;
     void api<User>('/v1/auth/me')
       .then(setUser)
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, isSimulator]);
 
   async function logout() {
     await api<void>('/v1/auth/logout', { method: 'POST' });
     setUser(null);
   }
 
+  if (isSimulator) return <SimulatorPage language={language} onLanguageChange={setLanguage} />;
   if (token) return <main className="center-shell"><SetupFlow token={token} /></main>;
   if (loading) return <main className="center-shell"><StatusPanel title="Cargando tu perfil" copy="" loading /></main>;
   if (!user) return <main className="center-shell"><AuthForm context="account" onAuthenticated={setUser} /></main>;
-  return <Profile user={user} onLogout={() => void logout()} />;
+  return <Profile user={user} onLogout={() => void logout()} language={language} onLanguageChange={setLanguage} />;
 }
 
 export default App;
