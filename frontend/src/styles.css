@@ -57,7 +57,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .auth-nav-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 78%, transparent); }
 .auth-nav-glass .glass-surface__content { padding: 0 max(24px, calc((100vw - 920px) / 2)); }
 .auth-nav-content { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; }
-.auth-brand { color: var(--auth-text); font-size: 21px; font-weight: 800; letter-spacing: -.04em; text-decoration: none; }
+.auth-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--auth-text); font-size: 21px; font-weight: 800; letter-spacing: -.04em; text-decoration: none; }
+.auth-brand img { display: block; width: 40px; height: 40px; object-fit: contain; }
 .auth-card-glass { width: min(100%, 480px); height: auto; }
 .auth-card-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 86%, transparent); }
 .auth-card-glass .glass-surface__content { height: auto; padding: 0; }
@@ -86,6 +87,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   background: color-mix(in srgb, var(--auth-glass) 74%, transparent);
   box-shadow: 0 20px 70px rgba(0, 0, 0, .42);
 }
+.auth-wordmark { display: block; width: min(100%, 190px); height: auto; margin: 0 auto 22px; }
+.auth-panel > .kicker { margin-top: 0; }
 .auth-panel .kicker, .auth-panel .muted, .auth-panel label { color: var(--auth-muted); }
 .auth-panel .switcher { border-color: var(--auth-border); background: var(--auth-canvas); }
 .auth-panel .switcher button.selected { color: var(--auth-canvas); background: var(--auth-accent); }
@@ -436,6 +439,7 @@ input:focus { border-color: #fff; box-shadow: 0 0 0 2px #333; }
   .auth-page { gap: 20px; padding: 100px 18px 28px; }
   .auth-topbar { height: 68px; }
   .auth-nav-glass .glass-surface__content { padding-inline: 18px; }
+  .auth-brand img { width: 36px; height: 36px; }
   .auth-language { gap: 6px; }
   .auth-language select { min-height: 40px; padding: 7px 9px; }
   .auth-panel { padding: 28px 24px; }

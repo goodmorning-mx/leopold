@@ -103,7 +103,10 @@ function AuthForm({
       <header className="auth-topbar">
         <GlassSurface className="auth-nav-glass" width="100%" height="100%" borderRadius={0} backgroundOpacity={0.1}>
           <div className="auth-nav-content">
-            <a className="auth-brand" href="/" aria-label="Leopold">Leopold</a>
+            <a className="auth-brand" href="/" aria-label="Leopold">
+              <img src="/brand/leopold-mark.png" alt="" />
+              <span>Leopold</span>
+            </a>
             <label className="auth-language">
               <span>{copy.language}</span>
               <select value={language} onChange={(event) => setLanguage(event.target.value as AuthLanguage)}>
@@ -117,6 +120,7 @@ function AuthForm({
       </header>
       <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.12}>
         <section className="panel auth-panel">
+          <img className="auth-wordmark" src="/brand/leopold-wordmark.png" alt="Leopold" />
           <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>
           <h1>{mode === 'register' ? copy.registerHeading : copy.loginHeading}</h1>
           <p className="muted">
