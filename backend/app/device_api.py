@@ -260,6 +260,31 @@ def provision_device(
     raise HTTPException(status_code=503, detail="Could not allocate a device ID")
 
 
+@router.delete("/admin/devices/{device_id}/owner", status_code=status.HTTP_204_NO_CONTENT)
+def admin_unclaim_device(
+    device_id: str,
+    db: Db,
+    settings: Config,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Response:
+    """Remove account ownership without deleting or rotating the device."""
+    require_admin_token(settings, authorization)
+    device = db.scalar(
+        select(Device).where(Device.device_id == device_id).with_for_update()
+    )
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    now = datetime.now(timezone.utc)
+    db.query(DeviceClaimToken).filter(
+        DeviceClaimToken.device_id == device.id,
+        DeviceClaimToken.used_at.is_(None),
+    ).update({DeviceClaimToken.used_at: now})
+    device.owner_id = None
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.put("/admin/devices/{device_id}/ui", response_model=UIDocument)
 def publish_device_ui(
     device_id: str,
