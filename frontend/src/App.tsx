@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import QrScanner from 'qr-scanner';
 import Simulator from './simulator/Simulator';
 import { authCopy, authError, type AuthLanguage } from './auth-language';
+import GlassSurface from './components/GlassSurface';
+import GlyphRainBackground from './components/GlyphRainBackground';
 
 type User = { email: string; display_name: string };
 type Device = {
@@ -99,60 +101,86 @@ function AuthForm({
 
   return (
     <div className="auth-page" lang={language}>
-      <label className="auth-language">
-        <span>{copy.language}</span>
-        <select value={language} onChange={(event) => setLanguage(event.target.value as AuthLanguage)}>
-          {Object.entries(authCopy).map(([code, translation]) => (
-            <option key={code} value={code} lang={code}>{translation.nativeName}</option>
-          ))}
-        </select>
-      </label>
-      <section className="panel auth-panel">
-        <div className="wordmark">GOODMORNING</div>
-        <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>
-        <h1>{mode === 'register' ? copy.registerHeading : copy.loginHeading}</h1>
-        <p className="muted">
-          {context === 'setup'
-            ? copy.setupDescription
-            : copy.accountDescription}
-        </p>
+      <GlyphRainBackground />
+      <header className="auth-topbar">
+        <GlassSurface className="auth-nav-glass" width="100%" height="100%" borderRadius={0} backgroundOpacity={0.1}>
+          <div className="auth-nav-content">
+            <a className="auth-brand" href="/" aria-label="Leopold">
+              <img src="/brand/leopold-mark.png" alt="" />
+              <span>Leopold</span>
+            </a>
+            <div className="auth-language" role="group" aria-label={copy.language}>
+              {Object.keys(authCopy).map((code) => {
+                const selected = language === code;
+                const flag = code === 'es' ? '🇲🇽' : '🇺🇸';
+                const accessibleName = code === 'es' ? 'Español (México)' : 'English (United States)';
+                return (
+                  <button
+                    key={code}
+                    className={`language-flag${selected ? ' selected' : ''}`}
+                    type="button"
+                    aria-label={accessibleName}
+                    aria-pressed={selected}
+                    title={accessibleName}
+                    lang={code}
+                    onClick={() => setLanguage(code as AuthLanguage)}
+                  >
+                    <span aria-hidden="true">{flag}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </GlassSurface>
+      </header>
+      <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.12}>
+        <section className="panel auth-panel">
+          <img className="auth-wordmark" src="/brand/leopold-wordmark.png" alt="Leopold" />
+          <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>
+          <h1>{mode === 'register' ? copy.registerHeading : copy.loginHeading}</h1>
+          <p className="muted">
+            {context === 'setup'
+              ? copy.setupDescription
+              : copy.accountDescription}
+          </p>
 
-        <div className="switcher" aria-label={copy.access}>
-          <button className={mode === 'login' ? 'selected' : ''} onClick={() => setMode('login')}>
-            {copy.login}
-          </button>
-          <button className={mode === 'register' ? 'selected' : ''} onClick={() => setMode('register')}>
-            {copy.register}
-          </button>
-        </div>
+          <div className="switcher" aria-label={copy.access}>
+            <button className={mode === 'login' ? 'selected' : ''} onClick={() => setMode('login')}>
+              {copy.login}
+            </button>
+            <button className={mode === 'register' ? 'selected' : ''} onClick={() => setMode('register')}>
+              {copy.register}
+            </button>
+          </div>
 
-        <form onSubmit={authenticate}>
-          {mode === 'register' && (
+          <form onSubmit={authenticate}>
+            {mode === 'register' && (
+              <label>
+                {copy.name}
+                <input name="display_name" autoComplete="name" required maxLength={80} />
+              </label>
+            )}
             <label>
-              {copy.name}
-              <input name="display_name" autoComplete="name" required maxLength={80} />
+              {copy.email}
+              <input name="email" type="email" autoComplete="email" required maxLength={254} />
             </label>
-          )}
-          <label>
-            {copy.email}
-            <input name="email" type="email" autoComplete="email" required maxLength={254} />
-          </label>
-          <label>
-            {copy.password}
-            <input
-              name="password"
-              type="password"
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-              required
-              minLength={8}
-            />
-          </label>
-          <button className="button primary" disabled={busy}>
-            {busy ? copy.busy : mode === 'register' ? copy.createProfile : copy.submit}
-          </button>
-        </form>
-        {message && <p className="notice error" role="alert">{authError(message, language)}</p>}
-      </section>
+            <label>
+              {copy.password}
+              <input
+                name="password"
+                type="password"
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                required
+                minLength={8}
+              />
+            </label>
+            <button className="button primary" disabled={busy}>
+              {busy ? copy.busy : mode === 'register' ? copy.createProfile : copy.submit}
+            </button>
+          </form>
+          {message && <p className="notice error" role="alert">{authError(message, language)}</p>}
+        </section>
+      </GlassSurface>
     </div>
   );
 }
