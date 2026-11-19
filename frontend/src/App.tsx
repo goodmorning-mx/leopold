@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import QrScanner from 'qr-scanner';
 import Simulator from './simulator/Simulator';
 import { authCopy, authError, type AuthLanguage } from './auth-language';
@@ -27,6 +27,104 @@ type SpotifyStatus = {
 
 type YouTubeStatus = SpotifyStatus;
 type Mode = 'register' | 'login';
+
+function AuthCardNav({
+  language,
+  onLanguageChange,
+  onModeChange,
+}: {
+  language: AuthLanguage;
+  onLanguageChange: (language: AuthLanguage) => void;
+  onModeChange: (mode: Mode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const copy = authCopy[language];
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && !event.target.closest('.auth-card-nav')) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  const chooseMode = (mode: Mode) => {
+    onModeChange(mode);
+    setOpen(false);
+  };
+
+  return (
+    <header className="auth-topbar">
+      <GlassSurface className="auth-nav-glass" width="100%" height="auto" borderRadius={22} backgroundOpacity={0.1}>
+        <nav className={`auth-card-nav${open ? ' is-open' : ''}`} aria-label={copy.access}>
+          <div className="auth-nav-bar">
+            <button
+              className="auth-nav-menu"
+              type="button"
+              aria-expanded={open}
+              aria-controls={menuId}
+              aria-label={open ? copy.closeMenu : copy.openMenu}
+              onClick={() => setOpen((current) => !current)}
+            >
+              <span className="auth-nav-burger" aria-hidden="true"><i /><i /></span>
+              <span>{open ? copy.closeMenu : copy.openMenu}</span>
+            </button>
+            <a className="auth-brand" href="/" aria-label="Leopold">
+              <img src="/brand/leopold-mark.png" alt="" />
+              <span>Leopold</span>
+            </a>
+            <div className="auth-language" role="group" aria-label={copy.language}>
+              {(Object.keys(authCopy) as AuthLanguage[]).map((code) => {
+                const selected = language === code;
+                const flag = code === 'es' ? '🇲🇽' : '🇺🇸';
+                const accessibleName = code === 'es' ? 'Español (México)' : 'English (United States)';
+                return (
+                  <button
+                    key={code}
+                    className={`language-flag${selected ? ' selected' : ''}`}
+                    type="button"
+                    aria-label={accessibleName}
+                    aria-pressed={selected}
+                    title={accessibleName}
+                    lang={code}
+                    onClick={() => onLanguageChange(code)}
+                  >
+                    <span aria-hidden="true">{flag}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="auth-nav-disclosure" id={menuId} aria-hidden={!open}>
+            <div className="auth-nav-cards">
+              <section className="auth-nav-card" aria-label={copy.access}>
+                <div className="auth-nav-card-heading">{copy.access}</div>
+                <p>{copy.accountDescription}</p>
+                <div className="auth-nav-actions">
+                  <button type="button" tabIndex={open ? 0 : -1} onClick={() => chooseMode('login')}>{copy.login}</button>
+                  <button type="button" tabIndex={open ? 0 : -1} onClick={() => chooseMode('register')}>{copy.register}</button>
+                </div>
+              </section>
+              <section className="auth-nav-card auth-nav-card-brand" aria-label="Leopold">
+                <img src="/brand/leopold-wordmark.png" alt="Leopold" />
+                <p>{copy.navDescription}</p>
+              </section>
+            </div>
+          </div>
+        </nav>
+      </GlassSurface>
+    </header>
+  );
+}
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -102,38 +200,8 @@ function AuthForm({
   return (
     <div className="auth-page" lang={language}>
       <GlyphRainBackground />
-      <header className="auth-topbar">
-        <GlassSurface className="auth-nav-glass" width="100%" height="100%" borderRadius={0} backgroundOpacity={0.1}>
-          <div className="auth-nav-content">
-            <a className="auth-brand" href="/" aria-label="Leopold">
-              <img src="/brand/leopold-mark.png" alt="" />
-              <span>Leopold</span>
-            </a>
-            <div className="auth-language" role="group" aria-label={copy.language}>
-              {Object.keys(authCopy).map((code) => {
-                const selected = language === code;
-                const flag = code === 'es' ? '🇲🇽' : '🇺🇸';
-                const accessibleName = code === 'es' ? 'Español (México)' : 'English (United States)';
-                return (
-                  <button
-                    key={code}
-                    className={`language-flag${selected ? ' selected' : ''}`}
-                    type="button"
-                    aria-label={accessibleName}
-                    aria-pressed={selected}
-                    title={accessibleName}
-                    lang={code}
-                    onClick={() => setLanguage(code as AuthLanguage)}
-                  >
-                    <span aria-hidden="true">{flag}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </GlassSurface>
-      </header>
-      <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.12}>
+      <AuthCardNav language={language} onLanguageChange={setLanguage} onModeChange={setMode} />
+      <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.1}>
         <section className="panel auth-panel">
           <img className="auth-wordmark" src="/brand/leopold-wordmark.png" alt="Leopold" />
           <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>
