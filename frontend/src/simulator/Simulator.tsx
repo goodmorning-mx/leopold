@@ -618,7 +618,7 @@ export default function Simulator() {
   function applyJson() { try { const parsed: unknown = JSON.parse(json); const result = validateSdui(parsed); if (!result.document) { setJsonMessage(result.errors.join(' ')); return; } setDocument(result.document); setEtag(`"mock-ui-${result.document.revision}"`); setScreenIndex(0); setLocalPanel('none'); setJsonMessage(`Loaded revision ${result.document.revision}; mock Cloud ETag updated.`); addEvent('cloud', `Applied SDUI revision ${result.document.revision}`, { revision: result.document.revision, etag: `mock-ui-${result.document.revision}` }); } catch { setJsonMessage('JSON is not valid.'); } }
   const status = useMemo(() => `${screenIndex + 1} / ${document.screens.length}`, [document.screens.length, screenIndex]);
 
-  return <div className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
+  return <main className={`simulator-shell${framebufferCaptureMode ? ' framebuffer-capture' : ''}`}>
     <header className="simulator-header"><div><p className="kicker">Leopold · firmware {firmwareReference}</p><h1>Device lab</h1>
       {sharedMenuError && <p role="alert">{sharedMenuError}</p>}<p className="muted">Local working-copy preview using the shared firmware renderer. Cloud is unavailable in the browser; time, weather, Spotify, and USB responses are mocked.</p></div><div className="simulator-actions">{framebufferCaptureMode || calibrationMode ? <><a className="raw-framebuffer-download" href={captureDownloadUrl || captureUrl} download={`leopold-${referenceState || (calibrationMode ? 'calibration' : screenId)}-framebuffer.png`} aria-hidden="true" tabIndex={-1}>raw</a><button className="button secondary compact" onClick={downloadFramebuffer}>Download raw PNG</button></> : null}<a className="button secondary compact" href="/" target="_top">Exit simulator</a></div></header>
     <div className="simulator-grid">
@@ -653,5 +653,5 @@ export default function Simulator() {
         </div>
       </div>
     </section>}
-  </div>;
+  </main>;
 }

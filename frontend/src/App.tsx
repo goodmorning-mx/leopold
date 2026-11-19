@@ -631,7 +631,7 @@ function Profile({
               <article className="device-row" key={device.device_id}>
                 <div className="device-icon"><img src="/brand/leopold-mark.png" alt="" /></div>
                 <div className="device-copy">
-                  <strong>{device.label || 'Leopold Pocket'}</strong>
+                  <strong>{device.label || device.device_id}</strong>
                   <span>{device.device_id}</span>
                   <small>
                     <i className={device.status === 'online' ? 'online' : ''} />
@@ -732,13 +732,13 @@ function SimulatorPage({
   onLanguageChange: (language: AuthLanguage) => void;
 }) {
   return (
-    <main className="account-shell simulator-account-shell" lang={language}>
+    <div className="account-shell simulator-account-shell" lang={language}>
       <GlyphRainBackground />
       <LeopoldCardNav language={language} onLanguageChange={onLanguageChange} variant="simulator" />
       <Suspense fallback={<div className="simulator-loading" role="status">Cargando el simulador…</div>}>
         <Simulator />
       </Suspense>
-    </main>
+    </div>
   );
 }
 
