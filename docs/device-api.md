@@ -53,6 +53,24 @@ dispositivo nunca debe depender de una URL hardcodeada fuera de ese archivo
 local configurable. Esta tarea no modifica `device/` ni instala credenciales en
 el hardware.
 
+## Retirar un dispositivo de una cuenta (administración)
+
+Para corregir una asociación de prueba creada en otra cuenta, un operador puede
+retirar únicamente la propiedad de la cuenta usando el token administrativo:
+
+```bash
+curl --fail-with-body \
+  -X DELETE "$LEOPOLD_API_URL/v1/admin/devices/$LEOPOLD_DEVICE_ID/owner" \
+  -H "Authorization: Bearer $LEOPOLD_ADMIN_PROVISIONING_TOKEN"
+```
+
+La operación devuelve `204`, conserva el registro, ID, secreto del dispositivo,
+firmware, configuración y eventos, y solo limpia `owner_id`. También invalida
+sesiones QR pendientes para que un enlace viejo no pueda reclamar el dispositivo.
+Cuando el firmware vuelva a conectarse, el endpoint de conexión emitirá un nuevo
+QR de onboarding para que una cuenta lo reclame. Usa exclusivamente el entorno
+dev para dispositivos de prueba.
+
 ## Autenticación
 
 Cada llamada a `/v1/device/*` incluye:
