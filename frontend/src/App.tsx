@@ -133,7 +133,7 @@ function AuthForm({
           </div>
         </GlassSurface>
       </header>
-      <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.12}>
+      <GlassSurface className="auth-card-glass" width="min(100%, 480px)" height="auto" borderRadius={22} backgroundOpacity={0.1}>
         <section className="panel auth-panel">
           <img className="auth-wordmark" src="/brand/leopold-wordmark.png" alt="Leopold" />
           <p className="kicker">{context === 'setup' ? copy.setup : copy.account}</p>

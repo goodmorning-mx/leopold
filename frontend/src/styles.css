@@ -57,13 +57,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
   border-bottom: 1px solid var(--auth-border);
 }
 .auth-nav-glass { width: 100%; height: 100%; }
-.auth-nav-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 78%, transparent); }
+.auth-nav-glass.glass-surface--fallback,
+.auth-card-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 78%, transparent); }
 .auth-nav-glass .glass-surface__content { padding: 0 max(24px, calc((100vw - 920px) / 2)); }
 .auth-nav-content { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; }
 .auth-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--auth-text); font-size: 21px; font-weight: 800; letter-spacing: -.04em; text-decoration: none; }
 .auth-brand img { display: block; width: 40px; height: 40px; object-fit: contain; }
 .auth-card-glass { position: relative; z-index: 1; width: min(100%, 480px); height: auto; }
-.auth-card-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 86%, transparent); }
 .auth-card-glass .glass-surface__content { height: auto; padding: 0; }
 .auth-language {
   display: flex;
@@ -92,10 +92,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .language-flag:focus-visible { outline: 2px solid var(--auth-accent); outline-offset: 2px; }
 .auth-panel {
   width: 100%;
-  border: 1px solid var(--auth-border);
+  border-color: transparent;
   color: var(--auth-text);
-  background: color-mix(in srgb, var(--auth-glass) 74%, transparent);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, .42);
+  background: transparent;
+  box-shadow: none;
 }
 .auth-wordmark { display: block; width: min(100%, 190px); height: auto; margin: 0 auto 22px; }
 .auth-panel > .kicker { margin-top: 0; }
@@ -119,9 +119,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
     color-scheme: light;
   }
   .auth-nav-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 78%, transparent); }
-  .auth-card-glass.glass-surface--fallback { background: color-mix(in srgb, var(--auth-glass) 86%, transparent); }
   .glyph-rain { opacity: .38; }
-  .auth-panel { background: color-mix(in srgb, var(--auth-glass) 78%, transparent); box-shadow: 0 20px 70px rgba(23, 45, 68, .12); }
+  .auth-panel { background: transparent; box-shadow: none; }
   .auth-panel .button.primary { color: #fff; }
 }
 
