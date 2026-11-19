@@ -3,6 +3,7 @@ import QrScanner from 'qr-scanner';
 import Simulator from './simulator/Simulator';
 import { authCopy, authError, type AuthLanguage } from './auth-language';
 import GlassSurface from './components/GlassSurface';
+import GlyphRainBackground from './components/GlyphRainBackground';
 
 type User = { email: string; display_name: string };
 type Device = {
@@ -100,6 +101,7 @@ function AuthForm({
 
   return (
     <div className="auth-page" lang={language}>
+      <GlyphRainBackground />
       <header className="auth-topbar">
         <GlassSurface className="auth-nav-glass" width="100%" height="100%" borderRadius={0} backgroundOpacity={0.1}>
           <div className="auth-nav-content">
